@@ -1,12 +1,18 @@
-from typing import List
-
 from lreng_lexer import Token
-from lreng_opers import *
+from lreng_opers import (
+    op_precedences,
+    right_associative_ops,
+    l_brackets,
+    r_brackets,
+    function_call_l_parenth,
+    function_caller,
+    function_maker
+)
 
 def shunting_yard(
-        tokens: List[Token],
+        tokens: list[Token],
         is_debug=False
-    ) -> List[str]:
+    ) -> list[Token]:
     """Parse token sequence into postfix notation"""
 
     output = []

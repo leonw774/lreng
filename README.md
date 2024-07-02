@@ -1,6 +1,6 @@
 # Lreŋ
 
-A simple interpreted programming language written in Python.
+A simple interpreted programming language written in native Python 3.10.
 
 ## Usage
 

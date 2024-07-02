@@ -103,7 +103,7 @@ class NodeEvalDict:
     def __init__(self) -> None:
         self.table = dict()
     
-    def __getitem__(self, node: TreeNode) -> Optional[GeneralObj]:
+    def __getitem__(self, node: TreeNode) -> GeneralObj | None:
         return self.table.get(id(node), None)
     
     def __setitem__(self, node: TreeNode, value: GeneralObj) -> None:

@@ -3,7 +3,7 @@ from typing import Any, Callable, Iterable, Literal, Optional, TypeAlias, TypeVa
 
 from lreng_opers import *
 
-uanry_pm_preced = set(all_ops).difference(r_brackets).union([None])
+unary_pm_preced = set(all_ops).difference(r_brackets).union([None])
 
 id_chars = set(ascii_letters + digits + '_')
 num_chars = set(digits + '.')
@@ -70,7 +70,7 @@ class StateMachine:
             else:
                 cur_state = next_state
 
-def parse_token(raw_str: str, is_debug=False) -> list[str]:
+def parse_token(raw_str: str, is_debug=False) -> list[Token]:
     MyCargoType: TypeAlias = tuple[list[Token], str]
 
     def state_comment(
@@ -104,7 +104,7 @@ def parse_token(raw_str: str, is_debug=False) -> list[str]:
         elif c in op_chars:
             last = out_list[-1] if len(out_list) else None
             # handle unary + -
-            if (c == '-' or c == '+') and last.raw in uanry_pm_preced:
+            if (c == '-' or c == '+') and last.raw in unary_pm_preced:
                 ch_queue = '!' + c
             # handle function call
             elif (c == '(' and (last.type != 'op' or last.raw in r_brackets)):

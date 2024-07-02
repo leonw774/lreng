@@ -1,6 +1,5 @@
 from fractions import Fraction
-from decimal import Decimal
-from typing import Optional, Literal, Union
+from typing import Literal, Union
 
 class Frame:
     def __init__(self, local: dict | None = None, source: Union['Frame', None] = None):
@@ -59,7 +58,7 @@ class TreeNode:
         self.type = node_type
         self.left: TreeNode | None = left
         self.right: TreeNode | None = right
-        self.eval_to: Optional[GeneralObj] = None
+        self.eval_to: GeneralObj | None = None
 
     def __repr__(self):
         return f'N({self.type}:{repr(self.tok)})'
@@ -93,7 +92,7 @@ class NullObj(GeneralObj):
         return self.value == other.value
 
 class NumObj(GeneralObj):
-    def __init__(self, init_value: float | Decimal | str) -> None:
+    def __init__(self, init_value: float | str | Fraction) -> None:
         self.value = Fraction(init_value)
     
     def __bool__(self) -> bool:
@@ -114,7 +113,7 @@ class FuncObj(GeneralObj):
             self,
             code_root_node: TreeNode,
             id_obj_table: Frame,
-            arg_id: Optional[str] = None) -> None:
+            arg_id: str | None = None) -> None:
         self.arg_id = arg_id
         self.code_root_node = code_root_node
         # the reference of the id-obj table at the same scope of the function
