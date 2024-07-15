@@ -30,7 +30,7 @@ class Frame:
 
     def __repr__(self):
         return repr(self.to_dict())
-    
+
     def to_dict(self) -> dict:
         result = self._local.copy()
         if isinstance(self._shared, dict):
@@ -40,7 +40,7 @@ class Frame:
         else:
             raise ValueError('self._shared is not dict or Frame')
         return result
-    
+
     def get(self, key, value):
         if key in self._local:
             return self._local[key]
@@ -81,10 +81,10 @@ class TreeNode:
 class NullObj(GeneralObj):
     def __init__(self) -> None:
         self.value = None
-    
+
     def __bool__(self) -> bool:
         return False
-    
+
     def __repr__(self) -> str:
         return 'NullObj'
 
@@ -94,7 +94,7 @@ class NullObj(GeneralObj):
 class NumObj(GeneralObj):
     def __init__(self, init_value: float | str | Fraction) -> None:
         self.value = Fraction(init_value)
-    
+
     def __bool__(self) -> bool:
         return self.value != 0
 
@@ -106,7 +106,7 @@ class NumObj(GeneralObj):
         )
 
     def __eq__(self, other) -> bool:
-        return type(other) == type(self) and self.value == other.value
+        return isinstance(other, NumObj) and self.value == other.value
 
 class FuncObj(GeneralObj):
     def __init__(
@@ -119,16 +119,16 @@ class FuncObj(GeneralObj):
         # the reference of the id-obj table at the same scope of the function
         # so that it can do recursion and access variable from outside
         self.id_obj_table = id_obj_table
-    
+
     def __bool__(self) -> bool:
         return True
 
     def __repr__(self) -> str:
         return f'[function {self.arg_id} : code root {self.code_root_node}]'
-    
-    def __eq__(self, other) -> bool: 
+
+    def __eq__(self, other) -> bool:
         return (
-            type(other) == type(self)
+            isinstance(other, FuncObj)
             and self.code_root_node == other.code_root_node
         )
 
@@ -136,7 +136,7 @@ class PairObj(GeneralObj):
     def __init__(self, init_left: GeneralObj, init_right: GeneralObj) -> None:
         self.left = init_left
         self.right = init_right
-    
+
     def __bool__(self) -> bool:
         return True
 
@@ -145,7 +145,7 @@ class PairObj(GeneralObj):
 
     def __eq__(self, other) -> bool:
         return (
-            type(other) == type(self)
+            isinstance(other, PairObj)
             and self.left == other.left
             and self.right == other.right
         )

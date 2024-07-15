@@ -1,20 +1,22 @@
 from string import ascii_letters, digits, printable, whitespace
-from typing import Any, Callable, Iterable, Literal, Optional, TypeAlias, TypeVar
+from typing import Callable, Iterable, Literal, Optional, TypeAlias, TypeVar
 
-from lreng_opers import *
+from lreng_opers import (
+    all_ops, R_BRACKETS, FUNC_CALL_L_PARENTHESE
+)
 
-unary_pm_preced = set(all_ops).difference(r_brackets).union([None])
+unary_pm_preced = set(all_ops).difference(R_BRACKETS).union([None])
 
+SINGLE_QUOTE = '\''
+NULL_CHAR = '\0'
+HASH_CHAR = '#'
 id_chars = set(ascii_letters + digits + '_')
 num_chars = set(digits + '.')
-op_chars = set(r''.join([ops for ops in all_ops]))
+op_chars = set(r''.join(ops for ops in all_ops))
 ws_chars = set(whitespace)
-single_quote = '\''
-null_char = '\0'
-hash_char = '#'
 
-number_hex = '0x'
-number_bin = '0b'
+NUM_HEX_PREFIX = '0x'
+NUM_BIN_PREFIX = '0b'
 hex_chars = set(digits + 'ABCDEFabcdef')
 bin_chars = set('01')
 
@@ -33,34 +35,34 @@ class Token:
     def __init__(self, raw, tok_type: Literal['id', 'num', 'op']) -> None:
         self.raw = raw
         self.type = tok_type
-    
+
     def __repr__(self) -> str:
         return f'T({self.type}:{repr(self.raw)})'
 
 
-CargoType = TypeVar('CargoType')
+CargoTypeT = TypeVar('CargoTypeT')
 StateType: TypeAlias = Callable[
-    [Iterable, CargoType],
-    tuple[Optional['StateType'], CargoType]
+    [Iterable, CargoTypeT],
+    tuple[Optional['StateType'], CargoTypeT]
 ]
 class StateMachine:
     '''Implementation taken from: https://gnosis.cx/TPiP/chap4.txt'''
     def __init__(self) -> None:
         self.states: Iterable[StateType] = set()
-    
+
     def add_state(self, state_func: StateType):
         self.states.add(state_func)
 
     def run(
             self,
-            iter: Iterable,
+            iterator: Iterable,
             starter: StateType,
-            cargo: CargoType,
-            is_debug=False) -> CargoType:
+            cargo: CargoTypeT,
+            is_debug=False) -> CargoTypeT:
         assert starter in self.states
         cur_state = starter
         while True:
-            next_state, cargo = cur_state(iter, cargo)
+            next_state, cargo = cur_state(iterator, cargo)
             if is_debug:
                 print(*cargo, sep='\n')
             if next_state is None:
@@ -74,30 +76,30 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
     MyCargoType: TypeAlias = tuple[list[Token], str]
 
     def state_comment(
-            str_iter: Iterable, 
+            str_iter: Iterable,
             cargo: MyCargoType) -> tuple[StateType | None, MyCargoType]:
         c = next(str_iter)
-        if c == null_char:
+        if c == NULL_CHAR:
             return None, cargo
         elif c == '\n':
             return state_ws, cargo
         else:
-            state_comment, cargo
+            return state_comment, cargo
 
     def state_ws(
-            str_iter: Iterable, 
+            str_iter: Iterable,
             cargo: MyCargoType) -> tuple[StateType | None, MyCargoType]:
         c = next(str_iter)
         out_list, ch_queue = cargo
-        if c == null_char:
+        if c == NULL_CHAR:
             return None, cargo
-        elif c == hash_char:
+        elif c == HASH_CHAR:
             return state_comment, cargo
         elif c in ws_chars:
             return state_ws, cargo
         elif c in num_chars:
             return state_num, (out_list, c)
-        elif c == single_quote:
+        elif c == SINGLE_QUOTE:
             return state_char, (out_list, '')
         elif c in id_chars:
             return state_id, (out_list, c)
@@ -107,8 +109,8 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
             if (c == '-' or c == '+') and last.raw in unary_pm_preced:
                 ch_queue = '!' + c
             # handle function call
-            elif (c == '(' and (last.type != 'op' or last.raw in r_brackets)):
-                ch_queue = function_call_l_parenth
+            elif (c == '(' and (last.type != 'op' or last.raw in R_BRACKETS)):
+                ch_queue = FUNC_CALL_L_PARENTHESE
             else:
                 # add inferred null in empty call
                 if c == ')' and last.raw == '$(':
@@ -117,22 +119,22 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
             return state_op, (out_list, ch_queue)
 
     def state_num(
-            str_iter: Iterable, 
+            str_iter: Iterable,
             cargo: MyCargoType) -> tuple[StateType | None, MyCargoType]:
         c = next(str_iter)
         out_list, ch_queue = cargo
-        if c == null_char:
-            if ch_queue.startswith((number_bin, number_hex)):
+        if c == NULL_CHAR:
+            if ch_queue.startswith((NUM_BIN_PREFIX, NUM_HEX_PREFIX)):
                 ch_queue = str(int(ch_queue, base=0))
             out_list.append(Token(ch_queue, 'num'))
             return None, (out_list, '')
-        elif c == hash_char:
-            if ch_queue.startswith((number_bin, number_hex)):
+        elif c == HASH_CHAR:
+            if ch_queue.startswith((NUM_BIN_PREFIX, NUM_HEX_PREFIX)):
                 ch_queue = str(int(ch_queue, base=0))
             out_list.append(Token(ch_queue, 'num'))
             return state_comment, (out_list, '')
         elif c in ws_chars:
-            if ch_queue.startswith((number_bin, number_hex)):
+            if ch_queue.startswith((NUM_BIN_PREFIX, NUM_HEX_PREFIX)):
                 ch_queue = str(int(ch_queue, base=0))
             out_list.append(Token(ch_queue, 'num'))
             return state_ws, (out_list, '')
@@ -142,17 +144,17 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
             return state_num, (out_list, ch_queue + c)
         elif c in id_chars:
             is_good_format = False
-            if ch_queue + c == number_hex or ch_queue + c == number_bin:
+            if ch_queue + c == NUM_HEX_PREFIX or ch_queue + c == NUM_BIN_PREFIX:
                 # is begin of hex or binary number: '0x' or '0b'
                 is_good_format = True
-            elif ch_queue[:2] == number_hex and c in hex_chars:
+            elif ch_queue[:2] == NUM_HEX_PREFIX and c in hex_chars:
                 # is part of hex number
                 is_good_format = True
             if not is_good_format:
                 raise ValueError(f'Bad num charactor {ch_queue} + {repr(c)}')
             return state_num, (out_list, ch_queue + c)
         elif op_chars:
-            if ch_queue.startswith((number_bin, number_hex)):
+            if ch_queue.startswith((NUM_BIN_PREFIX, NUM_HEX_PREFIX)):
                 ch_queue = str(int(ch_queue, base=0))
             out_list.append(Token(ch_queue, 'num'))
             return state_op, (out_list, c)
@@ -160,12 +162,12 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
             raise ValueError(f'Bad num charactor {ch_queue} + {repr(c)}')
 
     def state_char(
-            str_iter: Iterable, 
+            str_iter: Iterable,
             cargo: MyCargoType) -> tuple[StateType | None, MyCargoType]:
         c = next(str_iter)
         out_list, ch_queue = cargo
         if len(ch_queue) == 0:
-            if c == single_quote:
+            if c == SINGLE_QUOTE:
                 raise ValueError(f'Bad ascii charactor format: {repr(c)}')
             elif c in printable:
                 return state_char, (out_list, c)
@@ -177,13 +179,13 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
                     return state_char, (out_list, esc_table[c])
                 else:
                     raise ValueError(f'Bad escape charactor: {repr(c)}')
-            elif c == single_quote:
+            elif c == SINGLE_QUOTE:
                 out_list.append(Token(ord(ch_queue), 'num'))
                 return state_char, (out_list, ch_queue + c)
             else:
                 raise ValueError(f'Bad ascii charactor format: {repr(c)}')
-        elif len(ch_queue) == 2 and ch_queue[1] == single_quote:
-            if c == null_char:
+        elif len(ch_queue) == 2 and ch_queue[1] == SINGLE_QUOTE:
+            if c == NULL_CHAR:
                 return None, (out_list, '')
             elif c in ws_chars:
                 return state_ws, (out_list, '')
@@ -195,17 +197,16 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
                 return state_op, (out_list, c)
         else:
             raise ValueError(f'Bad ascii charactor format: {repr(c)}')
-            
 
     def state_id(
-            str_iter: Iterable, 
+            str_iter: Iterable,
             cargo: MyCargoType) -> tuple[StateType | None, MyCargoType]:
         c = next(str_iter)
         out_list, ch_queue = cargo
-        if c == null_char:
+        if c == NULL_CHAR:
             out_list.append(Token(ch_queue, 'id'))
             return None, (out_list, '')
-        elif c == hash_char:
+        elif c == HASH_CHAR:
             out_list.append(Token(ch_queue, 'id'))
             return state_comment, (out_list, '')
         elif c in ws_chars:
@@ -219,19 +220,19 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
             out_list.append(Token(ch_queue, 'id'))
             # handle function call
             if c == '(':
-                return state_op, (out_list, function_call_l_parenth)
+                return state_op, (out_list, FUNC_CALL_L_PARENTHESE)
             else:
                 return state_op, (out_list, c)
 
     def state_op(
-            str_iter: Iterable, 
+            str_iter: Iterable,
             cargo: MyCargoType) -> tuple[StateType | None, MyCargoType]:
         c = next(str_iter)
         out_list, ch_queue = cargo
-        if c == null_char:
+        if c == NULL_CHAR:
             out_list.append(Token(ch_queue, 'op'))
             return None, (out_list, '')
-        elif c == hash_char:
+        elif c == HASH_CHAR:
             out_list.append(Token(ch_queue, 'op'))
             return state_comment, (out_list, '')
         elif c in ws_chars:
@@ -252,11 +253,11 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
             else:
                 out_list.append(Token(ch_queue, 'op'))
                 # handle unary + -
-                if (c == '-' or c == '+') and ch_queue not in r_brackets:
+                if (c == '-' or c == '+') and ch_queue not in R_BRACKETS:
                     ch_queue = '!' + c
                 # handle function call
-                elif c == '(' and ch_queue in r_brackets:
-                    ch_queue = function_call_l_parenth
+                elif c == '(' and ch_queue in R_BRACKETS:
+                    ch_queue = FUNC_CALL_L_PARENTHESE
                 else:
                     # add the inferred null
                     if c == ')' and ch_queue == '$(':
@@ -284,7 +285,7 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
     out_list, ch_queue = final_cargo
     return out_list
 
-    
+
 if __name__ == '__main__':
     print(parse_token('+3 + 4 * -2 / (1-5) ^ 2 ^ 3'))
     print(parse_token('sin(max(2, 3) / 3 * pi)'))

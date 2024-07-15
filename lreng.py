@@ -17,13 +17,12 @@ if __name__ == '__main__':
     parser.add_argument('--code', '-c', dest='raw_str', default='')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
-    raw_str = None
     if args.input_file_path != '':
         with open(args.input_file_path, 'r', encoding='utf8') as f:
             raw_str = f.read()
-    elif args.raw_str != '':
+    else:
         raw_str = args.raw_str
-    if raw_str is None:
+    if raw_str != '':
         raise ValueError('code is empty')
     else:
         interpret_code(raw_str, args.debug)

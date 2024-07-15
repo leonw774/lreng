@@ -20,7 +20,7 @@ operator_hierarchies = [
     ('==', '!='),
     # logic and
     ('&',),
-    # logic or 
+    # logic or
     ('|',),
     # pair maker
     (',',),
@@ -53,17 +53,17 @@ op_precedences['$('] = op_precedences['(']
 # add function code indicator '@'
 op_precedences['@'] = op_precedences['{']
 
-right_associative_ops = {'!+', '!-', '!', '^', '`', '~', ':', '=', ','}
+R_ASSO_OPS = {'!+', '!-', '!', '^', '`', '~', ':', '=', ','}
 
-unary_ops = {'@', '!+', '!-', '!', '`', '~', '<<', '>>'}
+UNARY_OPS = {'@', '!+', '!-', '!', '`', '~', '<<', '>>'}
 
-l_brackets = {'(', '{', '$('}
-r_brackets = {')', '}'}
+L_BRACKETS = {'(', '{', '$('}
+R_BRACKETS = {')', '}'}
 
-function_call_l_parenth = '$('
-function_maker = '@'
-function_caller = '$'
-argument_setter = ':'
-assignment = '='
-if_operator = '?'
-expression_connector = ';'
+FUNC_CALL_L_PARENTHESE = '$('
+FUNC_MAKER = '@'
+FUNC_CALLER = '$'
+ARG_SETTER = ':'
+ASSIGNMENT = '='
+IF_OP = '?'
+EXPR_CONNECTOR = ';'
