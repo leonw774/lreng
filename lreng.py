@@ -24,6 +24,7 @@ if __name__ == '__main__':
     elif args.raw_str != '':
         raw_str = args.raw_str
     if raw_str is None:
-        ValueError('code is empty')
-        exit()
-    interpret_code(raw_str, args.debug)
+        raise ValueError('code is empty')
+    else:
+        interpret_code(raw_str, args.debug)
+        print()
