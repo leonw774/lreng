@@ -1,22 +1,26 @@
+ternary = cond_and_blocks : {
+    cond = `cond_and_blocks;
+    t_block = `(~cond_and_blocks);
+    f_block = ~(~cond_and_blocks);
+    cond ? (res = t_block());
+    !cond ? (res = f_block());
+    res
+};
+
 concat_linked_list = list_pair : {
     left_list = `list_pair;
     right_list = ~list_pair;
-    left_empty = (left_list == null);
-    left_empty ? (new_list = right_list);
-    !left_empty ? (
-        left_list_next = ~left_list;
-        end = (left_list_next == null);
-        end ? (
-            new_list = `left_list, right_list
-        );
-        !end ? (
-            new_list = (
-                `left_list,
-                concat_linked_list(left_list_next, ~list_pair)
-            )
-        )
-    );
-    new_list
+    ternary(left_list == null, {
+        right_list
+    },
+    {
+        ternary(~left_list == null, {
+            `left_list, right_list
+        },
+        {
+            `left_list, concat_linked_list(~left_list, ~list_pair)
+        })
+    })
 };
 
 print = string : {
@@ -25,30 +29,43 @@ print = string : {
 };
 
 format_int = i : {
-    end = i < 10;
-    res_str = null;
-    end ? (
-        res_str = (i + '0'), null
-    );
-    !end ? (
+    ternary(i < 10, {
+        (i + '0'), null
+    }, {
         left = format_int((i - i % 10) / 10);
         right = ((i % 10) + '0'), null;
-        res_str = concat_linked_list(left, right)
-    );
-    res_str
+        concat_linked_list(left, right)
+    })
+};
+
+filtered_concat = filters_lists_pair : {
+    filters = `filters_lists_pair;
+    lists = ~filters_lists_pair;
+    has_null = (filters == null) | (lists == null);
+    ternary(has_null, {
+        null
+    }, {
+        ternary(`filters, {
+            concat_linked_list(`lists, filtered_concat(~filters, ~lists))
+        }, {
+            filtered_concat(~filters, ~lists)
+        })
+    })
 };
 
 fizz = 'F', 'I', 'Z', 'Z', null;
 buzz = 'B', 'U', 'Z', 'Z', null;
 
 fizzbuzz = n : {
-    end = (n == 1); 
-    !end ? fizzbuzz(n-1);
-    res = null;
-    (n % 3 == 0) ? (res = concat_linked_list(res, fizz));
-    (n % 5 == 0) ? (res = concat_linked_list(res, buzz));
-    (res == null) ? print(format_int(n));
-    (res != null) ? print(res);
+    (n != 1) ? fizzbuzz(n-1);
+    filters = (n % 3 == 0), (n % 5 == 0), null;
+    strings = fizz, buzz, null;
+    concated_string = filtered_concat(filters, strings);
+    ternary(concated_string == null, {
+        print(format_int(n))
+    }, {
+        print(concated_string)
+    });
     << '\n'
 };
 

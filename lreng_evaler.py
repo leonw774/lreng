@@ -2,12 +2,11 @@ import sys
 from typing import Callable
 from copy import copy
 
-from lreng_lexer import Token
 from lreng_opers import (
     UNARY_OPS, FUNC_MAKER, ARG_SETTER, ASSIGNMENT, IF_OP
 )
 from lreng_objs import (
-    Frame, TreeNode,
+    Frame, Token, TreeNode,
     GeneralObj, FuncObj, NumObj, PairObj, NullObj
 )
 
@@ -60,11 +59,15 @@ op_func_configs = {
 
 def op_func_builder(arg_types: tuple, real_func: Callable):
     def f(args):
-        assert len(args) == len(arg_types), \
-            f'Bad argument number: want {len(arg_types)} but get {len(args)}'
+        if len(args) != len(arg_types):
+            throw_runtime_err_msg(
+                f'Bad argument number: want {len(arg_types)} but get {len(args)}'
+            )
         for arg, arg_type in zip(args, arg_types):
-            assert isinstance(arg, arg_type), \
-                f'argument: {arg} is not of type {arg_type.__name__}'
+            if not isinstance(arg, arg_type):
+                throw_runtime_err_msg(
+                    f'Argument {arg} is not of type {arg_type.__name__}'
+                )
         return real_func(*args)
     return f
 
@@ -74,32 +77,34 @@ op_funcs = {
 }
 
 G_IS_DEBUG = False
-def eval_postfix(postfix_token: list[Token], is_debug=False) -> GeneralObj:
-    tree_root = postfix_to_tree(postfix_token, is_debug=is_debug)
+def eval_postfix(postfix_token_list: list[Token], is_debug=False) -> GeneralObj:
+    tree_root = postfix_to_tree(postfix_token_list, is_debug=is_debug)
     if is_debug:
         print(TreeNode.dump(tree_root))
     global G_IS_DEBUG
     G_IS_DEBUG = is_debug
     return eval_node(tree_root)
 
-def postfix_to_tree(postfix: list[str], is_debug=False) -> TreeNode:
+def postfix_to_tree(postfix_token_list: list[Token], is_debug=False) -> TreeNode:
     stack = list()
-    for t in postfix:
-        if is_debug:
-            print(t, stack)
-        if t.type == 'op':
-            r_node = stack.pop() if t.raw not in UNARY_OPS else None
-            try:
-                l_node = stack.pop()
-            except IndexError as e:
-                print(f'token {t} has too few children')
-                raise e
-            stack.append(TreeNode(
-                tok=t.raw, node_type=t.type,
-                left=l_node, right=r_node
-            ))
+    for token in postfix_token_list:
+        if token.type == 'op':
+            r_node = stack.pop() if token.raw not in UNARY_OPS else None
+            if len(stack) == 0:
+                throw_runtime_err_msg(
+                    f'Line {token.db_pos_info[0]} col {token.db_pos_info[1]}: '
+                    f'operator {repr(token)} has too few operands'
+                )
+            l_node = stack.pop()
+            if is_debug:
+                print(token, f'L={l_node}, R={r_node}')
+            stack.append(TreeNode(tok=token, left=l_node, right=r_node))
         else:
-            stack.append(TreeNode(tok=t.raw, node_type=t.type))
+            if is_debug:
+                print(token)
+            stack.append(TreeNode(tok=token))
+    if is_debug:
+        print(stack)
     assert len(stack) == 1, \
         f'bad grammer: there are nodes remained in stack {stack}'
     return stack[0]
@@ -113,6 +118,10 @@ class NodeEvalDict:
 
     def __setitem__(self, node: TreeNode, value: GeneralObj) -> None:
         self.table[id(node)] = value
+
+def throw_runtime_err_msg(msg: str):
+    print('[RumtimeError]:', msg)
+    exit(1)
 
 def eval_node(
         root_node: TreeNode,
@@ -132,9 +141,9 @@ def eval_node(
         if G_IS_DEBUG:
             print('stack', node_stack)
         node = node_stack[-1]
-        if node.type == 'op':
-            if node.tok in UNARY_OPS:
-                if node.tok == FUNC_MAKER:
+        if node.tok.type == 'op':
+            if node.tok.raw in UNARY_OPS:
+                if node.tok.raw == FUNC_MAKER:
                     node_eval_to[node] = FuncObj(
                         code_root_node = node.left,
                         id_obj_table=id_obj_table,
@@ -146,7 +155,7 @@ def eval_node(
                     node_stack.append(node.left)
                     continue
                 else:
-                    node_op_func = op_funcs[node.tok]
+                    node_op_func = op_funcs[node.tok.raw]
                     args = (node_eval_to[node.left], )
                     if G_IS_DEBUG:
                         print('op:', node, 'args:', args)
@@ -154,33 +163,49 @@ def eval_node(
                     if G_IS_DEBUG:
                         print('eval to:', node_eval_to[node])
             else:
-                if node.tok == ARG_SETTER:
-                    assert node.left.type == 'id', \
-                        'Left side of argument setter should be identifier'
+                if node.tok.raw == ARG_SETTER:
+                    if node.left.tok.type != 'id':
+                        throw_runtime_err_msg(
+                            'Left side of argument setter should be identifier'
+                        )
                     if node_eval_to[node.right] is None:
                         node_stack.append(node.right)
                         continue
                     else:
-                        assert isinstance(node_eval_to[node.right], FuncObj), \
-                            'Right side of argument setter should be '\
-                            'function block'
+                        if not isinstance(node_eval_to[node.right], FuncObj):
+                            throw_runtime_err_msg(
+                                'Right side of argument setter should be '
+                                'function block'
+                            )
                         node_eval_to[node] = copy(node_eval_to[node.right])
-                        node_eval_to[node].arg_id = node.left.tok
+                        node_eval_to[node].arg_id = node.left.tok.raw
 
-                elif node.tok == ASSIGNMENT:
-                    assert node.left is not None and node.left.type == 'id', \
-                        'Left side of assignment should be identifier. ' \
-                        f'Get {node.left}'
+                elif node.tok.raw == ASSIGNMENT:
+                    if node.left is None or node.left.tok.type != 'id':
+                        throw_runtime_err_msg(
+                            f'Line {node.left.tok.db_pos_info[0]} '
+                            f'col {node.left.tok.db_pos_info[1]}: '
+                            f'Left side of assignment should be identifier. '
+                            f'Get {node.left}'
+                        )
+                    if node.left.tok.raw in id_obj_table:
+                        throw_runtime_err_msg(
+                            f'Line {node.left.tok.db_pos_info[0]} '
+                            f'col {node.left.tok.db_pos_info[1]}: '
+                            f'Identifier {repr(node.left.tok.raw)} '
+                            'is already initialized.'
+                        )
                     if node_eval_to[node.right] is None:
                         node_stack.append(node.right)
                         continue
                     else:
-                        id_obj_table[node.left.tok] = node_eval_to[node.right]
+                        id_str = node.left.tok.raw
+                        id_obj_table[id_str] = node_eval_to[node.right]
                         node_eval_to[node] = node_eval_to[node.right]
                         if G_IS_DEBUG:
                             print('update id-obj table:', id_obj_table)
 
-                elif node.tok == IF_OP:
+                elif node.tok.raw == IF_OP:
                     # eval left first
                     if node_eval_to[node.left] is None:
                         node_stack.append(node.left)
@@ -204,7 +229,7 @@ def eval_node(
                     continue
 
                 else:
-                    node_op_func = op_funcs[node.tok]
+                    node_op_func = op_funcs[node.tok.raw]
                     args = (node_eval_to[node.left], node_eval_to[node.right])
                     if G_IS_DEBUG:
                         print('op:', node, 'args:', args)
@@ -212,17 +237,22 @@ def eval_node(
                     if G_IS_DEBUG:
                         print('eval to:', node_eval_to[node])
 
-        elif node.type == 'id':
-            obj = id_obj_table.get(node.tok, NullObj())
+        elif node.tok.type == 'id':
+            obj = id_obj_table.get(node.tok.raw, None)
+            if obj is None:
+                throw_runtime_err_msg(
+                    f'Line {node.tok.db_pos_info[0]} '
+                    f'col {node.tok.db_pos_info[1]}: '
+                    f'identifier {repr(node.tok.raw)} is used uninitialized')
             if G_IS_DEBUG:
                 print('update id-obj table:', id_obj_table)
             node_eval_to[node] = obj
 
-        elif node.type == 'num':
-            node_eval_to[node] = NumObj(node.tok)
+        elif node.tok.type == 'num':
+            node_eval_to[node] = NumObj(node.tok.raw)
 
         else:
-            raise ValueError(f'bad node type: {node.type}')
+            raise ValueError(f'Bad node type: {node.tok.type}')
         node_stack.pop()
     # end while
     return node_eval_to[root_node]

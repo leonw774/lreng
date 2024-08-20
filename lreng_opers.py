@@ -2,7 +2,7 @@
 operator_hierarchies = [
     # function code maker
     ('{', '}'),
-    # parenthesis / function call, function caller
+    # parenthesis / function call, right-associative function caller
     ('(', ')', '$'),
     # unary plus and minus, logic not, get left of pair, get right of pair
     ('!+', '!-', '!', '`', '~'),
@@ -47,23 +47,24 @@ op_precedences = {
     for p, ops in enumerate(operator_hierarchies)
     for op in ops
 }
-# add temperary operator '$('
+
+# auxiliary operators
+FUNC_CALL_L_PARENTHESE = '['
+FUNC_MAKER = '@'
 # it means the parenthesis is part of a function call
-op_precedences['$('] = op_precedences['(']
-# add function code indicator '@'
+# and will be replaced to `$`
+op_precedences['['] = op_precedences['(']
+# function code block indicator '@' is unary and make the code nodes underneath
+# evaluated as a code block
 op_precedences['@'] = op_precedences['{']
 
-R_ASSO_OPS = {'!+', '!-', '!', '^', '`', '~', ':', '=', ','}
-
-UNARY_OPS = {'@', '!+', '!-', '!', '`', '~', '<<', '>>'}
-
-L_BRACKETS = {'(', '{', '$('}
-R_BRACKETS = {')', '}'}
-
-FUNC_CALL_L_PARENTHESE = '$('
-FUNC_MAKER = '@'
 FUNC_CALLER = '$'
 ARG_SETTER = ':'
 ASSIGNMENT = '='
 IF_OP = '?'
 EXPR_CONNECTOR = ';'
+
+R_ASSO_OPS = {'!+', '!-', '!', '`', '~', '$', '^', ',', ':', '='}
+UNARY_OPS = {'@', '!+', '!-', '!', '`', '~', '<<'}
+L_BRACKETS = {'(', '{', FUNC_CALL_L_PARENTHESE}
+R_BRACKETS = {')', '}'}

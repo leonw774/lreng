@@ -1,5 +1,47 @@
 from fractions import Fraction
-from typing import Literal, Union
+from typing import Literal, Union, Optional
+
+class Token:
+    def __init__(
+            self,
+            raw: str,
+            tok_type: Literal['id', 'num', 'op'],
+            debug_pos_info: Optional[tuple] = None) -> None:
+        """raw: token string
+        tok_type: token type
+        debug_pos_info: position (line num, col num) of the token"""
+        self.raw = raw
+        self.type = tok_type
+        self.db_pos_info = debug_pos_info
+
+    def __repr__(self) -> str:
+        return f'T({self.type}:{repr(self.raw)}:{repr(self.db_pos_info)})'
+
+class TreeNode:
+    def __init__(self, tok: Token,
+                 left = None, right = None) -> None:
+        self.tok = tok
+        self.left: TreeNode | None = left
+        self.right: TreeNode | None = right
+
+    def __repr__(self):
+        return f'N({self.tok.type}:{repr(self.tok.raw)}:{self.tok.db_pos_info})'
+
+    @classmethod
+    def dump(cls, root_node, indent = 2) -> str:
+        res_str = ''
+        res_str += repr(root_node) + '\n'
+        queue = []
+        queue.append((root_node.right, indent))
+        queue.append((root_node.left, indent))
+        while len(queue) > 0:
+            node, depth = queue.pop()
+            if node is not None:
+                res_str += ' ' * depth + repr(node) + '\n'
+                queue.append((node.right, depth + indent))
+                queue.append((node.left, depth + indent))
+        return res_str
+
 
 class Frame:
     def __init__(self, local: dict | None = None, source: Union['Frame', None] = None):
@@ -48,35 +90,9 @@ class Frame:
             return self._shared[key]
         return value
 
+
 class GeneralObj:
     pass
-
-class TreeNode:
-    def __init__(self, tok: str, node_type: Literal['op', 'id', 'lit'],
-                 left = None, right = None) -> None:
-        self.tok = tok
-        self.type = node_type
-        self.left: TreeNode | None = left
-        self.right: TreeNode | None = right
-        self.eval_to: GeneralObj | None = None
-
-    def __repr__(self):
-        return f'N({self.type}:{repr(self.tok)})'
-
-    @classmethod
-    def dump(cls, root_node, indent = 2) -> str:
-        res_str = ''
-        res_str += repr(root_node) + '\n'
-        queue = []
-        queue.append((root_node.right, indent))
-        queue.append((root_node.left, indent))
-        while len(queue) > 0:
-            node, depth = queue.pop()
-            if node is not None:
-                res_str += ' ' * depth + repr(node) + '\n'
-                queue.append((node.right, depth + indent))
-                queue.append((node.left, depth + indent))
-        return res_str
 
 class NullObj(GeneralObj):
     def __init__(self) -> None:
@@ -86,7 +102,7 @@ class NullObj(GeneralObj):
         return False
 
     def __repr__(self) -> str:
-        return 'NullObj'
+        return 'null'
 
     def __eq__(self, other) -> bool:
         return self.value == other.value
@@ -124,7 +140,7 @@ class FuncObj(GeneralObj):
         return True
 
     def __repr__(self) -> str:
-        return f'[function {self.arg_id} : code root {self.code_root_node}]'
+        return f'[function {self.arg_id} : {self.code_root_node}]'
 
     def __eq__(self, other) -> bool:
         return (

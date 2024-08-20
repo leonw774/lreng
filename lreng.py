@@ -22,7 +22,7 @@ if __name__ == '__main__':
             raw_str = f.read()
     else:
         raw_str = args.raw_str
-    if raw_str != '':
+    if raw_str == '':
         raise ValueError('code is empty')
     else:
         interpret_code(raw_str, args.debug)
