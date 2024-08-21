@@ -91,10 +91,10 @@ class Frame:
         return value
 
 
-class GeneralObj:
+class AnyType:
     pass
 
-class NullObj(GeneralObj):
+class Null(AnyType):
     def __init__(self) -> None:
         self.value = None
 
@@ -107,7 +107,7 @@ class NullObj(GeneralObj):
     def __eq__(self, other) -> bool:
         return other.value is None
 
-class NumObj(GeneralObj):
+class Number(AnyType):
     def __init__(self, init_value: float | str | Fraction) -> None:
         self.value = Fraction(init_value)
 
@@ -122,9 +122,9 @@ class NumObj(GeneralObj):
         )
 
     def __eq__(self, other) -> bool:
-        return isinstance(other, NumObj) and self.value == other.value
+        return isinstance(other, Number) and self.value == other.value
 
-class FuncObj(GeneralObj):
+class Function(AnyType):
     def __init__(
             self,
             code_root_node: TreeNode,
@@ -144,12 +144,12 @@ class FuncObj(GeneralObj):
 
     def __eq__(self, other) -> bool:
         return (
-            isinstance(other, FuncObj)
+            isinstance(other, Function)
             and self.code_root_node == other.code_root_node
         )
 
-class PairObj(GeneralObj):
-    def __init__(self, init_left: GeneralObj, init_right: GeneralObj) -> None:
+class Pair(AnyType):
+    def __init__(self, init_left: AnyType, init_right: AnyType) -> None:
         self.left = init_left
         self.right = init_right
 
@@ -161,7 +161,7 @@ class PairObj(GeneralObj):
 
     def __eq__(self, other) -> bool:
         return (
-            isinstance(other, PairObj)
+            isinstance(other, Pair)
             and self.left == other.left
             and self.right == other.right
         )

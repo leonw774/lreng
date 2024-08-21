@@ -7,10 +7,10 @@ from lreng_opers import (
 )
 from lreng_objs import (
     Frame, Token, TreeNode,
-    GeneralObj, FuncObj, NumObj, PairObj, NullObj
+    AnyType, Function, Number, Pair, Null
 )
 
-def do_call(func_obj: FuncObj, arg_obj: GeneralObj) -> GeneralObj:
+def do_call(func_obj: Function, arg_obj: AnyType) -> AnyType:
     # copy frame
     currernt_frame = Frame(
         local={func_obj.arg_id: arg_obj},
@@ -22,39 +22,61 @@ def do_call(func_obj: FuncObj, arg_obj: GeneralObj) -> GeneralObj:
         inherent_id_obj_table=currernt_frame
     )
 
-def do_write_byte(num_obj: NumObj) -> NullObj:
-    assert num_obj.value.denominator == 1, num_obj.value
+def do_write_byte(num_obj: Number) -> Null:
+    assert num_obj.value.denominator == 1, \
+        f'{float(num_obj.value)} is not a valid ASCII code.'
     v = int(num_obj.value)
-    assert 0 <= v <= 255
+    assert 0 <= v <= 255, \
+        f'{int(num_obj.value)} is not a valid ASCII code.'
     sys.stdout.buffer.write(bytes((v,)))
     sys.stdout.flush()
-    return NullObj()
+    return Null()
+
+def do_cond_func_pair_call(
+        cond_obj: AnyType,
+        func_pair_obj: Pair) -> AnyType:
+    assert isinstance(func_pair_obj.left, Function), \
+        (
+            'The left element is not a function '
+            f'but a {type(func_pair_obj.left).__name__}.'
+        )
+    assert isinstance(func_pair_obj.right, Function), \
+        (
+            'The right element is not a function '
+            f'but a {type(func_pair_obj.left).__name__}.'
+        )
+    return (
+        do_call(func_pair_obj.left, Null())
+        if bool(cond_obj) else
+        do_call(func_pair_obj.right, Null())
+    )
 
 op_func_configs = {
-    '$': ((FuncObj, GeneralObj), do_call),
-    '!+': ((NumObj,), lambda x: NumObj(x.value)),
-    '!-': ((NumObj,), lambda x: NumObj(-x.value)),
-    '!': ((NumObj,), lambda x: NumObj(x.value == 0)),
-    '`': ((PairObj,), lambda x: x.left),
-    '~': ((PairObj,), lambda x: x.right),
-    '^': ((NumObj, NumObj), lambda x, y: NumObj(x.value ** y.value)),
-    '*': ((NumObj, NumObj), lambda x, y: NumObj(x.value * y.value)),
-    '/': ((NumObj, NumObj), lambda x, y: NumObj(x.value / y.value)),
-    '%': ((NumObj, NumObj), lambda x, y: NumObj(x.value % y.value)),
-    '+': ((NumObj, NumObj), lambda x, y: NumObj(x.value + y.value)),
-    '-': ((NumObj, NumObj), lambda x, y: NumObj(x.value - y.value)),
-    '<<': ((NumObj,), do_write_byte),
+    '$': ((Function, AnyType), do_call),
+    '!+': ((Number,), lambda x: Number(x.value)),
+    '!-': ((Number,), lambda x: Number(-x.value)),
+    '!': ((Number,), lambda x: Number(x.value == 0)),
+    '`': ((Pair,), lambda x: x.left),
+    '~': ((Pair,), lambda x: x.right),
+    '^': ((Number, Number), lambda x, y: Number(x.value ** y.value)),
+    '*': ((Number, Number), lambda x, y: Number(x.value * y.value)),
+    '/': ((Number, Number), lambda x, y: Number(x.value / y.value)),
+    '%': ((Number, Number), lambda x, y: Number(x.value % y.value)),
+    '+': ((Number, Number), lambda x, y: Number(x.value + y.value)),
+    '-': ((Number, Number), lambda x, y: Number(x.value - y.value)),
+    '<<': ((Number,), do_write_byte),
     # '>>': ((NumObj,), lambda x: NotImplementedError()),
-    '<': ((NumObj, NumObj), lambda x, y: NumObj(x.value < y.value)),
-    '>': ((NumObj, NumObj), lambda x, y: NumObj(x.value > y.value)),
-    '<=': ((NumObj, NumObj), lambda x, y: NumObj(x.value <= y.value)),
-    '>=': ((NumObj, NumObj), lambda x, y: NumObj(x.value >= y.value)),
-    '==': ((GeneralObj, GeneralObj), lambda x, y: NumObj(x == y)),
-    '!=': ((GeneralObj, GeneralObj), lambda x, y: NumObj(x != y)),
-    '&': ((GeneralObj, GeneralObj), lambda x, y: NumObj(bool(x) and bool(y))),
-    '|': ((GeneralObj, GeneralObj), lambda x, y: NumObj(bool(x) or bool(y))),
-    ',': ((GeneralObj, GeneralObj), PairObj),
-    ';': ((GeneralObj, GeneralObj), lambda x, y: y),
+    '<': ((Number, Number), lambda x, y: Number(x.value < y.value)),
+    '>': ((Number, Number), lambda x, y: Number(x.value > y.value)),
+    '<=': ((Number, Number), lambda x, y: Number(x.value <= y.value)),
+    '>=': ((Number, Number), lambda x, y: Number(x.value >= y.value)),
+    '==': ((AnyType, AnyType), lambda x, y: Number(x == y)),
+    '!=': ((AnyType, AnyType), lambda x, y: Number(x != y)),
+    '&': ((AnyType, AnyType), lambda x, y: Number(bool(x) and bool(y))),
+    '|': ((AnyType, AnyType), lambda x, y: Number(bool(x) or bool(y))),
+    ',': ((AnyType, AnyType), Pair),
+    '?': ((AnyType, Pair), do_cond_func_pair_call),
+    ';': ((AnyType, AnyType), lambda x, y: y),
 }
 
 def op_func_builder(arg_types: tuple, real_func: Callable):
@@ -78,7 +100,7 @@ def throw_runtime_err_msg(pos: tuple[int, int], msg: str):
     exit(2)
 
 G_IS_DEBUG = False
-def eval_postfix(postfix_token_list: list[Token], is_debug=False) -> GeneralObj:
+def eval_postfix(postfix_token_list: list[Token], is_debug=False) -> AnyType:
     tree_root = postfix_to_tree(postfix_token_list, is_debug=is_debug)
     if is_debug:
         print(TreeNode.dump(tree_root))
@@ -104,8 +126,6 @@ def postfix_to_tree(postfix_token_list: list[Token], is_debug=False) -> TreeNode
             if is_debug:
                 print(token)
             stack.append(TreeNode(tok=token))
-    if is_debug:
-        print(stack)
     assert len(stack) == 1, \
         f'Bad syntax somewhere: nodes remained in stack {stack}'
     return stack[0]
@@ -115,17 +135,17 @@ class NodeEvalDict:
     def __init__(self) -> None:
         self.table = dict()
 
-    def __getitem__(self, node: TreeNode) -> GeneralObj | None:
+    def __getitem__(self, node: TreeNode) -> AnyType | None:
         return self.table.get(id(node), None)
 
-    def __setitem__(self, node: TreeNode, value: GeneralObj) -> None:
+    def __setitem__(self, node: TreeNode, value: AnyType) -> None:
         self.table[id(node)] = value
 
 def eval_node(
         root_node: TreeNode,
-        inherent_id_obj_table: Frame | None = None) -> GeneralObj:
+        inherent_id_obj_table: Frame | None = None) -> AnyType:
     if inherent_id_obj_table is None:
-        id_obj_table = Frame(local={'null': NullObj()})
+        id_obj_table = Frame(local={'null': Null()})
     else:
         assert isinstance(inherent_id_obj_table, Frame)
         id_obj_table = inherent_id_obj_table
@@ -143,7 +163,7 @@ def eval_node(
         if node.tok.type == 'op':
             if node.tok.raw in UNARY_OPS:
                 if node.tok.raw == FUNC_MAKER:
-                    node_eval_to[node] = FuncObj(
+                    node_eval_to[node] = Function(
                         code_root_node = node.left,
                         id_obj_table=id_obj_table,
                         arg_id=None
@@ -177,7 +197,7 @@ def eval_node(
                         node_stack.append(node.right)
                         continue
                     else:
-                        if not isinstance(node_eval_to[node.right], FuncObj):
+                        if not isinstance(node_eval_to[node.right], Function):
                             throw_runtime_err_msg(
                                 node.right.tok.db_pos_info,
                                 'Right side of argument setter should be '
@@ -264,15 +284,14 @@ def eval_node(
             obj = id_obj_table.get(node.tok.raw, None)
             if obj is None:
                 throw_runtime_err_msg(
-                    f'Line {node.tok.db_pos_info[0]} '
-                    f'col {node.tok.db_pos_info[1]}: '
+                    node.tok.db_pos_info,
                     f'identifier {repr(node.tok.raw)} is used uninitialized')
             if G_IS_DEBUG:
                 print('update id-obj table:', id_obj_table)
             node_eval_to[node] = obj
 
         elif node.tok.type == 'num':
-            node_eval_to[node] = NumObj(node.tok.raw)
+            node_eval_to[node] = Number(node.tok.raw)
 
         else:
             raise ValueError(f'Bad node type: {node.tok.type}')

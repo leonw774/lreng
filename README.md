@@ -47,9 +47,9 @@ The logic operators `!` (NOT), `&` (AND) and `|` (OR) return `0` and `1` like co
 
 They do *not* short-circuit. If you want something like an if-statement, use conditional operators `&&` and `||`.
 
-### Conditional
+### Short-circuit logic
 
-The conditional operator are `&&` (IF-AND) and  `||` (IF-OR) is the logical operations that short-circuit. Kinda like how they do in Bash. The reverse-if-and operator is right-associative and is created to make if-then-else expression. The `&&` has higher precedence than the `||`.
+The `&&` (IF-AND) and  `||` (IF-OR) are the logical operations that short-circuit. Kinda like how they do in Bash. The `&&` has higher precedence than the `||`.
 
  `x`'s boolean  | `x && y` evaluates to | is `y` evaluated  |
 ----------------|-----------------------|----------------------
@@ -61,7 +61,7 @@ The conditional operator are `&&` (IF-AND) and  `||` (IF-OR) is the logical oper
  true           | `x`                   | no
  false          | `y`                   | yes
 
-For example, `x == 1 && 3` evaluates to `3` if `x` is `1` and otherwise evaluates to `0`. Notice that `x == 1 && 0 || -1` always evaluates to `-1` because `x == 1 && 0` evaluated to `0` no matter `x` equals `0` or not. So in idiom `c && t || f` beware that `t` could be `0` or `null`. A safer way to phrase this is `c && t; !c || f`. 
+For example, `x == 1 && 3` evaluates to `3` if `x` is `1` and otherwise evaluates to `0`. Notice that `x == 1 && 0 || -1` always evaluates to `-1` because `x == 1 && 0` evaluated to `0` no matter `x` equals `0` or not. So in idiom `cond && t || f` beware that `t` could be `0` or `null`. A safer way to phrase this is `cond && t; !cond || f` or you can use conditional function pair caller `cond ? { t }, { f }`.
 
 ### Assignment
 
@@ -73,11 +73,8 @@ The pair maker `,` is right-associative, so that it can be used to make a linked
 
 ```
 hello_world = 'H', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '\n', null;
-print = string : {
-    string != null && (
-        << `string;
-        print(~string)
-    );
+print = string => {
+    string && ( << `string; print(~string) );
     null
 };
 print(hello_world)
@@ -85,11 +82,9 @@ print(hello_world)
 
 The `` `string `` is used to get data and `~string` is to get next.
 
-You can also use pair objects to make a binary tree.
-
 ### Function maker and argument setter
 
-The function maker `{}` turns the wrapped codes into a function (no argument by default). You can use the argument setter `:` to bind *one* argument identifier to a function. Use currying or pair to pass more arguments.
+The function maker `{}` turns the wrapped codes into a function (no argument by default). You can use the argument setter `=>` to bind *one* argument identifier to a function. Use currying or pair to pass more arguments.
 
 ### Function caller
 
@@ -97,21 +92,25 @@ The function caller are `()` and `$`. The syntax is `func_name(expr)` and `func_
 
 The syntax `func_name()` is valid and will be parsed as `func_name(null)`.
 
+### Conditional function pair caller
+
+The `?` operator is designed to do proper conditional expression evaluation. The syntax is `cond ? func_pair` If `cond` is true, the `` `func_pair `` called, otherwise, the `~func_pair` is called. The passed argument is always null.
+
 ### Expression connector
 
 The expression connector is `;`. It connects two expressions into one and evaluates to the right hand side value.
 
 ### `stdout` writer
 
-The `<<` operation outputs a number as a byte to the stdout. This operator always evaluates to null.
+The `<<` operation outputs a number as a byte to the stdout. The acceptable value are integers from `0` to `255` (inclusive). Any other value will cause runtime error. This operator always evaluates to null.
 
 ## Expression
 
-All the codes, including those wrapped in function maker `{}`, should be a single expression and evaluated to one object eventually.
+Everything is expression. The code intepreted by lreng should be one big expression itself and will be evaluated to one object eventually.
 
 ## Closure
 
-Functions hold a reference of the outer layer of frame when it is called. It effects the currying if the deeper function use the variables outside of it. For example, in `examples/frames.txt` we have this code:
+Functions hold a reference of the frame where it is called. It effects the currying if the deeper function use the variables outside of it. For example, in `examples/frames.txt` we have this code:
 
 ```
 foo = a : {

@@ -1,13 +1,13 @@
-print_newline = n : {
+print_newline = n => {
     << '\n'
 };
-print_num = n : {
+print_num = n => {
     << n + '0'
 };
-half = n : {
+half = n => {
     n / 2
 };
-squared = n : {
+squared = n => {
     n ^ 2
 };
 print_newline $ print_num $ half $ squared $ 4

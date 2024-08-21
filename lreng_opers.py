@@ -27,14 +27,14 @@ operator_hierarchies = [
     # pair maker
     (',',),
     # function argument adder
-    # arg_id : { function codes }
-    (':',),
+    # arg_id => { function codes }
+    ('=>',),
     # short-circuit logic and
     ('&&',),
     # short-circuit logic or
     ('||',),
-    # assignment
-    ('=',),
+    # assignment, conditional function pair caller
+    ('=', '?'),
     # expression seperator
     (';',)
 ]
@@ -62,12 +62,15 @@ op_precedences['['] = op_precedences['(']
 op_precedences['@'] = op_precedences['{']
 
 FUNC_CALLER = '$'
-ARG_SETTER = ':'
-ASSIGNMENT = '='
+ARG_SETTER = '=>'
 IF_AND = '&&'
 IF_OR = '||'
+ASSIGNMENT = '='
 
-R_ASSO_OPS = {'!+', '!-', '!', '`', '~', '$', '^', ',', ':', '='}
+R_ASSO_OPS = {
+    '!+', '!-', '!', '`', '~',
+    FUNC_CALLER, '^', ',', ARG_SETTER, '?', '='
+}
 UNARY_OPS = {'@', '!+', '!-', '!', '`', '~', '<<'}
 L_BRACKETS = {'(', '{', FUNC_CALL_L_PARENTHESE}
 R_BRACKETS = {')', '}'}
