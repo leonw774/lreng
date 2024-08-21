@@ -4,8 +4,6 @@ operator_hierarchies = [
     ('{', '}'),
     # parenthesis / function call
     ('(', ')'),
-    # right-associative function caller
-    ('$',),
     # unary plus and minus, logic not, get left of pair, get right of pair
     ('!+', '!-', '!', '`', '~'),
     # power
@@ -14,8 +12,6 @@ operator_hierarchies = [
     ('*', '/', '%'),
     # addition, subtraction
     ('+', '-'),
-    # write a byte to stdout and return null
-    ('<<', ),
     # inequality comparisons
     ('<', '<=', '>', '>='),
     # equal, not equal
@@ -26,6 +22,8 @@ operator_hierarchies = [
     ('|',),
     # pair maker
     (',',),
+    # right-associative function caller
+    ('$',),
     # function argument adder
     # arg_id => { function codes }
     ('=>',),
@@ -69,7 +67,7 @@ ASSIGNMENT = '='
 
 R_ASSO_OPS = {
     '!+', '!-', '!', '`', '~',
-    FUNC_CALLER, '^', ',', ARG_SETTER, '?', '='
+    '^', FUNC_CALLER, ',', ARG_SETTER, '?', '='
 }
 UNARY_OPS = {'@', '!+', '!-', '!', '`', '~', '<<'}
 L_BRACKETS = {'(', '{', FUNC_CALL_L_PARENTHESE}

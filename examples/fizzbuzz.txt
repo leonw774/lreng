@@ -13,7 +13,7 @@ concat_list = list_pair => {
 };
 
 print = string => {
-    string != null && ( << `string; print(~string) );
+    string != null && ( output $ `string; print(~string) );
     null
 };
 
@@ -50,7 +50,7 @@ fizzbuzz = n => {
     strings = fizz, buzz, null;
     concated_string = filtered_concat(filters, strings);
     print((concated_string == null) && format_int(n) || concated_string);
-    << '\n'
+    output $ '\n'
 };
 
 fizzbuzz(15)

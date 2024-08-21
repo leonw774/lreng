@@ -10,7 +10,39 @@ from lreng_objs import (
     AnyType, Function, Number, Pair, Null
 )
 
+
+def do_output(num_obj: Number) -> Null:
+    assert num_obj.value.denominator == 1, \
+        f'{float(num_obj.value)} is not a valid ASCII code.'
+    v = int(num_obj.value)
+    assert 0 <= v <= 255, \
+        f'{int(num_obj.value)} is not a valid ASCII code.'
+    sys.stdout.buffer.write(bytes((v,)))
+    sys.stdout.flush()
+    return Null()
+
+def do_input(_obj: AnyType) -> Number:
+    read_byte = sys.stdin.buffer.read(1)
+    return Number(int.from_bytes(read_byte, 'little'))
+
+builtin_funcs = {
+    'output': do_output,
+    'input': do_input
+}
+
+
 def do_call(func_obj: Function, arg_obj: AnyType) -> AnyType:
+    # if built-in
+    if func_obj.code_root_node.tok.raw in builtin_funcs:
+        try:
+            func_name = func_obj.code_root_node.tok.raw
+            eval_result = builtin_funcs[func_name](arg_obj)
+        except AssertionError as ae:
+            raise AssertionError(
+                f'In built-in function {func_name}: {str(ae)}'
+            ) from ae
+        return eval_result
+    # otherwise
     # copy frame
     currernt_frame = Frame(
         local={func_obj.arg_id: arg_obj},
@@ -21,16 +53,6 @@ def do_call(func_obj: Function, arg_obj: AnyType) -> AnyType:
         func_obj.code_root_node,
         inherent_id_obj_table=currernt_frame
     )
-
-def do_write_byte(num_obj: Number) -> Null:
-    assert num_obj.value.denominator == 1, \
-        f'{float(num_obj.value)} is not a valid ASCII code.'
-    v = int(num_obj.value)
-    assert 0 <= v <= 255, \
-        f'{int(num_obj.value)} is not a valid ASCII code.'
-    sys.stdout.buffer.write(bytes((v,)))
-    sys.stdout.flush()
-    return Null()
 
 def do_cond_func_pair_call(
         cond_obj: AnyType,
@@ -64,8 +86,6 @@ op_func_configs = {
     '%': ((Number, Number), lambda x, y: Number(x.value % y.value)),
     '+': ((Number, Number), lambda x, y: Number(x.value + y.value)),
     '-': ((Number, Number), lambda x, y: Number(x.value - y.value)),
-    '<<': ((Number,), do_write_byte),
-    # '>>': ((NumObj,), lambda x: NotImplementedError()),
     '<': ((Number, Number), lambda x, y: Number(x.value < y.value)),
     '>': ((Number, Number), lambda x, y: Number(x.value > y.value)),
     '<=': ((Number, Number), lambda x, y: Number(x.value <= y.value)),
@@ -95,8 +115,11 @@ op_funcs = {
 }
 
 
-def throw_runtime_err_msg(pos: tuple[int, int], msg: str):
-    print(f'[RumtimeError]: Line {pos[0]} col {pos[1]}: {msg}')
+def throw_runtime_err_msg(pos: tuple | None, msg: str):
+    if len(pos) == 2:
+        print(f'[RumtimeError]: Line {pos[0]} col {pos[1]}: {msg}')
+    else:
+        print(f'[RumtimeError]: In built-in function `{pos[0]}`: {msg}')
     exit(2)
 
 G_IS_DEBUG = False
@@ -141,11 +164,20 @@ class NodeEvalDict:
     def __setitem__(self, node: TreeNode, value: AnyType) -> None:
         self.table[id(node)] = value
 
+default_frame = { 'null': Null() }
+default_frame.update({
+    func_name: Function(
+        TreeNode(Token(func_name, 'id', (func_name,))),
+        default_frame
+    )
+    for func_name in builtin_funcs
+})
+
 def eval_node(
         root_node: TreeNode,
         inherent_id_obj_table: Frame | None = None) -> AnyType:
     if inherent_id_obj_table is None:
-        id_obj_table = Frame(local={'null': Null()})
+        id_obj_table = Frame(local=default_frame)
     else:
         assert isinstance(inherent_id_obj_table, Frame)
         id_obj_table = inherent_id_obj_table

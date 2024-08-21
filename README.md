@@ -74,7 +74,7 @@ The pair maker `,` is right-associative, so that it can be used to make a linked
 ```
 hello_world = 'H', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '\n', null;
 print = string => {
-    string && ( << `string; print(~string) );
+    string && ( output $ `string; print(~string) );
     null
 };
 print(hello_world)
@@ -100,10 +100,6 @@ The `?` operator is designed to do proper conditional expression evaluation. The
 
 The expression connector is `;`. It connects two expressions into one and evaluates to the right hand side value.
 
-### `stdout` writer
-
-The `<<` operation outputs a number as a byte to the stdout. The acceptable value are integers from `0` to `255` (inclusive). Any other value will cause runtime error. This operator always evaluates to null.
-
 ## Expression
 
 Everything is expression. The code intepreted by lreng should be one big expression itself and will be evaluated to one object eventually.
@@ -125,3 +121,16 @@ c = 3; # there would be an error if this line is removed
 ```
 
 The function `bar = foo(1)` set its argument `a` to `1`. Setting `a` to `2` in the next line doesn't change the `a` in the function `bar` and `bar(2)` evaluates to `6` rather than `7`.
+
+## Built-in functions
+
+- `output(i)`: Output a number `i` as a byte to the `stdout`. The acceptable value are integers in range `0` to `255` (inclusive). Any other value will cause runtime error. It always returns `null`.
+
+- `input()`: Get a byte as number from the `stdin`. It return a number in range `1` to `255` (inclusive) if there are data to read in stdin, otherwise it blocks the program and wait for the input to come. You can execute the example program `examples/read_stdin.txt` with the command `echo '!@' | python3 .\lreng.py .\examples\read_stdin.txt`. It would output:
+
+```
+a=!
+b=@
+a+b=a
+```
+

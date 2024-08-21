@@ -1,8 +1,8 @@
 print_newline = n => {
-    << '\n'
+    output $ '\n'
 };
 print_num = n => {
-    << n + '0'
+    output $ n + '0'
 };
 half = n => {
     n / 2
