@@ -9,7 +9,7 @@ from lreng_opers import (
     FUNC_CALLER,
     FUNC_MAKER
 )
-from lreng_lexer import throw_syntax_err_msg 
+from lreng_lexer import throw_syntax_err_msg
 
 
 PREFIXABLE_OPS = UNARY_OPS | L_BRACKETS - {FUNC_CALL_L_PARENTHESE}
@@ -36,7 +36,7 @@ def shunting_yard(
                 if expection == 'binary_operator':
                     throw_syntax_err_msg(
                         token.db_pos_info,
-                        f'Expect a binary operator or closing bracket. '
+                        f'Expect a binary operator, semicolon, or closing bracket. '
                         f'Get {repr(token.raw)}'
                     )
             else:

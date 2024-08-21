@@ -26,4 +26,3 @@ if __name__ == '__main__':
         raise ValueError('code is empty')
     else:
         interpret_code(raw_str, args.debug)
-        print()

@@ -6,4 +6,5 @@ foo = a : {
 bar = foo(1);
 a = 2;
 c = 3; # there would be an error if this line is removed
-<< bar(2) + '0'
+<< bar(2) + '0';
+<< '\n'

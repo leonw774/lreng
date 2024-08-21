@@ -1,3 +1,6 @@
+print_newline = n : {
+    << '\n'
+};
 print_num = n : {
     << n + '0'
 };
@@ -7,4 +10,4 @@ half = n : {
 squared = n : {
     n ^ 2
 };
-print_num $ half $ squared $ 4
+print_newline $ print_num $ half $ squared $ 4

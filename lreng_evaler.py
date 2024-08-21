@@ -3,7 +3,7 @@ from typing import Callable
 from copy import copy
 
 from lreng_opers import (
-    UNARY_OPS, FUNC_MAKER, ARG_SETTER, ASSIGNMENT, IF_OP
+    UNARY_OPS, FUNC_MAKER, ARG_SETTER, ASSIGNMENT, IF_AND, IF_OR
 )
 from lreng_objs import (
     Frame, Token, TreeNode,
@@ -59,15 +59,11 @@ op_func_configs = {
 
 def op_func_builder(arg_types: tuple, real_func: Callable):
     def f(args):
-        if len(args) != len(arg_types):
-            throw_runtime_err_msg(
-                f'Bad argument number: want {len(arg_types)} but get {len(args)}'
-            )
+        assert len(args) == len(arg_types), \
+            f'Bad argument number: want {len(arg_types)} but get {len(args)}'
         for arg, arg_type in zip(args, arg_types):
-            if not isinstance(arg, arg_type):
-                throw_runtime_err_msg(
-                    f'Argument {arg} is not of type {arg_type.__name__}'
-                )
+            assert isinstance(arg, arg_type), \
+                f'Argument {arg} is not of type {arg_type.__name__}'
         return real_func(*args)
     return f
 
@@ -75,6 +71,11 @@ op_funcs = {
     op: op_func_builder(*op_func_config)
     for op, op_func_config in op_func_configs.items()
 }
+
+
+def throw_runtime_err_msg(pos: tuple[int, int], msg: str):
+    print(f'[RumtimeError]: Line {pos[0]} col {pos[1]}: {msg}')
+    exit(2)
 
 G_IS_DEBUG = False
 def eval_postfix(postfix_token_list: list[Token], is_debug=False) -> GeneralObj:
@@ -92,7 +93,7 @@ def postfix_to_tree(postfix_token_list: list[Token], is_debug=False) -> TreeNode
             r_node = stack.pop() if token.raw not in UNARY_OPS else None
             if len(stack) == 0:
                 throw_runtime_err_msg(
-                    f'Line {token.db_pos_info[0]} col {token.db_pos_info[1]}: '
+                    token.db_pos_info,
                     f'operator {repr(token)} has too few operands'
                 )
             l_node = stack.pop()
@@ -106,8 +107,9 @@ def postfix_to_tree(postfix_token_list: list[Token], is_debug=False) -> TreeNode
     if is_debug:
         print(stack)
     assert len(stack) == 1, \
-        f'bad grammer: there are nodes remained in stack {stack}'
+        f'Bad syntax somewhere: nodes remained in stack {stack}'
     return stack[0]
+
 
 class NodeEvalDict:
     def __init__(self) -> None:
@@ -119,10 +121,6 @@ class NodeEvalDict:
     def __setitem__(self, node: TreeNode, value: GeneralObj) -> None:
         self.table[id(node)] = value
 
-def throw_runtime_err_msg(msg: str):
-    print('[RumtimeError]:', msg)
-    exit(1)
-
 def eval_node(
         root_node: TreeNode,
         inherent_id_obj_table: Frame | None = None) -> GeneralObj:
@@ -132,6 +130,7 @@ def eval_node(
         assert isinstance(inherent_id_obj_table, Frame)
         id_obj_table = inherent_id_obj_table
     if G_IS_DEBUG:
+        print('Step into node', root_node)
         print('initial id_obj_table:', id_obj_table)
 
     node_eval_to = NodeEvalDict()
@@ -159,7 +158,13 @@ def eval_node(
                     args = (node_eval_to[node.left], )
                     if G_IS_DEBUG:
                         print('op:', node, 'args:', args)
-                    node_eval_to[node] = node_op_func(args)
+                    try:
+                        node_eval_to[node] = node_op_func(args)
+                    except AssertionError as ae:
+                        throw_runtime_err_msg(
+                            node.tok.db_pos_info,
+                            f'Operator {repr(node.tok.raw)} says "{str(ae)}"'
+                        )
                     if G_IS_DEBUG:
                         print('eval to:', node_eval_to[node])
             else:
@@ -174,6 +179,7 @@ def eval_node(
                     else:
                         if not isinstance(node_eval_to[node.right], FuncObj):
                             throw_runtime_err_msg(
+                                node.right.tok.db_pos_info,
                                 'Right side of argument setter should be '
                                 'function block'
                             )
@@ -183,6 +189,7 @@ def eval_node(
                 elif node.tok.raw == ASSIGNMENT:
                     if node.left is None or node.left.tok.type != 'id':
                         throw_runtime_err_msg(
+                            node.left.tok.db_pos_info,
                             f'Line {node.left.tok.db_pos_info[0]} '
                             f'col {node.left.tok.db_pos_info[1]}: '
                             f'Left side of assignment should be identifier. '
@@ -190,6 +197,7 @@ def eval_node(
                         )
                     if node.left.tok.raw in id_obj_table:
                         throw_runtime_err_msg(
+                            node.left.tok.db_pos_info,
                             f'Line {node.left.tok.db_pos_info[0]} '
                             f'col {node.left.tok.db_pos_info[1]}: '
                             f'Identifier {repr(node.left.tok.raw)} '
@@ -205,13 +213,22 @@ def eval_node(
                         if G_IS_DEBUG:
                             print('update id-obj table:', id_obj_table)
 
-                elif node.tok.raw == IF_OP:
+                elif node.tok.raw == IF_AND or node.tok.raw == IF_OR:
                     # eval left first
                     if node_eval_to[node.left] is None:
                         node_stack.append(node.left)
                         continue
                     else:
-                        if bool(node_eval_to[node.left]):
+                        # truth table
+                        #  left | is_if_or | is_right_evaled | eval_result
+                        # ------|----------|-----------------|-------------
+                        # false | false    | false           | left
+                        # false | true     | true            | right
+                        # true  | false    | true            | right
+                        # true  | true     | false           | left
+                        is_left_true = bool(node_eval_to[node.left])
+                        is_if_or = node.tok.raw == IF_OR
+                        if is_left_true != is_if_or:
                             if node_eval_to[node.right] is None:
                                 node_stack.append(node.right)
                                 continue
@@ -233,7 +250,13 @@ def eval_node(
                     args = (node_eval_to[node.left], node_eval_to[node.right])
                     if G_IS_DEBUG:
                         print('op:', node, 'args:', args)
-                    node_eval_to[node] = node_op_func(args)
+                    try:
+                        node_eval_to[node] = node_op_func(args)
+                    except AssertionError as ae:
+                        throw_runtime_err_msg(
+                            node.tok.db_pos_info,
+                            f'Operator {repr(node.tok.raw)} says "{str(ae)}"'
+                        )
                     if G_IS_DEBUG:
                         print('eval to:', node_eval_to[node])
 

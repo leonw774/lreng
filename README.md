@@ -23,7 +23,7 @@ There are 4 types of objects:
   - You can represent the code of printable and escapable ASCII characters. For example, `'A'` evaluates to `65`, `'\\'` is `92`, and `'\n'` is `10`
 - Pair: store the references to two objects
 - Function: store an executable code and an optional argument identifier
-- Null: same as python None type
+- Null: the unit type. Use key word `null`
 
 ## Variables
 
@@ -43,9 +43,25 @@ For pair objects, it compares their referenced objects recursively. They return 
 
 ### Logic
 
-The logic operators `!` (NOT), `|` (OR) and `&` (AND) return `0` and `1` like comparison operators. All data types have their rule to evaluate to boolean. The boolean value of a number object is true if it is not 0, otherwise false. The null object is always false. Pair and function objects are always true.
+The logic operators `!` (NOT), `&` (AND) and `|` (OR) return `0` and `1` like comparison operators. The boolean value of a number object is true if it is not 0, otherwise false. The null object is always false. Pair and function objects are always true.
 
-They do *not* short-circuit. If you want something like an if-statement, use `?`.
+They do *not* short-circuit. If you want something like an if-statement, use conditional operators `&&` and `||`.
+
+### Conditional
+
+The conditional operator are `&&` (IF-AND) and  `||` (IF-OR) is the logical operations that short-circuit. Kinda like how they do in Bash. The reverse-if-and operator is right-associative and is created to make if-then-else expression. The `&&` has higher precedence than the `||`.
+
+ `x`'s boolean  | `x && y` evaluates to | is `y` evaluated  |
+----------------|-----------------------|----------------------
+ true           | `y`                   | yes
+ false          | `x`                   | no
+
+ `x`'s boolean  | <code>x &#124;&#124; y</code> evaluates to | is `y` evaluated  
+----------------|-----------------------|----------------------
+ true           | `x`                   | no
+ false          | `y`                   | yes
+
+For example, `x == 1 && 3` evaluates to `3` if `x` is `1` and otherwise evaluates to `0`. Notice that `x == 1 && 0 || -1` always evaluates to `-1` because `x == 1 && 0` evaluated to `0` no matter `x` equals `0` or not. So in idiom `c && t || f` beware that `t` could be `0` or `null`. A safer way to phrase this is `c && t; !c || f`. 
 
 ### Assignment
 
@@ -53,30 +69,27 @@ assignment operator `x = expr` requires the `x` at the left hand side to be an u
 
 ### Pair maker, left getter and right getter
 
-The pair maker `,` is right-associative, so that it can be used to make a linked list. You can use `` `p `` and `~p` to get the left and right element of the pair `p`. See example from `examples/hello_world.txt`:
+The pair maker `,` is right-associative, so that it can be used to make a linked list. You can use `` `p `` and `~p` to get the left and right element of the pair `p`. For example, in `examples/hello_world.txt`:
 
 ```
-hello_world = 'H', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', null;
+hello_world = 'H', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '\n', null;
 print = string : {
-    << `string;
-    (~string != null) ? print(~string)
+    string != null && (
+        << `string;
+        print(~string)
+    );
+    null
 };
 print(hello_world)
 ```
 
-In the code, `` `string `` is used to get data and `~string` is to get next.
+The `` `string `` is used to get data and `~string` is to get next.
 
 You can also use pair objects to make a binary tree.
 
 ### Function maker and argument setter
 
 The function maker `{}` turns the wrapped codes into a function (no argument by default). You can use the argument setter `:` to bind *one* argument identifier to a function. Use currying or pair to pass more arguments.
-
-### If operator
-
-The "if" operator `?` is the logical-or operation that short-circuits. If the left hand side is false in boolean, it stops and evaluates to the left hand side, otherwise, the right hand side will then be evaluated and the whole expression evaluates to the same as the right hand side.
-
-For example, `(1 == 2) ? x = 3` evaluates to `0` and the initialization of variable `x` setting to `3` does not happen because the right hand side is ignored. The expression `(1 == 1) ? x = 3` evaluates to `3` and the variable `x` is initialized to `3`.
 
 ### Function caller
 

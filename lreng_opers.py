@@ -2,8 +2,10 @@
 operator_hierarchies = [
     # function code maker
     ('{', '}'),
-    # parenthesis / function call, right-associative function caller
-    ('(', ')', '$'),
+    # parenthesis / function call
+    ('(', ')'),
+    # right-associative function caller
+    ('$',),
     # unary plus and minus, logic not, get left of pair, get right of pair
     ('!+', '!-', '!', '`', '~'),
     # power
@@ -27,12 +29,13 @@ operator_hierarchies = [
     # function argument adder
     # arg_id : { function codes }
     (':',),
-    # if operation
-    # `a ? b` evaluates `b` when `a` evaluates to true, otherwise null
-    ('?',),
+    # short-circuit logic and
+    ('&&',),
+    # short-circuit logic or
+    ('||',),
     # assignment
     ('=',),
-    # expression connector
+    # expression seperator
     (';',)
 ]
 
@@ -61,8 +64,8 @@ op_precedences['@'] = op_precedences['{']
 FUNC_CALLER = '$'
 ARG_SETTER = ':'
 ASSIGNMENT = '='
-IF_OP = '?'
-EXPR_CONNECTOR = ';'
+IF_AND = '&&'
+IF_OR = '||'
 
 R_ASSO_OPS = {'!+', '!-', '!', '`', '~', '$', '^', ',', ':', '='}
 UNARY_OPS = {'@', '!+', '!-', '!', '`', '~', '<<'}

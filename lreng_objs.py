@@ -105,7 +105,7 @@ class NullObj(GeneralObj):
         return 'null'
 
     def __eq__(self, other) -> bool:
-        return self.value == other.value
+        return other.value is None
 
 class NumObj(GeneralObj):
     def __init__(self, init_value: float | str | Fraction) -> None:
