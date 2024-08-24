@@ -1,5 +1,5 @@
 from fractions import Fraction
-from typing import Literal, Union, Optional
+from typing import Iterable, Literal, Optional, Union
 
 class Token:
     def __init__(
@@ -15,17 +15,26 @@ class Token:
         self.db_pos_info = debug_pos_info
 
     def __repr__(self) -> str:
-        return f'T({self.type}:{repr(self.raw)}:{repr(self.db_pos_info)})'
+        return f'({self.type},{repr(self.raw)},{repr(self.db_pos_info)})'
 
 class TreeNode:
-    def __init__(self, tok: Token,
-                 left = None, right = None) -> None:
+    def __init__(self, tok: Token, left = None, right = None) -> None:
         self.tok = tok
         self.left: TreeNode | None = left
         self.right: TreeNode | None = right
 
     def __repr__(self):
-        return f'N({self.tok.type}:{repr(self.tok.raw)}:{self.tok.db_pos_info})'
+        return 'N' + repr(self.tok)
+
+    def __iter__(self) -> Iterable['TreeNode']:
+        queue = [self]
+        while len(queue) > 0:
+            cur_node = queue.pop()
+            if cur_node.right is not None:
+                queue.append(cur_node.right)
+            if cur_node.left is not None:
+                queue.append(cur_node.left)
+            yield cur_node
 
     @classmethod
     def dump(cls, root_node, indent = 2) -> str:
@@ -44,7 +53,10 @@ class TreeNode:
 
 
 class Frame:
-    def __init__(self, local: dict | None = None, source: Union['Frame', None] = None):
+    def __init__(
+            self,
+            local: dict | None = None,
+            source: Union['Frame', None] = None):
         if local is None:
             self._local: dict = dict()
         else:

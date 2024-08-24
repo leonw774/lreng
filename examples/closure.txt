@@ -4,7 +4,7 @@ foo = a => {
   }
 };
 bar = foo(1);
-a = 2;
+a = 2; # this assignment would not overwrite the argument 'a' in function 'foo'
 c = 3; # there would be an error if this line is removed
 output $ bar(2) + '0';
 output $ '\n'

@@ -1,5 +1,5 @@
 
-operator_hierarchies = [
+OPERATOR_HIERARCHIES = [
     # function code maker
     ('{', '}'),
     # parenthesis / function call
@@ -37,15 +37,15 @@ operator_hierarchies = [
     (';',)
 ]
 
-all_ops = {
+ALL_OPS = {
     op
-    for ops in operator_hierarchies
+    for ops in OPERATOR_HIERARCHIES
     for op in ops
 }
 
-op_precedences = {
+OP_PRECEDENCES = {
     op: p
-    for p, ops in enumerate(operator_hierarchies)
+    for p, ops in enumerate(OPERATOR_HIERARCHIES)
     for op in ops
 }
 
@@ -54,10 +54,10 @@ FUNC_CALL_L_PARENTHESE = '['
 FUNC_MAKER = '@'
 # it means the parenthesis is part of a function call
 # and will be replaced to `$`
-op_precedences['['] = op_precedences['(']
+OP_PRECEDENCES['['] = OP_PRECEDENCES['(']
 # function code block indicator '@' is unary and make the code nodes underneath
 # evaluated as a code block
-op_precedences['@'] = op_precedences['{']
+OP_PRECEDENCES['@'] = OP_PRECEDENCES['{']
 
 FUNC_CALLER = '$'
 ARG_SETTER = '=>'

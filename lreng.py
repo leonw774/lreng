@@ -1,12 +1,15 @@
 from argparse import ArgumentParser
-from lreng_lexer import parse_token
-from lreng_parser import shunting_yard
-from lreng_evaler import eval_postfix, AnyType
+from lreng_lexer import tokenizer
+from lreng_parser import tree_parser
+from lreng_checker import check_tree_semantic
+from lreng_evaler import eval_node, AnyType
 
 def interpret_code(raw_str: str, is_debug: bool = False) -> AnyType:
-    tokens = parse_token(raw_str, is_debug=is_debug)
-    postfix = shunting_yard(tokens, is_debug=is_debug)
-    eval_result = eval_postfix(postfix, is_debug=is_debug)
+    tokens = tokenizer(raw_str, is_debug=is_debug)
+    root_node = tree_parser(tokens, is_debug=is_debug)
+    if not check_tree_semantic(root_node, is_debug=is_debug):
+        exit(3)
+    eval_result = eval_node(root_node, is_debug=is_debug)
     if is_debug:
         print('eval_result:', eval_result)
     return eval_result

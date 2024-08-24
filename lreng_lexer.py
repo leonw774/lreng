@@ -2,26 +2,25 @@ from string import ascii_letters, digits, printable, whitespace
 from typing import Callable, Iterable, Optional, TypeAlias, TypeVar
 
 from lreng_opers import (
-    all_ops, R_BRACKETS, FUNC_CALL_L_PARENTHESE
+    ALL_OPS, R_BRACKETS, FUNC_CALL_L_PARENTHESE
 )
 from lreng_objs import Token
-
-unary_pm_preced = set(all_ops).difference(R_BRACKETS).union([None])
+from lreng_errs import throw_syntax_err_msg
 
 SINGLE_QUOTE = '\''
 NULL_CHAR = '\0'
-HASH_CHAR = '#'
-id_chars = set(ascii_letters + digits + '_')
-num_chars = set(digits + '.')
-op_chars = set(r''.join(ops for ops in all_ops))
-ws_chars = set(whitespace)
+COMMENT_STARTER = '#'
+ID_CHARS = set(ascii_letters + digits + '_')
+NUM_CHARS = set(digits + '.')
+OP_CHARS = set(r''.join(ops for ops in ALL_OPS))
+WS_CHARS = set(whitespace)
 
 NUM_HEX_PREFIX = '0x'
 NUM_BIN_PREFIX = '0b'
 hex_chars = set(digits + 'ABCDEFabcdef')
 bin_chars = set('01')
 
-esc_table = {
+ESC_TABLE = {
     'a': '\a',
     'b': '\b',
     'n': '\n',
@@ -31,10 +30,6 @@ esc_table = {
     '\\': '\\',
     '\'': '\''
 }
-
-def throw_syntax_err_msg(pos: tuple[int, int], msg: str):
-    print(f'[SyntaxError]: Line {pos[0]} col {pos[1]}: {msg}')
-    exit(1)
 
 CargoTypeT = TypeVar('CargoTypeT')
 StateType: TypeAlias = Callable[
@@ -84,7 +79,7 @@ def iter_str_with_position(s: str):
         else:
             col_num += 1
 
-def parse_token(raw_str: str, is_debug=False) -> list[Token]:
+def tokenizer(raw_str: str, is_debug=False) -> list[Token]:
     MyCargoType: TypeAlias = tuple[list[Token], str]
 
     def state_comment(
@@ -105,20 +100,21 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
         out_list, cq = cargo
         if c == NULL_CHAR:
             return None, cargo
-        elif c == HASH_CHAR:
+        elif c == COMMENT_STARTER:
             return state_comment, cargo
-        elif c in ws_chars:
+        elif c in WS_CHARS:
             return state_ws, cargo
-        elif c in num_chars:
+        elif c in NUM_CHARS:
             return state_num, (out_list, c)
         elif c == SINGLE_QUOTE:
             return state_char, (out_list, '')
-        elif c in id_chars:
+        elif c in ID_CHARS:
             return state_id, (out_list, c)
-        elif c in op_chars:
+        elif c in OP_CHARS:
             last = out_list[-1] if len(out_list) else None
             # handle unary + -
-            if (c == '-' or c == '+') and last.raw in unary_pm_preced:
+            if (c == '-' or c == '+') and (
+                    last.raw is None or last.raw in (ALL_OPS - R_BRACKETS)):
                 cq = '!' + c
             # handle function call
             elif (c == '(' and (last.type != 'op' or last.raw in R_BRACKETS)):
@@ -147,24 +143,24 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
                 cq = str(int(cq, base=0))
             out_list.append(Token(cq, 'num', (ln, tok_coln)))
             return None, (out_list, '')
-        elif c == HASH_CHAR:
+        elif c == COMMENT_STARTER:
             if cq.startswith((NUM_BIN_PREFIX, NUM_HEX_PREFIX)):
                 cq = str(int(cq, base=0))
             out_list.append(Token(cq, 'num', (ln, tok_coln)))
             return state_comment, (out_list, '')
-        elif c in ws_chars:
+        elif c in WS_CHARS:
             if cq.startswith((NUM_BIN_PREFIX, NUM_HEX_PREFIX)):
                 cq = str(int(cq, base=0))
             out_list.append(Token(cq, 'num', (ln, tok_coln)))
             return state_ws, (out_list, '')
-        elif c in num_chars:
+        elif c in NUM_CHARS:
             if c == '.' and '.' in cq:
                 throw_syntax_err_msg(
                     (ln, coln),
                     f'Second dot ({repr(c)}) in number {cq}'
                 )
             return state_num, (out_list, cq + c)
-        elif c in id_chars:
+        elif c in ID_CHARS:
             is_good_format = False
             if cq + c == NUM_HEX_PREFIX or cq + c == NUM_BIN_PREFIX:
                 # is begin of hex or binary number: '0x' or '0b'
@@ -178,7 +174,7 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
                     f'Bad num format after {cq} + {repr(c)}'
                 )
             return state_num, (out_list, cq + c)
-        elif op_chars:
+        elif OP_CHARS:
             if cq.startswith((NUM_BIN_PREFIX, NUM_HEX_PREFIX)):
                 cq = str(int(cq, base=0))
             out_list.append(Token(cq, 'num', (ln, tok_coln)))
@@ -210,8 +206,8 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
                 )
         elif len(cq) == 1:
             if cq == '\\':
-                if c in esc_table:
-                    return state_char, (out_list, esc_table[c])
+                if c in ESC_TABLE:
+                    return state_char, (out_list, ESC_TABLE[c])
                 else:
                     throw_syntax_err_msg(
                         (ln, tok_coln),
@@ -228,13 +224,13 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
         elif len(cq) == 2 and cq[1] == SINGLE_QUOTE:
             if c == NULL_CHAR:
                 return None, (out_list, '')
-            elif c in ws_chars:
+            elif c in WS_CHARS:
                 return state_ws, (out_list, '')
-            elif c in num_chars:
+            elif c in NUM_CHARS:
                 return state_num, (out_list, c)
-            elif c in id_chars:
+            elif c in ID_CHARS:
                 return state_id, (out_list, c)
-            elif c in op_chars:
+            elif c in OP_CHARS:
                 return state_op, (out_list, c)
         else:
             throw_syntax_err_msg(
@@ -251,17 +247,17 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
         if c == NULL_CHAR:
             out_list.append(Token(cq, 'id', (ln, tok_coln)))
             return None, (out_list, '')
-        elif c == HASH_CHAR:
+        elif c == COMMENT_STARTER:
             out_list.append(Token(cq, 'id', (ln, tok_coln)))
             return state_comment, (out_list, '')
-        elif c in ws_chars:
+        elif c in WS_CHARS:
             out_list.append(Token(cq, 'id', (ln, tok_coln)))
             return state_ws, (out_list, '')
-        elif c in num_chars:
+        elif c in NUM_CHARS:
             return state_id, (out_list, cq + c)
-        elif c in id_chars:
+        elif c in ID_CHARS:
             return state_id, (out_list, cq + c)
-        elif c in op_chars:
+        elif c in OP_CHARS:
             out_list.append(Token(cq, 'id', (ln, tok_coln)))
             # handle function call
             if c == '(':
@@ -283,23 +279,23 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
         if c == NULL_CHAR:
             out_list.append(Token(cq, 'op', (ln, tok_coln)))
             return None, (out_list, '')
-        elif c == HASH_CHAR:
+        elif c == COMMENT_STARTER:
             out_list.append(Token(cq, 'op', (ln, tok_coln)))
             return state_comment, (out_list, '')
-        elif c in ws_chars:
+        elif c in WS_CHARS:
             out_list.append(Token(cq, 'op', (ln, tok_coln)))
             return state_ws, (out_list, '')
-        elif c in num_chars:
+        elif c in NUM_CHARS:
             out_list.append(Token(cq, 'op', (ln, tok_coln)))
             return state_num, (out_list, c)
         elif c == '\'':
             out_list.append(Token(cq, 'op', (ln, tok_coln)))
             return state_char, (out_list, '')
-        elif c in id_chars:
+        elif c in ID_CHARS:
             out_list.append(Token(cq, 'op', (ln, tok_coln)))
             return state_id, (out_list, c)
-        elif c in op_chars:
-            if cq + c in all_ops:
+        elif c in OP_CHARS:
+            if cq + c in ALL_OPS:
                 return state_op, (out_list, cq + c)
             else:
                 out_list.append(Token(cq, 'op', (ln, tok_coln)))
@@ -342,6 +338,6 @@ def parse_token(raw_str: str, is_debug=False) -> list[Token]:
 
 
 if __name__ == '__main__':
-    print(parse_token('+3 + 4 * -2 / (1-5) ^ 2 ^ 3'))
-    print(parse_token('sin(max(2, 3) / 3 * pi)'))
-    print(parse_token('add = p : { `p + ~p }'))
+    print(tokenizer('+3 + 4 * -2 / (1-5) ^ 2 ^ 3'))
+    print(tokenizer('sin(max(2, 3) / 3 * pi)'))
+    print(tokenizer('add = p : { `p + ~p }'))
