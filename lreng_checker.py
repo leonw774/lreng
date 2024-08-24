@@ -47,7 +47,7 @@ def check_tree_semantic(root_node: TreeNode, is_debug: bool = False) -> bool:
             for var_used_pos in used_ids[uninited_var]:
                 print_semantic_err_msg(
                     var_used_pos,
-                    f'Indetifier {uninited_var} is used but never initilized.'
+                    f'Identifier {uninited_var} is used but never initilized.'
                 )
 
     return is_good_semantic

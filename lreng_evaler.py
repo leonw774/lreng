@@ -238,6 +238,11 @@ def eval_node(
                             node.tok.db_pos_info,
                             f'Operator {repr(node.tok.raw)} says "{str(ae)}"'
                         )
+                    except ZeroDivisionError:
+                        throw_runtime_err_msg(
+                            node.tok.db_pos_info,
+                            'Divied by zero'
+                        )
                     if is_debug:
                         print('eval to:', node_eval_to[node])
 
