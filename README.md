@@ -23,7 +23,7 @@ There are 4 types of objects:
   - You can represent the code of printable and escapable ASCII characters. For example, `'A'` evaluates to `65`, `'\\'` is `92`, and `'\n'` is `10`
 - Pair: store the references to two objects
 - Function: store an executable code and an optional argument identifier
-- Null: the unit type. Use key word `null`
+- Null: the unit type. Use key word `null`.
 
 ## Variables
 
@@ -84,17 +84,17 @@ The `` `string `` is used to get data and `~string` is to get next.
 
 ### Function maker and argument setter
 
-The function maker `{}` turns the wrapped codes into a function (no argument by default). You can use the argument setter `=>` to bind *one* argument identifier to a function. Use currying or pair to pass more arguments.
+The function maker `{}` turns the wrapped codes into a function (no argument by default). You can use the argument setter `=>` to bind *at most one* argument identifier to a function. Use currying or pair to pass more.
 
 ### Function caller
 
-The function caller are `()` and `$`. The syntax is `func_name(expr)` and `func_name $ expr`. They assigns the evaluated result of the expression to the argument variable of the function (if any) and evaluates the function code. Note that `$` is right-associative, just like in Haskell, designed to apply multiple functions on a value without too much parenthese. The following code are equivalent: `func3 $ func2 $ func1 $ val` and `func3(func2(func1(val)))`.
+The function caller are `()` and `$`. The syntax is `func_name(expr)` and `func_name $ expr`. They assigns the evaluated result of the expression to the argument variable of the function (if any) and evaluates the function code. Note that `$` is right-associative, just like in Haskell, designed to apply multiple functions on a value without too much parenthese. The following codes are equivalent: `func3 $ func2 $ func1 $ val` and `func3(func2(func1(val)))`.
 
 The syntax `func_name()` is valid and will be parsed as `func_name(null)`.
 
 ### Conditional function pair caller
 
-The `?` operator is designed to do proper conditional expression evaluation. The syntax is `cond ? func_pair` If `cond` is true, the `` `func_pair `` called, otherwise, the `~func_pair` is called. The passed argument is always null.
+The `?` operator is designed to do proper conditional expression evaluation. The syntax is `cond ? func_pair`. If `cond` is true, the `` `func_pair `` is called, otherwise, the `~func_pair` is called. The passed argument is always null.
 
 ### Expression connector
 
@@ -106,18 +106,19 @@ Everything is expression. The code intepreted by lreng should be one big express
 
 ## Closure
 
-Functions hold a reference of the frame where it is called. It effects the currying if the deeper function use the variables outside of it. For example, in `examples/frames.txt` we have this code:
+Functions hold a reference of the frame where it is called. It effects the currying if the deeper function use the variables outside of it. For example, in `examples/closure.txt` we have this code:
 
 ```
-foo = a : {
-  b : {
+foo = a => {
+  b => {
     a + b + c
   }
 };
 bar = foo(1);
-a = 2;
+a = 2; # this assignment would not overwrite the argument 'a' in function 'foo'
 c = 3; # there would be an error if this line is removed
-<< bar(2) + '0'
+output $ bar(2) + '0';
+output $ '\n'
 ```
 
 The function `bar = foo(1)` set its argument `a` to `1`. Setting `a` to `2` in the next line doesn't change the `a` in the function `bar` and `bar(2)` evaluates to `6` rather than `7`.
