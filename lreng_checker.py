@@ -1,7 +1,7 @@
 from lreng_opers import ASSIGNMENT, ARG_SETTER
 from lreng_objs import TreeNode
 from lreng_errs import print_semantic_err_msg
-from lreng_evaler import DEFAULT_FRAME
+from lreng_builtins import DEFAULT_FRAME
 
 # node rule checkers
 
@@ -25,7 +25,7 @@ def check_tree_semantic(root_node: TreeNode, is_debug: bool = False) -> bool:
                     print_semantic_err_msg(
                         node.left.tok.db_pos_info,
                         f'Left side of {op_name} should be identifier. '
-                        f'Get {node.left}'
+                        f'Get {repr(node.left.tok.raw)}'
                     )
                 else:
                     inited_ids.add(node.left.tok.raw)

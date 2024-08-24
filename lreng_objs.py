@@ -5,7 +5,7 @@ class Token:
     def __init__(
             self,
             raw: str,
-            tok_type: Literal['id', 'num', 'op'],
+            tok_type: Literal['id', 'num', 'chr', 'op'],
             debug_pos_info: Optional[tuple] = None) -> None:
         """raw: token string
         tok_type: token type

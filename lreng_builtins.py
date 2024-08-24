@@ -6,6 +6,7 @@ from lreng_objs import (
 )
 
 def do_output(num_obj: Number) -> Null:
+    assert isinstance(num_obj, Number), f'{num_obj} is not a number'
     assert num_obj.value.denominator == 1, \
         f'{float(num_obj.value)} is not a valid ASCII code.'
     v = int(num_obj.value)

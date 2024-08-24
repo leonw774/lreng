@@ -1,7 +1,7 @@
 from lreng_objs import Token, TreeNode
 from lreng_opers import (
     OP_PRECEDENCES,
-    R_ASSO_OPS, UNARY_OPS, L_BRACKETS, R_BRACKETS, 
+    R_ASSO_OPS, UNARY_OPS, L_BRACKETS, R_BRACKETS,
     FUNC_CALL_L_PARENTHESE, FUNC_CALLER, FUNC_MAKER
 )
 from lreng_errs import throw_syntax_err_msg
@@ -90,8 +90,8 @@ def shunting_yard(tokens: list[Token], is_debug: bool = False) -> list[Token]:
             if expection == 'binary_operator':
                 throw_syntax_err_msg(
                     token.db_pos_info,
-                    f'Expect a binary operator or bracket. '
-                    f'Get {repr(token.raw)}'
+                    f'Expect a binary operator, semicolon, '
+                    f'or closing bracket. Get {repr(token.raw)}.'
                 )
             expection = 'binary_operator'
             output.append(token)

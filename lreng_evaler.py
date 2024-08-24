@@ -2,7 +2,10 @@ from typing import Callable
 from copy import copy
 
 from lreng_opers import (
-    UNARY_OPS, FUNC_MAKER, ARG_SETTER, ASSIGNMENT, IF_AND, IF_OR
+    UNARY_OPS, FUNC_CALLER, FUNC_MAKER, ARG_SETTER, ASSIGNMENT, IF_AND, IF_OR
+)
+from lreng_chars import (
+    CHAR_ESC_TABLE, NUM_BIN_PREFIX, NUM_HEX_PREFIX
 )
 from lreng_objs import (
     Frame, TreeNode, AnyType, Function, Number, Pair, Null
@@ -234,6 +237,12 @@ def eval_node(
                     try:
                         node_eval_to[node] = node_op_func(args)
                     except AssertionError as ae:
+                        if node.tok.raw == FUNC_CALLER:
+                            throw_runtime_err_msg(
+                                node.tok.db_pos_info,
+                                f'Function {repr(node.left.tok.raw)} says '
+                                f'{repr(str(ae))}'
+                            )
                         throw_runtime_err_msg(
                             node.tok.db_pos_info,
                             f'Operator {repr(node.tok.raw)} says "{str(ae)}"'
@@ -251,14 +260,24 @@ def eval_node(
             if obj is None:
                 throw_runtime_err_msg(
                     node.tok.db_pos_info,
-                    f'identifier {repr(node.tok.raw)} is used uninitialized'
+                    f'Identifier {repr(node.tok.raw)} is used uninitialized'
                 )
             if is_debug:
                 print('update id-obj table:', id_obj_table)
             node_eval_to[node] = obj
 
         elif node.tok.type == 'num':
-            node_eval_to[node] = Number(node.tok.raw)
+            if node.tok.raw.startswith((NUM_HEX_PREFIX, NUM_BIN_PREFIX)):
+                node_eval_to[node] = Number(int(node.tok.raw, base=0))
+            else:
+                node_eval_to[node] = Number(node.tok.raw)
+
+        elif node.tok.type == 'chr':
+            if len(node.tok.raw) == 1:
+                node_eval_to[node] = Number(ord(node.tok.raw))
+            else:
+                c = CHAR_ESC_TABLE[node.tok.raw[1]]
+                node_eval_to[node] = Number(ord(c))
 
         else:
             raise ValueError(f'Bad node type: {node.tok.type}')

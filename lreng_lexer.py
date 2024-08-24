@@ -1,35 +1,18 @@
-from string import ascii_letters, digits, printable, whitespace
+from string import printable
 from typing import Callable, Iterable, Optional, TypeAlias, TypeVar
 
 from lreng_opers import (
     ALL_OPS, R_BRACKETS, FUNC_CALL_L_PARENTHESE
 )
 from lreng_objs import Token
+from lreng_chars import (
+    NUM_BIN_PREFIX, NUM_HEX_PREFIX, HEX_CHARS, CHAR_ESC_TABLE,
+    COMMENT_STARTER, WS_CHARS, ID_CHARS, NUM_CHARS, OP_CHARS
+)
 from lreng_errs import throw_syntax_err_msg
 
 SINGLE_QUOTE = '\''
 NULL_CHAR = '\0'
-COMMENT_STARTER = '#'
-ID_CHARS = set(ascii_letters + digits + '_')
-NUM_CHARS = set(digits + '.')
-OP_CHARS = set(r''.join(ops for ops in ALL_OPS))
-WS_CHARS = set(whitespace)
-
-NUM_HEX_PREFIX = '0x'
-NUM_BIN_PREFIX = '0b'
-hex_chars = set(digits + 'ABCDEFabcdef')
-bin_chars = set('01')
-
-ESC_TABLE = {
-    'a': '\a',
-    'b': '\b',
-    'n': '\n',
-    'r': '\r',
-    't': '\t',
-    'v': '\v',
-    '\\': '\\',
-    '\'': '\''
-}
 
 CargoTypeT = TypeVar('CargoTypeT')
 StateType: TypeAlias = Callable[
@@ -60,7 +43,7 @@ class StateMachine:
                 print(ret)
                 raise e
             if is_debug:
-                print(*cargo, sep='\n')
+                print(*map(repr, cargo), sep='\n')
             if next_state is None:
                 return cargo
             elif next_state not in self.states:
@@ -128,7 +111,7 @@ def tokenizer(raw_str: str, is_debug=False) -> list[Token]:
         else:
             throw_syntax_err_msg(
                 pos,
-                f'Unrognized charactor: {repr(c)}'
+                f'Unrecognized character: {repr(c)}'
             )
 
 
@@ -139,18 +122,12 @@ def tokenizer(raw_str: str, is_debug=False) -> list[Token]:
         out_list, cq = cargo
         tok_coln = coln - len(cq)
         if c == NULL_CHAR:
-            if cq.startswith((NUM_BIN_PREFIX, NUM_HEX_PREFIX)):
-                cq = str(int(cq, base=0))
             out_list.append(Token(cq, 'num', (ln, tok_coln)))
             return None, (out_list, '')
         elif c == COMMENT_STARTER:
-            if cq.startswith((NUM_BIN_PREFIX, NUM_HEX_PREFIX)):
-                cq = str(int(cq, base=0))
             out_list.append(Token(cq, 'num', (ln, tok_coln)))
             return state_comment, (out_list, '')
         elif c in WS_CHARS:
-            if cq.startswith((NUM_BIN_PREFIX, NUM_HEX_PREFIX)):
-                cq = str(int(cq, base=0))
             out_list.append(Token(cq, 'num', (ln, tok_coln)))
             return state_ws, (out_list, '')
         elif c in NUM_CHARS:
@@ -165,7 +142,7 @@ def tokenizer(raw_str: str, is_debug=False) -> list[Token]:
             if cq + c == NUM_HEX_PREFIX or cq + c == NUM_BIN_PREFIX:
                 # is begin of hex or binary number: '0x' or '0b'
                 is_good_format = True
-            elif cq[:2] == NUM_HEX_PREFIX and c in hex_chars:
+            elif cq[:2] == NUM_HEX_PREFIX and c in HEX_CHARS:
                 # is part of hex number
                 is_good_format = True
             if not is_good_format:
@@ -175,14 +152,12 @@ def tokenizer(raw_str: str, is_debug=False) -> list[Token]:
                 )
             return state_num, (out_list, cq + c)
         elif OP_CHARS:
-            if cq.startswith((NUM_BIN_PREFIX, NUM_HEX_PREFIX)):
-                cq = str(int(cq, base=0))
             out_list.append(Token(cq, 'num', (ln, tok_coln)))
             return state_op, (out_list, c)
         else:
             throw_syntax_err_msg(
                 (ln, coln),
-                f'Illegal charactor for number: {repr(c)}'
+                f'Illegal character for number: {repr(c)}'
             )
 
     def state_char(
@@ -195,33 +170,46 @@ def tokenizer(raw_str: str, is_debug=False) -> list[Token]:
             if c == SINGLE_QUOTE:
                 throw_syntax_err_msg(
                     (ln, coln),
-                    f'Bad ascii charactor format: {repr(c)}'
+                    f'Empty ascii character: {repr(c)}'
                 )
             elif c in printable:
                 return state_char, (out_list, c)
             else:
                 throw_syntax_err_msg(
                     (ln, coln),
-                    f'Bad ascii charactor: {repr(c)}'
+                    f'Unprintable ascii character: {repr(c)}'
                 )
         elif len(cq) == 1:
             if cq == '\\':
-                if c in ESC_TABLE:
-                    return state_char, (out_list, ESC_TABLE[c])
+                if c in CHAR_ESC_TABLE:
+                    return state_char, (out_list, cq + c)
                 else:
                     throw_syntax_err_msg(
                         (ln, tok_coln),
-                        f'Bad escape charactor: {repr(cq + c)}'
+                        f'Invalid escape character: {repr(cq + c)}'
                     )
             elif c == SINGLE_QUOTE:
-                out_list.append(Token(ord(cq), 'num', (ln, tok_coln)))
+                # closing non-escape character with single quote
+                out_list.append(Token(cq, 'chr', (ln, tok_coln)))
                 return state_char, (out_list, cq + c)
             else:
                 throw_syntax_err_msg(
                     (ln, tok_coln),
-                    f'Bad ascii charactor format: {repr(cq + c)}'
+                    f'Expect a single quote to end character {repr(cq)}. '
+                    f'Get: {repr(c)}'
                 )
-        elif len(cq) == 2 and cq[1] == SINGLE_QUOTE:
+        elif len(cq) == 2 and cq[0] == '\\':
+            # closing escape character with single quote
+            out_list.append(Token(cq, 'chr', (ln, tok_coln)))
+            if c != SINGLE_QUOTE:
+                throw_syntax_err_msg(
+                    (ln, coln),
+                    f'Expect single quote to end escaped character {repr(cq)}. '
+                    f'Get {repr(c)}'
+                )
+            return state_char, (out_list, cq + c)
+        elif (len(cq) == 2 or len(cq) == 3) and cq.endswith(SINGLE_QUOTE):
+            # ending char
             if c == NULL_CHAR:
                 return None, (out_list, '')
             elif c in WS_CHARS:
@@ -232,10 +220,15 @@ def tokenizer(raw_str: str, is_debug=False) -> list[Token]:
                 return state_id, (out_list, c)
             elif c in OP_CHARS:
                 return state_op, (out_list, c)
+            else:
+                throw_syntax_err_msg(
+                    (ln, tok_coln),
+                    f'Unrecognized character: {repr(c)}'
+                )
         else:
             throw_syntax_err_msg(
                 (ln, tok_coln),
-                f'Bad ascii charactor format: {repr(cq + c)}'
+                f'Bad ascii character format: {repr(cq + c)}'
             )
 
     def state_id(
@@ -267,7 +260,7 @@ def tokenizer(raw_str: str, is_debug=False) -> list[Token]:
         else:
             throw_syntax_err_msg(
                 (ln, tok_coln),
-                f'Unrognized charactor: {repr(c)}'
+                f'Unrecognized character: {repr(c)}'
             )
 
     def state_op(
@@ -314,7 +307,7 @@ def tokenizer(raw_str: str, is_debug=False) -> list[Token]:
         else:
             throw_syntax_err_msg(
                 (ln, tok_coln),
-                f'Unrognized charactor: {repr(c)}'
+                f'Unrecognized character: {repr(c)}'
             )
 
     raw_str = raw_str.strip() + '\0'
