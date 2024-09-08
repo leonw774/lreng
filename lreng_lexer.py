@@ -1,5 +1,6 @@
+from collections.abc import Callable, Iterable
 from string import printable
-from typing import Callable, Iterable, Optional, TypeAlias, TypeVar
+from typing import TypeAlias, TypeVar
 
 from lreng_opers import (
     ALL_OPS, R_BRACKETS, FUNC_CALL_L_PARENTHESE
@@ -15,24 +16,25 @@ SINGLE_QUOTE = '\''
 NULL_CHAR = '\0'
 
 CargoTypeT = TypeVar('CargoTypeT')
-StateType: TypeAlias = Callable[
+State: TypeAlias = Callable
+State: TypeAlias = Callable[
     [Iterable, CargoTypeT],
-    tuple[Optional['StateType'], CargoTypeT]
+    tuple[State | None, CargoTypeT]
 ]
 class StateMachine:
     '''Implementation taken from: https://gnosis.cx/TPiP/chap4.txt'''
     def __init__(self) -> None:
-        self.states: Iterable[StateType] = set()
+        self.states: Iterable[State] = set()
 
-    def add_state(self, state_func: StateType):
+    def add_state(self, state_func: State):
         self.states.add(state_func)
 
     def run(
             self,
             iterator: Iterable,
-            starter: StateType,
+            starter: State,
             cargo: CargoTypeT,
-            is_debug=False) -> CargoTypeT:
+            is_debug: bool = False) -> CargoTypeT:
         assert starter in self.states
         cur_state = starter
         while True:
@@ -62,12 +64,12 @@ def iter_str_with_position(s: str):
         else:
             col_num += 1
 
-def tokenizer(raw_str: str, is_debug=False) -> list[Token]:
-    MyCargoType: TypeAlias = tuple[list[Token], str]
+def tokenizer(raw_str: str, is_debug: bool = False) -> list[Token]:
+    MyCargoTypeType: TypeAlias = tuple[list[Token], str]
 
     def state_comment(
             str_pos_iter: Iterable,
-            cargo: MyCargoType) -> tuple[StateType | None, MyCargoType]:
+            cargo: MyCargoTypeType) -> tuple[State | None, MyCargoTypeType]:
         c, _pos = next(str_pos_iter)
         if c == NULL_CHAR:
             return None, cargo
@@ -78,7 +80,7 @@ def tokenizer(raw_str: str, is_debug=False) -> list[Token]:
 
     def state_ws(
             str_pos_iter: Iterable,
-            cargo: MyCargoType) -> tuple[StateType | None, MyCargoType]:
+            cargo: MyCargoTypeType) -> tuple[State | None, MyCargoTypeType]:
         c, pos = next(str_pos_iter)
         out_list, cq = cargo
         if c == NULL_CHAR:
@@ -117,7 +119,7 @@ def tokenizer(raw_str: str, is_debug=False) -> list[Token]:
 
     def state_num(
             str_pos_iter: Iterable,
-            cargo: MyCargoType) -> tuple[StateType | None, MyCargoType]:
+            cargo: MyCargoTypeType) -> tuple[State | None, MyCargoTypeType]:
         c, (ln, coln) = next(str_pos_iter)
         out_list, cq = cargo
         tok_coln = coln - len(cq)
@@ -162,7 +164,7 @@ def tokenizer(raw_str: str, is_debug=False) -> list[Token]:
 
     def state_char(
             str_pos_iter: Iterable,
-            cargo: MyCargoType) -> tuple[StateType | None, MyCargoType]:
+            cargo: MyCargoTypeType) -> tuple[State | None, MyCargoTypeType]:
         c, (ln, coln) = next(str_pos_iter)
         out_list, cq = cargo
         tok_coln = coln - len(cq)
@@ -233,7 +235,7 @@ def tokenizer(raw_str: str, is_debug=False) -> list[Token]:
 
     def state_id(
             str_pos_iter: Iterable,
-            cargo: MyCargoType) -> tuple[StateType | None, MyCargoType]:
+            cargo: MyCargoTypeType) -> tuple[State | None, MyCargoTypeType]:
         c, (ln, coln) = next(str_pos_iter)
         out_list, cq = cargo
         tok_coln = coln - len(cq)
@@ -265,7 +267,7 @@ def tokenizer(raw_str: str, is_debug=False) -> list[Token]:
 
     def state_op(
             str_pos_iter: Iterable,
-            cargo: MyCargoType) -> tuple[StateType | None, MyCargoType]:
+            cargo: MyCargoTypeType) -> tuple[State | None, MyCargoTypeType]:
         c, (ln, coln) = next(str_pos_iter)
         out_list, cq = cargo
         tok_coln = coln - len(cq)

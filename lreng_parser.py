@@ -131,7 +131,7 @@ def postfix_to_tree(
         f'Bad syntax somewhere: nodes remained in stack {stack}'
     return stack[0]
 
-def tree_parser(tokens: list[Token], is_debug=False) -> TreeNode:
+def tree_parser(tokens: list[Token], is_debug: bool = False) -> TreeNode:
     postfix_token_list = shunting_yard(tokens, is_debug)
     syntax_tree = postfix_to_tree(postfix_token_list, is_debug)
     return syntax_tree

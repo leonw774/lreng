@@ -14,4 +14,5 @@ b = input();
 print(b, '\n', null);
 
 print('a', '+', 'b', '=', null);
-output $ add(a, b)
+output $ add(a, b);
+output $ '\n'

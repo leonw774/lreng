@@ -1,4 +1,4 @@
-from typing import Callable
+from collections.abc import Callable
 from copy import copy
 
 from lreng_opers import (

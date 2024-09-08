@@ -1,12 +1,13 @@
 from fractions import Fraction
-from typing import Iterable, Literal, Optional, Union
+from collections.abc import Iterable
+from typing import Literal, TypeVar
 
 class Token:
     def __init__(
             self,
             raw: str,
             tok_type: Literal['id', 'num', 'chr', 'op'],
-            debug_pos_info: Optional[tuple] = None) -> None:
+            debug_pos_info: tuple | None = None) -> None:
         """raw: token string
         tok_type: token type
         debug_pos_info: position (line num, col num) of the token"""
@@ -51,20 +52,20 @@ class TreeNode:
                 queue.append((node.left, depth + indent))
         return res_str
 
-
+FrameT = TypeVar('FrameT', bound='Frame')
 class Frame:
     def __init__(
             self,
             local: dict | None = None,
-            source: Union['Frame', None] = None):
+            source: FrameT | None = None):
         if local is None:
             self._local: dict = dict()
         else:
             self._local: dict = local.copy()
         if source is None:
-            self._shared: Union['Frame', dict] = dict()
+            self._shared: FrameT | dict = dict()
         else:
-            self._shared: Union['Frame', dict] = source
+            self._shared: FrameT | dict = source
 
     def __getitem__(self, key):
         if key in self._local:
