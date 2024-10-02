@@ -15,6 +15,7 @@ def check_tree_semantic(root_node: TreeNode, is_debug: bool = False) -> bool:
         # check left variable initialization
         if node.tok.type == 'op':
             if node.tok.raw == ASSIGNMENT or node.tok.raw == ARG_SETTER:
+                cur_iden = node.left.tok.raw
                 if node.left is None or node.left.tok.type != 'id':
                     is_good_semantic = False
                     op_name = (
@@ -25,10 +26,17 @@ def check_tree_semantic(root_node: TreeNode, is_debug: bool = False) -> bool:
                     print_semantic_err_msg(
                         node.left.tok.db_pos_info,
                         f'Left side of {op_name} should be identifier. '
-                        f'Get {repr(node.left.tok.raw)}'
+                        f'Get {repr(cur_iden)}'
+                    )
+                elif cur_iden in inited_ids:
+                    is_good_semantic = False
+                    print_semantic_err_msg(
+                        node.left.tok.db_pos_info,
+                        'Repeated initialization of identifier '
+                        f'{repr(cur_iden)}.'
                     )
                 else:
-                    inited_ids.add(node.left.tok.raw)
+                    inited_ids.add(cur_iden)
 
         elif node.tok.type == 'id':
             if node.tok.raw not in DEFAULT_FRAME:

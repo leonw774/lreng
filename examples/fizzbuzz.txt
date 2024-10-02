@@ -46,9 +46,9 @@ buzz = 'B', 'U', 'Z', 'Z', null;
 
 fizzbuzz = n => {
     n != 1 && fizzbuzz(n-1);
-    filters = (n % 3 == 0), (n % 5 == 0), null;
+    fizzbuzz_filters = (n % 3 == 0), (n % 5 == 0), null;
     strings = fizz, buzz, null;
-    concated_string = filtered_concat(filters, strings);
+    concated_string = filtered_concat(fizzbuzz_filters, strings);
     print((concated_string == null) && format_int(n) || concated_string);
     output $ '\n'
 };

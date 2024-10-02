@@ -24,11 +24,11 @@ print = string => {
     string != null && ( output $ `string; print(~string) );
     null
 };
-print_ints_with_space = string => {
-    string != null && (
-        print(format_int(`string));
+print_ints_with_space = int_list => {
+    int_list != null && (
+        print(format_int(`int_list));
         output(' ');
-        print_ints_with_space(~string)
+        print_ints_with_space(~int_list)
     );
     null
 };

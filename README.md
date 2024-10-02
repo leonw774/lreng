@@ -65,7 +65,7 @@ For example, `x == 1 && 3` evaluates to `3` if `x` is `1` and otherwise evaluate
 
 ### Assignment
 
-assignment operator `x = expr` requires the `x` at the left hand side to be an uninitialized variable identifier. It initialized the evaluated value of right hand side expression to the left hand side variable and the whole assignment expression evaluates to the right hand side value.
+The assignment operator `x = expr` requires the `x` at the left hand side to be an uninitialized variable identifier. It initialized the evaluated value of right hand side expression to the left hand side variable and the whole assignment expression evaluates to the right hand side value.
 
 ### Pair maker, left getter and right getter
 
@@ -84,7 +84,9 @@ The `` `string `` is used to get data and `~string` is to get next.
 
 ### Function maker and argument setter
 
-The function maker `{}` turns the wrapped codes into a function (no argument by default). You can use the argument setter `=>` to bind *at most one* argument identifier to a function. Use currying or pair to pass more.
+The function maker `{}` turns the wrapped codes into a function (no argument by default).
+
+The argument setter `x => {}` binds *at most one* argument identifier to a function. Like assignment operator, it also requires `x` to be an uninitializaed variable identifier.
 
 ### Function caller
 
@@ -115,13 +117,20 @@ foo = a => {
   }
 };
 bar = foo(1);
-a = 2; # this assignment would not overwrite the argument 'a' in function 'foo'
-c = 3; # there would be an error if this line is removed
+
+# this would cause repeated-init error if un-commented
+#a = 2;
+
+# you cannot access 'b' out of the closure
+# you also cannot initialize a new identifier named 'b'
+#output $ b + '0';
+
+# there would be use-without-init error if the initialization of 'c' is removed
+c = 3;
+
 output $ bar(2) + '0';
 output $ '\n'
 ```
-
-The function `bar = foo(1)` set its argument `a` to `1`. Setting `a` to `2` in the next line doesn't change the `a` in the function `bar` and `bar(2)` evaluates to `6` rather than `7`.
 
 ## Built-in functions
 
