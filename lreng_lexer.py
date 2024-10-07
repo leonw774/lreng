@@ -216,6 +216,8 @@ def tokenizer(raw_str: str, is_debug: bool = False) -> list[Token]:
                 return None, (out_list, '')
             elif c in WS_CHARS:
                 return state_ws, (out_list, '')
+            elif c == COMMENT_STARTER:
+                return state_comment, (out_list, '')
             elif c in NUM_CHARS:
                 return state_num, (out_list, c)
             elif c in ID_CHARS:
