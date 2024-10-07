@@ -1,0 +1,36 @@
+#ifndef OPERATOR_H
+#define OPERATOR_H
+
+#define OPERATOR_COUNT 33
+
+typedef enum OP_NAME {
+    OP_LBLOCK, OP_RBLOCK, OP_FDEF,
+    OP_LPAREN, OP_RPAREN, OP_FCALL,
+    OP_POS, OP_NEG, OP_NOT, OP_GETL, OP_GETR,
+    OP_EXP,
+    OP_MUL, OP_DIV, OP_MOD,
+    OP_ADD, OP_SUB,
+    OP_LT, OP_LE, OP_GT, OP_GE,
+    OP_EQ, OP_NEQ,
+    OP_AND,
+    OP_OR,
+    OP_PAIR,
+    OP_FCALLR,
+    OP_ARG,
+    OP_LAND,
+    OP_LOR,
+    OP_ASSIGN, OP_CONDFCALL,
+    OP_EXPRSEP
+} OP_NAME;
+
+extern const unsigned char OP_PRECEDENCES[];
+
+extern const char* OP_STRS[];
+
+extern const char OP_CHARS[];
+
+extern const unsigned char R_ASSOCIATIVE[];
+
+extern unsigned char is_2char_op(char left, char right);
+
+#endif
