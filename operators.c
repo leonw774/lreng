@@ -42,9 +42,9 @@ const unsigned char OP_PRECEDENCES[] = {
 
 const char OP_CHARS[] = "{}()!`~^*/%+-<>=&|,$=?;";
 
-const unsigned char R_ASSOCIATIVE[] = {
+const char R_ASSOCIATIVE[] = {
     OP_POS, OP_NEG, OP_NOT, OP_GETL, OP_GETR,
-    OP_EXP, OP_PAIR, OP_FCALLR, OP_ARG, OP_CONDFCALL, OP_ASSIGN
+    OP_EXP, OP_PAIR, OP_FCALLR, OP_ARG, OP_CONDFCALL, OP_ASSIGN, '\0'
 };
 
 /* if the left and right chars make up to an operator */

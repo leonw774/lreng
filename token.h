@@ -3,28 +3,31 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
-typedef struct db_info {
-    int line;
-    int col;
+typedef struct {
+    unsigned int line;
+    unsigned int col;
 } db_info;
 
-typedef enum TOKEN_TYPE {
+typedef enum {
     TOK_ID, /*identifier */
     TOK_NUM, /* number */
     TOK_OP, /* operator */
     TOK_LB, /* left bracket */
     TOK_RB /* right bracket */
-} TOKEN_TYPE;
+} token_enum;
 
-typedef union token_payload {
+typedef union {
     char* str;
-    int op_name;
+    int op;
 } token_payload;
 
-typedef struct token {
+typedef struct {
     token_payload payload;
-    enum TOKEN_TYPE type;
+    token_enum type;
     db_info db_info;
 } token;
+
+int
+print_token(token t);
 
 #endif

@@ -1,30 +1,30 @@
 #include<stdlib.h>
 #include<string.h>
 
-typedef struct dyn_arr {
+#ifndef DYNARR_H
+#define DYNARR_H
+
+typedef struct {
     void* data;
     int elem_size; 
     int count;
     int cap;
 } dyn_arr;
 
-dyn_arr
-new_dyn_arr(int elem_size);
+extern dyn_arr new_dyn_arr(int elem_size);
 
-void
-free_dyn_arr(dyn_arr* x);
+extern void free_dyn_arr(dyn_arr* x);
 
-void
-reset_dyn_arr(dyn_arr* x);
+extern void reset_dyn_arr(dyn_arr* x);
 
-void*
-to_arr(dyn_arr* x, unsigned char is_str);
+extern void* to_arr(dyn_arr* x, unsigned char is_str);
 
-void
-append(dyn_arr* x, void* elem);
+extern void append(dyn_arr* x, void* elem);
 
-void*
-at(dyn_arr* x, int index);
+extern void pop(dyn_arr* x);
 
-int
-concat(dyn_arr* x, dyn_arr* y);
+extern void* back(dyn_arr* x);
+
+extern int concat(dyn_arr* x, dyn_arr* y);
+
+#endif

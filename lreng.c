@@ -4,7 +4,7 @@
 
 int
 main(int argc, char** argv) {
-    char *filename = NULL;
+    char* filename = NULL;
     int is_debug = 0;
     if (argc == 2) {
         filename = argv[1];
@@ -41,6 +41,7 @@ main(int argc, char** argv) {
     fclose(fp);
 
     dyn_arr token_list = tokenize(src, fsize, is_debug);
+    tree root = tree_parser(token_list, is_debug);
 
     free(src);
     return 0;

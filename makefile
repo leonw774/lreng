@@ -1,5 +1,5 @@
 CFLAGS = -O2
-DEPS = dyn_arr.c errors.c operators.c tokenizer.c
+DEPS = dyn_arr.c token.c tree.c errors.c operators.c tokenizer.c tree_parser.c
 
 all: lreng
 
