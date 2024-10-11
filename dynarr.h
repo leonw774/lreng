@@ -1,0 +1,30 @@
+#include<stdlib.h>
+#include<string.h>
+
+#ifndef DYNARR_H
+#define DYNARR_H
+
+typedef struct dynarr {
+    void* data;
+    int elem_size; 
+    int count;
+    int cap;
+} dynarr_t;
+
+extern dynarr_t new_dynarr(int elem_size);
+
+extern void free_dynarr(dynarr_t* x);
+
+extern void reset_dynarr(dynarr_t* x);
+
+extern void* to_str(dynarr_t* x);
+
+extern void append(dynarr_t* x, void* elem);
+
+extern void pop(dynarr_t* x);
+
+extern void* back(dynarr_t* x);
+
+extern int concat(dynarr_t* x, dynarr_t* y);
+
+#endif

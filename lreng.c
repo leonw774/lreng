@@ -1,5 +1,6 @@
 #include <stdio.h>
-#include "dyn_arr.h"
+#include "dynarr.h"
+#include "tree.h"
 #include "lreng.h"
 
 int
@@ -40,9 +41,11 @@ main(int argc, char** argv) {
     fread(src, 1, fsize, fp);
     fclose(fp);
 
-    dyn_arr token_list = tokenize(src, fsize, is_debug);
-    tree root = tree_parser(token_list, is_debug);
+    dynarr_t token_list = tokenize(src, fsize, is_debug);
+    tree_t syntax_tree = tree_parser(token_list, is_debug);
 
+    free_dynarr(&token_list);
+    free_tree(&syntax_tree);
     free(src);
     return 0;
 }

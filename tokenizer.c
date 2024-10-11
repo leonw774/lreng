@@ -1,5 +1,5 @@
 #include <ctype.h>
-#include "dyn_arr.h"
+#include "dynarr.h"
 #include "errors.h"
 #include "token.h"
 #include "operators.h"
@@ -15,7 +15,7 @@
                   ((c) >= 'a' && (c) <= 'f') || \
                   ((c) >= 'A' && (c) <= 'F'))
 
-token_enum
+token_type_enum
 get_op_tok_type(char* op_str) {
     char c = op_str[0];
     if (c == OP_STRS[OP_LBLOCK][0] || c == OP_STRS[OP_LPAREN][0]
@@ -31,8 +31,8 @@ get_op_tok_type(char* op_str) {
 }
 
 /* return the operator name (enum) of an operator str. return -1 if failed */
-op_enum
-get_op_enum(token* last_token, char* op_str) {
+op_name_enum
+get_op_enum(token_t* last_token, char* op_str) {
     if (op_str[1] == '\0') {
         // POS & NEG
         if (last_token == NULL
@@ -68,7 +68,7 @@ get_op_enum(token* last_token, char* op_str) {
 /* TODO: move this to evaluater */
 /* transform binary and hex string into decimal */
 void
-rebase_to_dec(dyn_arr* str) {
+rebase_to_dec(dynarr_t* str) {
     /* translate hex string to deciaml string */
     /* because we use '0x' and '0b' prefix, set base as 0 */
     double length_ratio;
@@ -102,28 +102,28 @@ rebase_to_dec(dyn_arr* str) {
 
 
 /* for updating line, col, and pos */
-typedef struct db_info_ctrl {
+typedef struct linecol_iterator {
     const char* src;
     int src_len;
-    int pos;
-    db_info db_info;
-} db_info_ctrl;
+    int index;
+    linecol_t pos;
+} linecol_iterator_t;
 
 /* get char at current position and then increase position by 1 */
 char
-db_info_read(db_info_ctrl* const s) {
-    if (s->pos == s->src_len) {
+linecol_read(linecol_iterator_t* const s) {
+    if (s->index == s->src_len) {
         return '\0';
     }
-    if (s->src[s->pos] == '\n') {
-        s->db_info.line += 1;
-        s->db_info.col = 1;
+    if (s->src[s->index] == '\n') {
+        s->pos.line += 1;
+        s->pos.col = 1;
     }
     else {
-        s->db_info.col += 1;
+        s->pos.col += 1;
     }
-    char c = s->src[s->pos];
-    s->pos += 1;
+    char c = s->src[s->index];
+    s->index += 1;
     return c;
 }
 
@@ -132,48 +132,48 @@ db_info_read(db_info_ctrl* const s) {
    - tokens: parsed tokens
 */
 typedef struct cargo {
-    dyn_arr str;
-    dyn_arr tokens;
+    dynarr_t str;
+    dynarr_t tokens;
 } cargo;
 
 /* append cargo.str it to cargo.tokens, and clear cargo.str */
 void
-harvest(cargo* cur_cargo, token_enum type, db_info db_info) {
+harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos) {
     if (type == TOK_OP || type == TOK_LB || type == TOK_RB) {
-        op_enum op = get_op_enum(
-            (token*) back(&cur_cargo->tokens),
+        op_name_enum op = get_op_enum(
+            (token_t*) back(&cur_cargo->tokens),
             cur_cargo->str.data
         );
         if (op == -1) {
             throw_syntax_error(
-                db_info.line, db_info.col,
-                "bad op_enum"
+                pos.line, pos.col,
+                "bad op name"
             );
         }
-        token new_token = {{.op = op}, type, db_info};
+        token_t new_token = {{.op = op}, type, pos};
         append(&cur_cargo->tokens, &new_token);
     }
     else {
         if (cur_cargo->str.count >= 128) {
             throw_syntax_error(
-                db_info.line, db_info.col,
+                pos.line, pos.col,
                 "token length cannot exceed 127"
             );
         }
-        char* tok_str = (char*) to_arr(&cur_cargo->str, 1);
+        char* tok_str = (char*) to_str(&cur_cargo->str);
         if (!tok_str) {
             printf("harvest: empty cargo.str\n");
             return;
         }
-        token new_token = {tok_str, type, db_info};
+        token_t new_token = {tok_str, type, pos};
         append(&cur_cargo->tokens, &new_token);
     }
-    reset_dyn_arr(&cur_cargo->str);
+    reset_dynarr(&cur_cargo->str);
 }
 
 /* finite state machine: state: input & cargo => state & cargo */
 typedef struct state_ret {
-    struct state_ret (*state_func)(db_info_ctrl*, cargo);
+    struct state_ret (*state_func)(linecol_iterator_t*, cargo);
     cargo cargo;
 } state_ret;
 
@@ -181,43 +181,43 @@ typedef struct state_ret {
 /* declare the states */
 
 /* ignoreds */
-state_ret ws_state(db_info_ctrl* cur_db_info, cargo cur_cargo);
-state_ret comment_state(db_info_ctrl* cur_db_info, cargo cur_cargo);
+state_ret ws_state(linecol_iterator_t* pos_iter, cargo cur_cargo);
+state_ret comment_state(linecol_iterator_t* pos_iter, cargo cur_cargo);
 
 /* numbers */
-state_ret zero_state(db_info_ctrl* cur_db_info, cargo cur_cargo);
-state_ret num_state(db_info_ctrl* cur_db_info, cargo cur_cargo);
-state_ret hex_state(db_info_ctrl* cur_db_info, cargo cur_cargo);
-state_ret bin_state(db_info_ctrl* cur_db_info, cargo cur_cargo);
+state_ret zero_state(linecol_iterator_t* pos_iter, cargo cur_cargo);
+state_ret num_state(linecol_iterator_t* pos_iter, cargo cur_cargo);
+state_ret hex_state(linecol_iterator_t* pos_iter, cargo cur_cargo);
+state_ret bin_state(linecol_iterator_t* pos_iter, cargo cur_cargo);
 
 /* ascii charactors */
-state_ret ch_open_state(db_info_ctrl* cur_db_info, cargo cur_cargo);
-state_ret ch_esc_state(db_info_ctrl* cur_db_info, cargo cur_cargo);
-state_ret ch_lit_state(db_info_ctrl* cur_db_info, cargo cur_cargo);
+state_ret ch_open_state(linecol_iterator_t* pos_iter, cargo cur_cargo);
+state_ret ch_esc_state(linecol_iterator_t* pos_iter, cargo cur_cargo);
+state_ret ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo);
 
-state_ret id_state(db_info_ctrl* cur_db_info, cargo cur_cargo);
-state_ret op_state(db_info_ctrl* cur_db_info, cargo cur_cargo);
+state_ret id_state(linecol_iterator_t* pos_iter, cargo cur_cargo);
+state_ret op_state(linecol_iterator_t* pos_iter, cargo cur_cargo);
 
 void
-print_state_name(state_ret (*state_func)(db_info_ctrl*, cargo)) {
-    if (state_func == &ws_state) printf("ws");
-    else if (state_func == &comment_state) printf("comment");
-    else if (state_func == &zero_state) printf("zero");
-    else if (state_func == &num_state) printf("num");
-    else if (state_func == &hex_state) printf("hex");
-    else if (state_func == &bin_state) printf("bin");
-    else if (state_func == &ch_open_state) printf("ch_open");
-    else if (state_func == &ch_esc_state) printf("ch_esc");
-    else if (state_func == &ch_lit_state) printf("ch_lit");
-    else if (state_func == &id_state) printf("id");
-    else if (state_func == &op_state) printf("op");
+print_state_name(state_ret (*state_func)(linecol_iterator_t*, cargo)) {
+    if (state_func == &ws_state) printf("%-8s", "ws");
+    else if (state_func == &comment_state) printf("%-8s", "comment");
+    else if (state_func == &zero_state) printf("%-8s", "zero");
+    else if (state_func == &num_state) printf("%-8s", "num");
+    else if (state_func == &hex_state) printf("%-8s", "hex");
+    else if (state_func == &bin_state) printf("%-8s", "bin");
+    else if (state_func == &ch_open_state) printf("%-8s", "ch_open");
+    else if (state_func == &ch_esc_state) printf("%-8s", "ch_esc");
+    else if (state_func == &ch_lit_state) printf("%-8s", "ch_lit");
+    else if (state_func == &id_state) printf("%-8s", "id");
+    else if (state_func == &op_state) printf("%-8s", "op");
 }
 
 /* define the states */
 
 state_ret
-ws_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
-    char c = db_info_read(cur_db_info);
+ws_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
+    char c = linecol_read(pos_iter);
     if (c == '\0') {
         return (state_ret) {NULL, cur_cargo};
     }
@@ -249,16 +249,16 @@ ws_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
     else {
         sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
         throw_syntax_error(
-            cur_db_info->db_info.line,
-            cur_db_info->db_info.col,
+            pos_iter->pos.line,
+            pos_iter->pos.col,
             SYNTAX_ERR_MSG
         );
     }
 }
 
 state_ret
-comment_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
-    char c = db_info_read(cur_db_info);
+comment_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
+    char c = linecol_read(pos_iter);
     if (c == '\0') {
         return (state_ret) {NULL, cur_cargo};
     }
@@ -271,18 +271,18 @@ comment_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
 }
 
 state_ret
-zero_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
-    char c = db_info_read(cur_db_info);
+zero_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
+    char c = linecol_read(pos_iter);
     if (c == '\0') {
-        harvest(&cur_cargo, TOK_NUM, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {NULL, cur_cargo};
     }
     else if (isspace(c)) {
-        harvest(&cur_cargo, TOK_NUM, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {&ws_state, cur_cargo};
     }
     else if (c == COMMENT_CHAR) {
-        harvest(&cur_cargo, TOK_NUM, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {&comment_state, cur_cargo};
     }
     else if (IS_NUM(c)) {
@@ -298,40 +298,40 @@ zero_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
         return (state_ret) {&bin_state, cur_cargo};
     }
     else if (IS_OP(c)) {
-        harvest(&cur_cargo, TOK_NUM, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         append(&cur_cargo.str, &c);
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
         sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
         throw_syntax_error(
-            cur_db_info->db_info.line,
-            cur_db_info->db_info.col,
+            pos_iter->pos.line,
+            pos_iter->pos.col,
             SYNTAX_ERR_MSG
         );
     }
 }
 
 state_ret
-num_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
-    char c = db_info_read(cur_db_info);
+num_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
+    char c = linecol_read(pos_iter);
     if (c == '\0') {
-        harvest(&cur_cargo, TOK_NUM, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {NULL, cur_cargo};
     }
     else if (isspace(c)) {
-        harvest(&cur_cargo, TOK_NUM, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {&ws_state, cur_cargo};
     }
     else if (c == COMMENT_CHAR) {
-        harvest(&cur_cargo, TOK_NUM, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {&comment_state, cur_cargo};
     }
     else if (IS_NUM(c)) {
         if (c == '.' && strchr(cur_cargo.str.data, '.')) {
             throw_syntax_error(
-                cur_db_info->db_info.line,
-                cur_db_info->db_info.col,
+                pos_iter->pos.line,
+                pos_iter->pos.col,
                 "Second decimal dot in number"
             );
         }
@@ -339,36 +339,36 @@ num_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
         return (state_ret) {&num_state, cur_cargo};
     }
     else if (IS_OP(c)) {
-        harvest(&cur_cargo, TOK_NUM, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         append(&cur_cargo.str, &c);
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
         sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
         throw_syntax_error(
-            cur_db_info->db_info.line,
-            cur_db_info->db_info.col,
+            pos_iter->pos.line,
+            pos_iter->pos.col,
             SYNTAX_ERR_MSG
         );
     }
 }
 
 state_ret
-hex_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
-    char c = db_info_read(cur_db_info);
+hex_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
+    char c = linecol_read(pos_iter);
     if (c == '\0') {
         rebase_to_dec(&cur_cargo.str);
-        harvest(&cur_cargo, TOK_NUM, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {NULL, cur_cargo};
     }
     else if (isspace(c)) {
         rebase_to_dec(&cur_cargo.str);
-        harvest(&cur_cargo, TOK_NUM, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {&ws_state, cur_cargo};
     }
     else if (c == COMMENT_CHAR) {
         rebase_to_dec(&cur_cargo.str);
-        harvest(&cur_cargo, TOK_NUM, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {&comment_state, cur_cargo};
     }
     else if (IS_HEX(c)) {
@@ -377,36 +377,36 @@ hex_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
     }
     else if (IS_OP(c)) {
         rebase_to_dec(&cur_cargo.str);
-        harvest(&cur_cargo, TOK_NUM, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         append(&cur_cargo.str, &c);
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
         sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
         throw_syntax_error(
-            cur_db_info->db_info.line,
-            cur_db_info->db_info.col,
+            pos_iter->pos.line,
+            pos_iter->pos.col,
             SYNTAX_ERR_MSG
         );
     }
 }
 
 state_ret
-bin_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
-    char c = db_info_read(cur_db_info);
+bin_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
+    char c = linecol_read(pos_iter);
     if (c == '\0') {
         rebase_to_dec(&cur_cargo.str);
-        harvest(&cur_cargo, TOK_NUM, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {NULL, cur_cargo};
     }
     else if (isspace(c)) {
         rebase_to_dec(&cur_cargo.str);
-        harvest(&cur_cargo, TOK_NUM, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {&ws_state, cur_cargo};
     }
     else if (c == COMMENT_CHAR) {
         rebase_to_dec(&cur_cargo.str);
-        harvest(&cur_cargo, TOK_NUM, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {&comment_state, cur_cargo};
     }
     else if (c == '0' || c == '1') {
@@ -415,23 +415,23 @@ bin_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
     }
     else if (IS_OP(c)) {
         rebase_to_dec(&cur_cargo.str);
-        harvest(&cur_cargo, TOK_NUM, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         append(&cur_cargo.str, &c);
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
         sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
         throw_syntax_error(
-            cur_db_info->db_info.line,
-            cur_db_info->db_info.col,
+            pos_iter->pos.line,
+            pos_iter->pos.col,
             SYNTAX_ERR_MSG
         );
     }
 }
 
 state_ret
-ch_open_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
-    char c = db_info_read(cur_db_info);
+ch_open_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
+    char c = linecol_read(pos_iter);
     if (c == '\\') {
         return (state_ret) {&ch_esc_state, cur_cargo};
     }
@@ -442,16 +442,16 @@ ch_open_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
     else {
         sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
         throw_syntax_error(
-            cur_db_info->db_info.line,
-            cur_db_info->db_info.col,
+            pos_iter->pos.line,
+            pos_iter->pos.col,
             SYNTAX_ERR_MSG
         );
     }
 }
 
 state_ret
-ch_esc_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
-    char c = db_info_read(cur_db_info);
+ch_esc_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
+    char c = linecol_read(pos_iter);
     if (c == '\'' || c == '\"' || c == '\\') {
         /* c = c; */
     }
@@ -467,8 +467,8 @@ ch_esc_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
     else {
         sprintf(SYNTAX_ERR_MSG, "Invalid escape character: %c\n", c);
         throw_syntax_error(
-            cur_db_info->db_info.line,
-            cur_db_info->db_info.col,
+            pos_iter->pos.line,
+            pos_iter->pos.col,
             SYNTAX_ERR_MSG
         );
     }
@@ -477,14 +477,14 @@ ch_esc_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
 }
 
 state_ret
-ch_lit_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
+ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     /* take the ending single quote */
-    char c = db_info_read(cur_db_info);
+    char c = linecol_read(pos_iter);
     if (c != '\'') {
         sprintf(SYNTAX_ERR_MSG, "Expect a single quote, get '%c'", c);
         throw_syntax_error(
-            cur_db_info->db_info.line,
-            cur_db_info->db_info.col,
+            pos_iter->pos.line,
+            pos_iter->pos.col,
             SYNTAX_ERR_MSG
         );
     }
@@ -497,10 +497,10 @@ ch_lit_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
     cur_cargo.str.count = digit_num;
     cur_cargo.str.cap = 4;
     sprintf(cur_cargo.str.data, "%d\0", lit_char);
-    harvest(&cur_cargo, TOK_NUM, cur_db_info->db_info);
+    harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
 
     /* next state */
-    c = db_info_read(cur_db_info);
+    c = linecol_read(pos_iter);
     if (c == '\0') {
         return (state_ret) {NULL, cur_cargo};
     }
@@ -517,26 +517,26 @@ ch_lit_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
     else {
         sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
         throw_syntax_error(
-            cur_db_info->db_info.line,
-            cur_db_info->db_info.col,
+            pos_iter->pos.line,
+            pos_iter->pos.col,
             SYNTAX_ERR_MSG
         );
     }
 }
 
 state_ret
-id_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
-    char c = db_info_read(cur_db_info);
+id_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
+    char c = linecol_read(pos_iter);
     if (c == '\0') {
-        harvest(&cur_cargo, TOK_ID, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_ID, pos_iter->pos);
         return (state_ret) {NULL, cur_cargo};
     }
     else if (isspace(c)) {
-        harvest(&cur_cargo, TOK_ID, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_ID, pos_iter->pos);
         return (state_ret) {&ws_state, cur_cargo};
     }
     else if (c == COMMENT_CHAR) {
-        harvest(&cur_cargo, TOK_ID, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_ID, pos_iter->pos);
         return (state_ret) {&comment_state, cur_cargo};
     }
     else if (IS_ID_BODY(c)) {
@@ -544,48 +544,48 @@ id_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
         return (state_ret) {&id_state, cur_cargo};
     }
     else if (IS_OP(c)) {
-        harvest(&cur_cargo, TOK_ID, cur_db_info->db_info);
+        harvest(&cur_cargo, TOK_ID, pos_iter->pos);
         append(&cur_cargo.str, &c);
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
         sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
         throw_syntax_error(
-            cur_db_info->db_info.line,
-            cur_db_info->db_info.col,
+            pos_iter->pos.line,
+            pos_iter->pos.col,
             SYNTAX_ERR_MSG
         );
     }
 }
 
 state_ret
-op_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
-    char c = db_info_read(cur_db_info);
-    token_enum type;
+op_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
+    char c = linecol_read(pos_iter);
+    token_type_enum type;
     if (c == '\0') {
         type = get_op_tok_type(cur_cargo.str.data);
-        harvest(&cur_cargo, type, cur_db_info->db_info);
+        harvest(&cur_cargo, type, pos_iter->pos);
         return (state_ret) {NULL, cur_cargo};
     }
     else if (isspace(c)) {
         type = get_op_tok_type(cur_cargo.str.data);
-        harvest(&cur_cargo, type, cur_db_info->db_info);
+        harvest(&cur_cargo, type, pos_iter->pos);
         return (state_ret) {&ws_state, cur_cargo};
     }
     else if (c == COMMENT_CHAR) {
         type = get_op_tok_type(cur_cargo.str.data);
-        harvest(&cur_cargo, type, cur_db_info->db_info);
+        harvest(&cur_cargo, type, pos_iter->pos);
         return (state_ret) {&comment_state, cur_cargo};
     }
     else if (c == '\'') {
         type = get_op_tok_type(cur_cargo.str.data);
-        harvest(&cur_cargo, type, cur_db_info->db_info);
+        harvest(&cur_cargo, type, pos_iter->pos);
         append(&cur_cargo.str, &c);
         return (state_ret) {&ch_open_state, cur_cargo};
     }
     else if (IS_ID_BODY(c)) {
         type = get_op_tok_type(cur_cargo.str.data);
-        harvest(&cur_cargo, type, cur_db_info->db_info);
+        harvest(&cur_cargo, type, pos_iter->pos);
         append(&cur_cargo.str, &c);
         return (state_ret) {&id_state, cur_cargo};
     }
@@ -594,7 +594,7 @@ op_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
             && !is_2char_op(((char*) cur_cargo.str.data)[0], c)) {
             /* if is not a 2-character operator */
             type = get_op_tok_type(cur_cargo.str.data);
-            harvest(&cur_cargo, type, cur_db_info->db_info);
+            harvest(&cur_cargo, type, pos_iter->pos);
         }
         append(&cur_cargo.str, &c);
         return (state_ret) {&op_state, cur_cargo};
@@ -602,22 +602,22 @@ op_state(db_info_ctrl* cur_db_info, cargo cur_cargo) {
     else {
         sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
         throw_syntax_error(
-            cur_db_info->db_info.line,
-            cur_db_info->db_info.col,
+            pos_iter->pos.line,
+            pos_iter->pos.col,
             SYNTAX_ERR_MSG
         );
     }
 }
 
-/* define the state machine: return a dyn_arr of tokens */
-dyn_arr
+/* define the state machine: return a dynarr_t of tokens */
+dynarr_t
 tokenize(const char* src, const int src_len, const unsigned char is_debug) {
-    db_info db_info = {1, 0}; /* start at line 1 col 1 */
-    db_info_ctrl cur_db_info_ctrl = {src, src_len, 0, db_info};
+    linecol_t pos = {1, 0}; /* start at line 1 col 1 */
+    linecol_iterator_t pos_iter = {src, src_len, 0, pos};
     cargo cur_cargo;
-    cur_cargo.tokens = new_dyn_arr(sizeof(token));
-    cur_cargo.str = new_dyn_arr(sizeof(char));
-    state_ret (*state_func)(db_info_ctrl*, cargo) = ws_state;
+    cur_cargo.tokens = new_dynarr(sizeof(token_t));
+    cur_cargo.str = new_dynarr(sizeof(char));
+    state_ret (*state_func)(linecol_iterator_t*, cargo) = ws_state;
     int prev_tokens_count = 0;
 
     if (is_debug) {
@@ -625,7 +625,7 @@ tokenize(const char* src, const int src_len, const unsigned char is_debug) {
     }
     while (1) {
         if (is_debug) {
-            char c = cur_db_info_ctrl.src[cur_db_info_ctrl.pos];
+            char c = pos_iter.src[pos_iter.index];
             if (isprint(c)) {
                 printf("c=\'%c\'\n", c);
             }
@@ -638,19 +638,20 @@ tokenize(const char* src, const int src_len, const unsigned char is_debug) {
             break;
         }
 
-        state_ret res = state_func(&cur_db_info_ctrl, cur_cargo);
+        state_ret res = state_func(&pos_iter, cur_cargo);
         cur_cargo = res.cargo;
         state_func = res.state_func;
 
         if (is_debug) {
-            printf("state=");
             print_state_name(state_func);
-            printf("\tstr=\"%s\"\t", (char*) cur_cargo.str.data);
+            char* tmp_str = to_str(&cur_cargo.str);
+            printf("str=\"%s\" ", tmp_str);
+            free(tmp_str);
             int count = cur_cargo.tokens.count;
             if (prev_tokens_count != count && count) {
                 printf("new_token=");
                 print_token(
-                    ((token*) cur_cargo.tokens.data)[count - 1]
+                    ((token_t*) cur_cargo.tokens.data)[count - 1]
                 );
                 prev_tokens_count = count;
             }
@@ -661,12 +662,12 @@ tokenize(const char* src, const int src_len, const unsigned char is_debug) {
         printf("tokens=");
         int i;
         for (i = 0; i < cur_cargo.tokens.count; i++) {
-            print_token(((token*) cur_cargo.tokens.data)[i]);
+            print_token(((token_t*) cur_cargo.tokens.data)[i]);
             printf(" ");
         }
         puts("");
     }
 
-    free_dyn_arr(&cur_cargo.str);
+    free_dynarr(&cur_cargo.str);
     return cur_cargo.tokens;
 }

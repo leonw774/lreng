@@ -3,7 +3,7 @@
 
 #define OPERATOR_COUNT 33
 
-typedef enum {
+typedef enum op_name {
     OP_LBLOCK, OP_RBLOCK, OP_FDEF,
     OP_LPAREN, OP_RPAREN, OP_FCALL,
     OP_POS, OP_NEG, OP_NOT, OP_GETL, OP_GETR,
@@ -21,7 +21,7 @@ typedef enum {
     OP_LOR,
     OP_ASSIGN, OP_CONDFCALL,
     OP_EXPRSEP
-} op_enum;
+} op_name_enum;
 
 extern const unsigned char OP_PRECEDENCES[];
 
@@ -29,7 +29,9 @@ extern const char* OP_STRS[];
 
 extern const char OP_CHARS[];
 
-extern const char R_ASSOCIATIVE[];
+extern const char UNARY_OPS[];
+
+extern const char R_ASSOCIATIVE_OPS[];
 
 extern unsigned char is_2char_op(char left, char right);
 

@@ -1,11 +1,11 @@
-#include "dyn_arr.h"
+#include "dynarr.h"
 
 #define DYN_ARR_INIT_CAP 4
 
-/* create a new empty dyn_arr */
-dyn_arr
-new_dyn_arr(int elem_size) {
-    dyn_arr x;
+/* create a new empty dynamic array */
+dynarr_t
+new_dynarr(int elem_size) {
+    dynarr_t x;
     x.data = malloc(elem_size * DYN_ARR_INIT_CAP);
     memset(x.data, 0, elem_size * DYN_ARR_INIT_CAP);
     x.elem_size = elem_size;
@@ -15,7 +15,7 @@ new_dyn_arr(int elem_size) {
 };
 
 void
-free_dyn_arr(dyn_arr* x) {
+free_dynarr(dynarr_t* x) {
     if (x->data != NULL && x->count != 0) {
         free(x->data);
         x->count = x->cap = 0;
@@ -23,29 +23,24 @@ free_dyn_arr(dyn_arr* x) {
 };
 
 void
-reset_dyn_arr(dyn_arr* x) {
-    free_dyn_arr(x);
-    *x = new_dyn_arr(x->elem_size);
+reset_dynarr(dynarr_t* x) {
+    free_dynarr(x);
+    *x = new_dynarr(x->elem_size);
 }
 
+/* copy the array as a C-string */
 void*
-/* create a simple arr */
-to_arr(dyn_arr* x, unsigned char as_str) {
+to_str(dynarr_t* x) {
     if (x->data == NULL) return NULL;
     void* arr;
-    if (as_str) {
-        arr = malloc(x->elem_size * x->count + 1);
-        ((char*) arr)[x->elem_size * x->count] = '\0';
-    }
-    else {
-        arr = malloc(x->elem_size * x->count);
-    }
+    arr = malloc(x->elem_size * x->count + 1);
+    ((char*) arr)[x->elem_size * x->count] = '\0';
     memcpy(arr, x->data, x->elem_size * x->count);
     return arr;
 }
 
 void
-append(dyn_arr* x, void* elem) {
+append(dynarr_t* x, void* elem) {
     if (x->data == NULL) return;
     if (x->count == x->cap) {
         x->cap *= 2;
@@ -61,12 +56,12 @@ append(dyn_arr* x, void* elem) {
 };
 
 void
-pop(dyn_arr* x) {
+pop(dynarr_t* x) {
     x->count--;
 }
 
 void*
-back(dyn_arr* x) {
+back(dynarr_t* x) {
     if (x->data == NULL || x->count == 0) {
         return NULL;
     }
@@ -77,7 +72,7 @@ back(dyn_arr* x) {
    x and y's elem size must be the same
    return 1 if concat seccess, otherwise 0 */
 int
-concat(dyn_arr* x, dyn_arr* y) {
+concat(dynarr_t* x, dynarr_t* y) {
     if (x->data == NULL || y->data == NULL) {
         return 0;
     }

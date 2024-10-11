@@ -10,26 +10,27 @@
 #define OP_PRECED_LT(o1, o2) \
     (OP_PRECEDENCES[o1] < OP_PRECEDENCES[o2] \
     || (OP_PRECEDENCES[o1] == OP_PRECEDENCES[o2] \
-        && strchr(R_ASSOCIATIVE, o2) == NULL) \
+        && strchr(R_ASSOCIATIVE_OPS, o2) == NULL) \
     )
 
+#define IS_UNARY(o) (strchr(UNARY_OPS, o) != NULL)
 
 /* return expression tokens in postfix */
-dyn_arr
-shunting_yard(const dyn_arr tokens, const unsigned char is_debug) {
+dynarr_t
+shunting_yard(const dynarr_t tokens, const unsigned char is_debug) {
     enum EXPECT {
         PREFIXABLE, BINARY_OPERATOR
     };
     int expectation = PREFIXABLE;
-    dyn_arr output = new_dyn_arr(sizeof(token));
-    dyn_arr op_stack = new_dyn_arr(sizeof(token));
+    dynarr_t output = new_dynarr(sizeof(token_t));
+    dynarr_t op_stack = new_dynarr(sizeof(token_t));
 
     if (is_debug) {
         puts("tree_parse");
     }
     int i, prev_output_count = 0;
     for (i = 0; i < tokens.count; i++) {
-        token cur_token = ((token*) tokens.data)[i];
+        token_t cur_token = ((token_t*) tokens.data)[i];
         if (is_debug) {
             printf("expect=%s token=", (expectation ? "BIN_OP" : "PREFIX"));
             print_token(cur_token);
@@ -46,8 +47,8 @@ shunting_yard(const dyn_arr tokens, const unsigned char is_debug) {
                         OP_STRS[cur_token.payload.op]
                     );
                     throw_syntax_error(
-                        cur_token.db_info.line,
-                        cur_token.db_info.col,
+                        cur_token.pos.line,
+                        cur_token.pos.col,
                         SYNTAX_ERR_MSG
                     );
                 }
@@ -61,8 +62,8 @@ shunting_yard(const dyn_arr tokens, const unsigned char is_debug) {
                         OP_STRS[cur_token.payload.op]
                     );
                     throw_syntax_error(
-                        cur_token.db_info.line,
-                        cur_token.db_info.col,
+                        cur_token.pos.line,
+                        cur_token.pos.col,
                         SYNTAX_ERR_MSG
                     );
                 }
@@ -70,14 +71,14 @@ shunting_yard(const dyn_arr tokens, const unsigned char is_debug) {
             }
 
             /* pop stack until top is left braclet or precedence is higher */
-            token* stack_top = (token*) back(&op_stack);
+            token_t* stack_top = back(&op_stack);
             while (stack_top != NULL && stack_top->type != TOK_LB
                 && OP_PRECED_LT(
                     stack_top->payload.op, cur_token.payload.op
                 )) {
                 append(&output, stack_top);
                 pop(&op_stack);
-                stack_top = (token*) back(&op_stack);
+                stack_top = back(&op_stack);
             }
             /* push */
             append(&op_stack, &cur_token);
@@ -93,47 +94,43 @@ shunting_yard(const dyn_arr tokens, const unsigned char is_debug) {
                     cur_token.payload.str
                 );
                 throw_syntax_error(
-                    cur_token.db_info.line,
-                    cur_token.db_info.col,
+                    cur_token.pos.line,
+                    cur_token.pos.col,
                     SYNTAX_ERR_MSG
                 );
             }
             expectation = BINARY_OPERATOR;
 
             /* pop stack until top is left braclet */
-            token* stack_top = (token*) back(&op_stack);
+            token_t* stack_top = back(&op_stack);
             while (stack_top != NULL && stack_top->type != TOK_LB) {
                 append(&output, stack_top);
                 pop(&op_stack);
-                stack_top = (token*) back(&op_stack);
+                stack_top = back(&op_stack);
             }
 
             /* pop out the left bracket */
             pop(&op_stack);
 
-            op_enum top_op = stack_top->payload.op,
+            op_name_enum top_op = stack_top->payload.op,
                 cur_op = cur_token.payload.op;
             if (stack_top == NULL) {
                 throw_syntax_error(
-                    cur_token.db_info.line,
-                    cur_token.db_info.col,
+                    cur_token.pos.line,
+                    cur_token.pos.col,
                     "Unmatched closing bracket: Cannot find opening bracket"
                 );
             }
             /* special operators */
             else if (top_op == OP_FCALL && cur_op == OP_RPAREN) {
                 /* function call */
-                append(
-                    &output,
-                    &(token) {{.op = OP_FCALL}, TOK_OP, stack_top->db_info}
-                );
+                token_t fcall = {{.op = OP_FCALL}, TOK_OP, stack_top->pos};
+                append(&output, &fcall);
             }
             else if (top_op == OP_LBLOCK && cur_op == OP_RBLOCK) {
                 /* function maker */
-                append(
-                    &output,
-                    &(token) {{.op = OP_FDEF}, TOK_OP, stack_top->db_info}
-                );
+                token_t fdef = {{.op = OP_FDEF}, TOK_OP, stack_top->pos};
+                append(&output, &fdef);
             }
             else if (!(top_op == OP_LPAREN && cur_op == OP_RPAREN)) {
                 sprintf(
@@ -142,8 +139,8 @@ shunting_yard(const dyn_arr tokens, const unsigned char is_debug) {
                     OP_STRS[top_op], OP_STRS[cur_op]
                 );
                 throw_syntax_error(
-                    cur_token.db_info.line,
-                    cur_token.db_info.col,
+                    cur_token.pos.line,
+                    cur_token.pos.col,
                     SYNTAX_ERR_MSG
                 );
             }
@@ -158,8 +155,8 @@ shunting_yard(const dyn_arr tokens, const unsigned char is_debug) {
                     cur_token.payload.str
                 );
                 throw_syntax_error(
-                    cur_token.db_info.line,
-                    cur_token.db_info.col,
+                    cur_token.pos.line,
+                    cur_token.pos.col,
                     SYNTAX_ERR_MSG
                 );
             }
@@ -170,23 +167,29 @@ shunting_yard(const dyn_arr tokens, const unsigned char is_debug) {
             printf("op_stack=");
             int j;
             for (j = 0; j < op_stack.count; j++) {
-                print_token(((token*) op_stack.data)[j]);
+                print_token(((token_t*) op_stack.data)[j]);
                 printf(" ");
             }
             puts("");
             if (prev_output_count != output.count) {
                 prev_output_count = output.count;
                 printf("new_output=");
-                print_token(*(token *) back(&output));
+                print_token(*(token_t *) back(&output));
                 puts("");
             }
         }
+    } /* end for */
+
+    /* pop stack to output until stack is empty */
+    while (op_stack.count > 0) {
+        append(&output, back(&op_stack));
+        pop(&op_stack);
     }
-    // end for
+
     if (is_debug) {
-        printf("output=");
+        printf("result=");
         for (i = 0; i < output.count; i++) {
-            print_token(((token*) output.data)[i]);
+            print_token(((token_t*) output.data)[i]);
             printf(" ");
         }
         puts("");
@@ -194,21 +197,86 @@ shunting_yard(const dyn_arr tokens, const unsigned char is_debug) {
     return output;
 }
 
-tree
-tree_parser(const dyn_arr tokens, const unsigned char is_debug) {
-    dyn_arr postfix_tokens = shunting_yard(tokens, is_debug);
-    dyn_arr stack = new_dyn_arr(sizeof(tree));
+#define GET_TOKEN_AT(tree, i) ((token_t*) (tree.tokens.data))[i]
 
-    /* TODO: build tree from postfix */
+tree_t
+tree_parser(const dynarr_t tokens, const unsigned char is_debug) {
+    dynarr_t stack = new_dynarr(sizeof(int));
+    tree_t tree = {
+        .tokens = shunting_yard(tokens, is_debug),
+        .lefts = NULL,
+        .rights = NULL,
+        .root = -1
+    };
+    tree.lefts = malloc(tree.tokens.count * sizeof(int));
+    tree.rights = malloc(tree.tokens.count * sizeof(int));
+    memset(tree.lefts, -1, tree.tokens.count * sizeof(int));
+    memset(tree.rights, -1, tree.tokens.count * sizeof(int));
+
+    int i;
+    for (i = 0; i < tree.tokens.count; i++) {
+        token_t cur_token = GET_TOKEN_AT(tree, i);
+        if (is_debug) {
+            print_token(cur_token);
+        }
+        if (cur_token.type == TOK_OP) {
+            int r_index = -1;
+            if (!IS_UNARY(cur_token.payload.op)) {
+                r_index = *(int*) back(&stack);
+                pop(&stack);
+                tree.rights[i] = r_index;
+            }
+            if (stack.count == 0) {
+                throw_syntax_error(
+                    cur_token.pos.line,
+                    cur_token.pos.col,
+                    "Operator has too few operands"
+                );
+            }
+            int l_index = *(int*) back(&stack);
+            pop(&stack);
+            tree.lefts[i] = l_index;
+            append(&stack, &i);
+            if (is_debug) {
+                printf(" L=");
+                print_token(GET_TOKEN_AT(tree, l_index));
+                printf(" R=");
+                if (r_index != -1) {
+                    print_token(GET_TOKEN_AT(tree, r_index));
+                }
+            }
+        }
+        else {
+            append(&stack, &i);
+        }
+        if (is_debug) {
+            puts("");
+        }
+    }
 
     if (stack.count != 1) {
+        if (is_debug) {
+            int n;
+            printf("REMAINED IN STACK:\n");
+            for (n = 0; n < stack.count; n++) {
+                print_token(
+                    ((token_t*)tree.tokens.data)[((int *)stack.data)[n]]
+                );
+                puts("");
+            }
+        }
         sprintf(
             SYNTAX_ERR_MSG,
-            "Bad syntax somewhere: %d nodes left in stack when parsing tree",
+            "Bad syntax somewhere: %d tokens left in stack when parsing tree",
             stack.count
         );
         throw_syntax_error(0, 0, SYNTAX_ERR_MSG);
     }
-    tree root = *((tree*) stack.data);
-    return root;
+    tree.root = *((int*) stack.data);
+    free_dynarr(&stack);
+    if (is_debug) {
+        printf("final_tree=\n");
+        print_tree(tree);
+    }
+    return tree;
 }

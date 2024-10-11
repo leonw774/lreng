@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 int
-print_token(token t) {
+print_token(token_t t) {
     const char* token_str;
     const char* type_str;
     int op_enum_int = -1;
@@ -35,6 +35,6 @@ print_token(token t) {
             break;
     }
     return (op_enum_int == -1)
-        ? printf("(\"%s\", %s)", token_str, type_str)
-        : printf("(\"%s\", %s, %d)", token_str, type_str, op_enum_int);
+        ? printf("(%s, \"%s\")", type_str, token_str)
+        : printf("(%s, \"%s\", %d)", type_str, token_str, op_enum_int);
 }
