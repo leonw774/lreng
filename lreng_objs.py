@@ -28,28 +28,28 @@ class TreeNode:
         return 'N' + repr(self.tok)
 
     def __iter__(self) -> Iterable['TreeNode']:
-        queue = [self]
-        while len(queue) > 0:
-            cur_node = queue.pop()
+        stack = [self]
+        while len(stack) > 0:
+            cur_node = stack.pop()
             if cur_node.right is not None:
-                queue.append(cur_node.right)
+                stack.append(cur_node.right)
             if cur_node.left is not None:
-                queue.append(cur_node.left)
+                stack.append(cur_node.left)
             yield cur_node
 
     @classmethod
     def dump(cls, root_node, indent = 2) -> str:
         res_str = ''
         res_str += repr(root_node) + '\n'
-        queue = []
-        queue.append((root_node.right, indent))
-        queue.append((root_node.left, indent))
-        while len(queue) > 0:
-            node, depth = queue.pop()
+        stack = []
+        stack.append((root_node.right, indent))
+        stack.append((root_node.left, indent))
+        while len(stack) > 0:
+            node, depth = stack.pop()
             if node is not None:
                 res_str += ' ' * depth + repr(node) + '\n'
-                queue.append((node.right, depth + indent))
-                queue.append((node.left, depth + indent))
+                stack.append((node.right, depth + indent))
+                stack.append((node.left, depth + indent))
         return res_str
 
 FrameT = TypeVar('FrameT', bound='Frame')
