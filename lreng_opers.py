@@ -69,6 +69,6 @@ R_ASSO_OPS = {
     '!+', '!-', '!', '`', '~',
     '^', FUNC_CALLER, ',', ARG_SETTER, '?', '='
 }
-UNARY_OPS = {'@', '!+', '!-', '!', '`', '~', '<<'}
+UNARY_OPS = {'@', '!+', '!-', '!', '`', '~'}
 L_BRACKETS = {'(', '{', FUNC_CALL_L_PARENTHESE}
 R_BRACKETS = {')', '}'}

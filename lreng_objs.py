@@ -30,12 +30,23 @@ class TreeNode:
     def __iter__(self) -> Iterable['TreeNode']:
         stack = [self]
         while len(stack) > 0:
-            cur_node = stack.pop()
-            if cur_node.right is not None:
-                stack.append(cur_node.right)
-            if cur_node.left is not None:
-                stack.append(cur_node.left)
-            yield cur_node
+            node = stack.pop()
+            if node.right is not None:
+                stack.append(node.right)
+            if node.left is not None:
+                stack.append(node.left)
+            yield node
+
+    def iter_with_depth(self) -> Iterable[tuple['TreeNode', int]]:
+        stack = [(self, 0)]
+        while len(stack) > 0:
+            node, depth = stack.pop()
+            if node.right is not None:
+                stack.append((node.right, depth + 1))
+            if node.left is not None:
+                stack.append((node.left, depth + 1))
+            yield (node, depth)
+
 
     @classmethod
     def dump(cls, root_node, indent = 2) -> str:
@@ -59,48 +70,48 @@ class Frame:
             local: dict | None = None,
             source: FrameT | None = None):
         if local is None:
-            self._local: dict = dict()
+            self.local: dict = dict()
         else:
-            self._local: dict = local.copy()
+            self.local: dict = local.copy()
         if source is None:
-            self._shared: FrameT | dict = dict()
+            self.shared: FrameT | dict = dict()
         else:
-            self._shared: FrameT | dict = source
+            self.shared: FrameT | dict = source
 
     def __getitem__(self, key):
-        if key in self._local:
-            return self._local[key]
-        if key in self._shared:
-            return self._shared[key]
+        if key in self.local:
+            return self.local[key]
+        if key in self.shared:
+            return self.shared[key]
         raise KeyError(f'Key {repr(key)} not found')
 
     def __setitem__(self, key, value):
-        if key in self._shared:
-            self._shared[key] = value
+        if key in self.shared:
+            self.shared[key] = value
         else:
-            self._local[key] = value
+            self.local[key] = value
 
     def __contains__(self, key):
-        return key in self._local or key in key in self._shared
+        return key in self.local or key in key in self.shared
 
     def __repr__(self):
         return repr(self.to_dict())
 
     def to_dict(self) -> dict:
-        result = self._local.copy()
-        if isinstance(self._shared, dict):
-            result.update(self._shared)
-        elif isinstance(self._shared, Frame):
-            result.update(self._shared.to_dict())
+        result = self.local.copy()
+        if isinstance(self.shared, dict):
+            result.update(self.shared)
+        elif isinstance(self.shared, Frame):
+            result.update(self.shared.to_dict())
         else:
             raise ValueError('self._shared is not dict or Frame')
         return result
 
     def get(self, key, value):
-        if key in self._local:
-            return self._local[key]
-        if key in self._shared:
-            return self._shared[key]
+        if key in self.local:
+            return self.local[key]
+        if key in self.shared:
+            return self.shared[key]
         return value
 
 

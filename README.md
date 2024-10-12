@@ -121,8 +121,11 @@ bar = foo(1);
 # this would cause repeated-init error if un-commented
 #a = 2;
 
-# you cannot access 'b' out of the closure
-# you also cannot initialize a new identifier named 'b'
+# you cannot access 'b' outside of the closure
+#output $ b + '0';
+
+# however, you can initialize a new identifier 'b' outside of the closure
+#b = 3;
 #output $ b + '0';
 
 # there would be use-without-init error if the initialization of 'c' is removed
