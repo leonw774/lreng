@@ -118,8 +118,8 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos) {
         if (((token_t*) back(&cur_cargo->tokens))->name == OP_FCALL
             && type == TOK_RB) {
             token_t null_tok = {
-                RESERVED_IDS[RESERVED_NAME_NULL],
-                RESERVED_NAME_NULL,
+                RESERVED_IDS[RESERVED_ID_NULL],
+                RESERVED_ID_NULL,
                 TOK_ID,
                 pos
             };

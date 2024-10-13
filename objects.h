@@ -13,36 +13,32 @@ typedef enum object_type {
     OBJ_BUILTIN_FUNC
 } object_type_enum;
 
-typedef union object object_t;
+typedef struct object object_t;
 
 typedef struct nullobj {
-    const object_type_enum type;
+    const short null;
 } nullobj_t;
 
 typedef struct number {
-    const object_type_enum type;
     bigint_t numer;
     bigint_t denom;
 } number_t;
 
 typedef struct pair {
-    const object_type_enum type;
     object_t* left;
     object_t* right;
 } pair_t;
 
 typedef struct func {
-    const object_type_enum type;
     int arg_name;
     int root_index;
 } func_t;
 
 typedef struct builtin_func {
-    const object_type_enum type;
     int name;
 } builtin_func_t;
 
-union object {
+union object_union {
     nullobj_t null;
     number_t number;
     pair_t pair;
@@ -50,11 +46,17 @@ union object {
     builtin_func_t builtin_func;
 };
 
+typedef struct object {
+    const object_type_enum type;
+    union object_union data;
+} object_t;
+
+
 extern object_t new_object(token_t* main, token_t* left, token_t* right);
+extern void free_object(object_t* obj);
 
 extern number_t number_from_str(char* str);
 
-void free_object(object_t* obj);
 
 extern const object_t const RESERVED_OBJS[RESERVED_ID_NUM];
 

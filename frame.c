@@ -16,8 +16,51 @@ const frame_t DEFAULT_FRAME() {
     return f;
 }
 
-frame_t new_frame(frame_t* parent, object_t* init_obj, int* init_name);
+frame_t new_frame(frame_t* parent, object_t* init_obj, int* init_name) {
+    frame_t f;
+    f.parent = parent;
+    f.objects = new_dynarr(sizeof(object_t));
+    f.names = new_dynarr(sizeof(int));
+    f.size = 1;
+    append(&f.objects, init_obj);
+    append(&f.names, init_name);
+    return f;
+}
 
-frame_t frame_get_name(frame_t* f, int name);
+object_t* frame_get(const frame_t* f, const int name) {
+    int i;
+    for (i = 0; i < f->names.size; i++) {
+        if (name == ((int*) f->names.data)[i]) {
+            return ((object_t*) f->objects.data) + i;
+        }
+    }
+    if (f->parent == NULL) {
+        return NULL;
+    }
+    return frame_get(f->parent, name);
+}
 
-frame_t frame_set_name(frame_t* f, int name, object_t* obj);
+object_t* frame_find(const frame_t* f, const int name) {
+    int i;
+    for (i = 0; i < f->names.size; i++) {
+        if (name == ((int*) f->names.data)[i]) {
+            return ((object_t*) f->objects.data) + i;
+        }
+    }
+    if (f->parent == NULL) {
+        return NULL;
+    }
+    return frame_get(f->parent, name);
+}
+
+void frame_set(frame_t* f, const int name, const object_t* obj) {
+    object_t* found_obj = frame_find(f, name);
+    if (found_obj == NULL) {
+        append(&f->names, &name);
+        append(&f->objects, obj);
+    }
+    else {
+        free_object(found_obj);
+        memcpy(found_obj, obj, sizeof(object_t));
+    }
+}

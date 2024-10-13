@@ -21,9 +21,9 @@ typedef enum token_type {
 #define RESERVED_ID_NUM 3
 extern const char* const RESERVED_IDS[RESERVED_ID_NUM];
 typedef enum reserved_id_name {
-    RESERVED_NAME_NULL,
-    RESERVED_NAME_INPUT,
-    RESERVED_NAME_OUTPUT
+    RESERVED_ID_NULL,
+    RESERVED_ID_INPUT,
+    RESERVED_ID_OUTPUT
 } reserved_id_name_enum;
 
 
