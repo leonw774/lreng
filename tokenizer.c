@@ -65,42 +65,6 @@ get_op_enum(token_t* last_token, char* op_str) {
     return -1;
 }
 
-/* TODO: move this to evaluater */
-/* transform binary and hex string into decimal */
-void
-rebase_to_dec(dynarr_t* str) {
-    /* translate hex string to deciaml string */
-    /* because we use '0x' and '0b' prefix, set base as 0 */
-    double length_ratio;
-    char* strptr = (char*) str->data;
-    unsigned long number;
-    if (strptr[0] == '0' && strptr[1] == 'x') {
-        length_ratio = 1.20411998266; /* log(16) / log(10) */
-        number = strtol(str->data, NULL, 0);
-    }
-    else if (strptr[0] == '0' && strptr[1] == 'b') {
-        length_ratio = 0.30102999566; /* log(2) / log(10) */
-        int i = 2;
-        number = 0;
-        for (; strptr[i] != '\0'; i++) {
-            number <<= 1;
-            number |= (strptr[i] == '1');
-        }
-    }
-    else {
-        printf("rebase_to_dec: bad str format\n");
-        return;
-    }
-    int strlen_upper_bound = (str->count - 2) * length_ratio + 1;
-    /* direct manipulate the data at low level */
-    free(str->data);
-    str->data = malloc(strlen_upper_bound * sizeof(char));
-    str->cap = strlen_upper_bound;
-    sprintf(str->data, "%d", number);
-    str->count = strlen(str->data);
-}
-
-
 /* for updating line, col, and pos */
 typedef struct linecol_iterator {
     const char* src;
@@ -150,11 +114,22 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos) {
                 "bad op name"
             );
         }
-        token_t new_token = {{.op = op}, type, pos};
+        /* if is a empty function call, add null */
+        if (((token_t*) back(&cur_cargo->tokens))->name == OP_FCALL
+            && type == TOK_RB) {
+            token_t null_tok = {
+                RESERVED_IDS[RESERVED_NAME_NULL],
+                RESERVED_NAME_NULL,
+                TOK_ID,
+                pos
+            };
+            append(&cur_cargo->tokens, &null_tok);
+        }
+        token_t new_token = {NULL, op, type, pos};
         append(&cur_cargo->tokens, &new_token);
     }
     else {
-        if (cur_cargo->str.count >= 128) {
+        if (cur_cargo->str.size >= 128) {
             throw_syntax_error(
                 pos.line, pos.col,
                 "token length cannot exceed 127"
@@ -165,7 +140,7 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos) {
             printf("harvest: empty cargo.str\n");
             return;
         }
-        token_t new_token = {tok_str, type, pos};
+        token_t new_token = {tok_str, -1, type, pos};
         append(&cur_cargo->tokens, &new_token);
     }
     reset_dynarr(&cur_cargo->str);
@@ -200,17 +175,17 @@ state_ret op_state(linecol_iterator_t* pos_iter, cargo cur_cargo);
 
 void
 print_state_name(state_ret (*state_func)(linecol_iterator_t*, cargo)) {
-    if (state_func == &ws_state) printf("%-8s", "ws");
-    else if (state_func == &comment_state) printf("%-8s", "comment");
-    else if (state_func == &zero_state) printf("%-8s", "zero");
-    else if (state_func == &num_state) printf("%-8s", "num");
-    else if (state_func == &hex_state) printf("%-8s", "hex");
-    else if (state_func == &bin_state) printf("%-8s", "bin");
-    else if (state_func == &ch_open_state) printf("%-8s", "ch_open");
-    else if (state_func == &ch_esc_state) printf("%-8s", "ch_esc");
-    else if (state_func == &ch_lit_state) printf("%-8s", "ch_lit");
-    else if (state_func == &id_state) printf("%-8s", "id");
-    else if (state_func == &op_state) printf("%-8s", "op");
+    if (state_func == &ws_state) printf("%-6s", "ws");
+    else if (state_func == &comment_state) printf("%-6s", "com");
+    else if (state_func == &zero_state) printf("%-6s", "zero");
+    else if (state_func == &num_state) printf("%-6s", "num");
+    else if (state_func == &hex_state) printf("%-6s", "hex");
+    else if (state_func == &bin_state) printf("%-6s", "bin");
+    else if (state_func == &ch_open_state) printf("%-6s", "copen");
+    else if (state_func == &ch_esc_state) printf("%-6s", "cesc");
+    else if (state_func == &ch_lit_state) printf("%-6s", "clit");
+    else if (state_func == &id_state) printf("%-6s", "id");
+    else if (state_func == &op_state) printf("%-6s", "op");
 }
 
 /* define the states */
@@ -357,17 +332,17 @@ state_ret
 hex_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     char c = linecol_read(pos_iter);
     if (c == '\0') {
-        rebase_to_dec(&cur_cargo.str);
+        // rebase_to_dec(&cur_cargo.str);
         harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {NULL, cur_cargo};
     }
     else if (isspace(c)) {
-        rebase_to_dec(&cur_cargo.str);
+        // rebase_to_dec(&cur_cargo.str);
         harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {&ws_state, cur_cargo};
     }
     else if (c == COMMENT_CHAR) {
-        rebase_to_dec(&cur_cargo.str);
+        // rebase_to_dec(&cur_cargo.str);
         harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {&comment_state, cur_cargo};
     }
@@ -376,7 +351,7 @@ hex_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&hex_state, cur_cargo};
     }
     else if (IS_OP(c)) {
-        rebase_to_dec(&cur_cargo.str);
+        // rebase_to_dec(&cur_cargo.str);
         harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         append(&cur_cargo.str, &c);
         return (state_ret) {&op_state, cur_cargo};
@@ -395,17 +370,17 @@ state_ret
 bin_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     char c = linecol_read(pos_iter);
     if (c == '\0') {
-        rebase_to_dec(&cur_cargo.str);
+        // rebase_to_dec(&cur_cargo.str);
         harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {NULL, cur_cargo};
     }
     else if (isspace(c)) {
-        rebase_to_dec(&cur_cargo.str);
+        // rebase_to_dec(&cur_cargo.str);
         harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {&ws_state, cur_cargo};
     }
     else if (c == COMMENT_CHAR) {
-        rebase_to_dec(&cur_cargo.str);
+        // rebase_to_dec(&cur_cargo.str);
         harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {&comment_state, cur_cargo};
     }
@@ -414,7 +389,7 @@ bin_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&hex_state, cur_cargo};
     }
     else if (IS_OP(c)) {
-        rebase_to_dec(&cur_cargo.str);
+        // rebase_to_dec(&cur_cargo.str);
         harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         append(&cur_cargo.str, &c);
         return (state_ret) {&op_state, cur_cargo};
@@ -494,7 +469,7 @@ ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     int digit_num = (lit_char < 10) ? 1 : ((lit_char < 100) ? 2 : 3);
     free(cur_cargo.str.data);
     cur_cargo.str.data = malloc(4 * sizeof(char));
-    cur_cargo.str.count = digit_num;
+    cur_cargo.str.size = digit_num;
     cur_cargo.str.cap = 4;
     sprintf(cur_cargo.str.data, "%d\0", lit_char);
     harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
@@ -590,7 +565,7 @@ op_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&id_state, cur_cargo};
     }
     else if (IS_OP(c)) {
-        if (cur_cargo.str.count == 1
+        if (cur_cargo.str.size == 1
             && !is_2char_op(((char*) cur_cargo.str.data)[0], c)) {
             /* if is not a 2-character operator */
             type = get_op_tok_type(cur_cargo.str.data);
@@ -647,13 +622,13 @@ tokenize(const char* src, const int src_len, const unsigned char is_debug) {
             char* tmp_str = to_str(&cur_cargo.str);
             printf("str=\"%s\" ", tmp_str);
             free(tmp_str);
-            int count = cur_cargo.tokens.count;
-            if (prev_tokens_count != count && count) {
+            int size = cur_cargo.tokens.size;
+            if (prev_tokens_count != size && size) {
                 printf("new_token=");
                 print_token(
-                    ((token_t*) cur_cargo.tokens.data)[count - 1]
+                    ((token_t*) cur_cargo.tokens.data)[size - 1]
                 );
-                prev_tokens_count = count;
+                prev_tokens_count = size;
             }
             puts("");
         }
@@ -661,11 +636,38 @@ tokenize(const char* src, const int src_len, const unsigned char is_debug) {
     if (is_debug) {
         printf("tokens=");
         int i;
-        for (i = 0; i < cur_cargo.tokens.count; i++) {
+        for (i = 0; i < cur_cargo.tokens.size; i++) {
             print_token(((token_t*) cur_cargo.tokens.data)[i]);
             printf(" ");
         }
         puts("");
+    }
+
+    /* give identifier names */
+    int i, j;
+    /* init name str map with keywords */
+    dynarr_t name_str_map = new_dynarr(sizeof(char*));
+    for (i = 0; i < RESERVED_ID_NUM; i++) {
+        append(&name_str_map, &RESERVED_IDS[i]);
+    }
+    for (i = 0; i < cur_cargo.tokens.size; i++) {
+        token_t cur_token = ((token_t*) cur_cargo.tokens.data)[i];
+        if (cur_token.type != TOK_ID) {
+            continue;
+        }
+        const char* cur_token_str = cur_token.str;
+        int given_name = name_str_map.size;
+        for (j = 0; j < name_str_map.size; j++) {
+            char* str = ((char**) name_str_map.data)[j];
+            if (strcmp(str, cur_token_str) == 0) {
+                given_name = j;
+                break;
+            }
+        }
+        ((token_t*) cur_cargo.tokens.data)[i].name = given_name;
+        if (given_name == name_str_map.size) {
+            append(&name_str_map, &cur_token_str);
+        }
     }
 
     free_dynarr(&cur_cargo.str);

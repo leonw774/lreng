@@ -1,6 +1,6 @@
 #include "operators.h"
 
-const char* OP_STRS[] = {
+const char* const OP_STRS[] = {
     "{", "}", "@",
     "(", ")", "(",
     "+", "-", "!", "`", "~",

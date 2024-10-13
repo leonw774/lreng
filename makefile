@@ -1,5 +1,5 @@
 CFLAGS = -O2
-DEPS = dynarr.c token.c tree.c errors.c operators.c tokenizer.c tree_parser.c
+DEPS = *.c
 
 all: lreng
 
@@ -7,7 +7,7 @@ debug: CFLAGS = -g
 debug: all
 
 clean:
-	rm lreng *.o
+	rm lreng
 
 lreng: ${DEPS} lreng.c
 	gcc ${CFLAGS} -o $@ $^;

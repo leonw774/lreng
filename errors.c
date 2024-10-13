@@ -10,5 +10,5 @@ throw_syntax_error(int line, int col, const char* msg) {
     else {
         fprintf(stderr, "[SyntaxError]: Line %d col %d: %s\n", line, col, msg);
     }
-    exit(2);
+    exit(SYNTAX_ERR_CODE);
 }

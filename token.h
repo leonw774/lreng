@@ -8,6 +8,7 @@ typedef struct linecol {
     unsigned int col;
 } linecol_t;
 
+
 typedef enum token_type {
     TOK_ID, /*identifier */
     TOK_NUM, /* number */
@@ -16,13 +17,19 @@ typedef enum token_type {
     TOK_RB /* right bracket */
 } token_type_enum;
 
-typedef union token_payload {
-    char* str;
-    int op;
-} token_payload_t;
+
+#define RESERVED_ID_NUM 3
+extern const char* const RESERVED_IDS[RESERVED_ID_NUM];
+typedef enum reserved_id_name {
+    RESERVED_NAME_NULL,
+    RESERVED_NAME_INPUT,
+    RESERVED_NAME_OUTPUT
+} reserved_id_name_enum;
+
 
 typedef struct token {
-    token_payload_t payload;
+    const char* const str;
+    int name;
     token_type_enum type;
     linecol_t pos;
 } token_t;

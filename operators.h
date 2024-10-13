@@ -23,9 +23,9 @@ typedef enum op_name {
     OP_EXPRSEP
 } op_name_enum;
 
-extern const unsigned char OP_PRECEDENCES[];
+extern const char* const OP_STRS[];
 
-extern const char* OP_STRS[];
+extern const unsigned char OP_PRECEDENCES[];
 
 extern const char OP_CHARS[];
 

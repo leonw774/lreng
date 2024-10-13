@@ -9,16 +9,16 @@ new_dynarr(int elem_size) {
     x.data = malloc(elem_size * DYN_ARR_INIT_CAP);
     memset(x.data, 0, elem_size * DYN_ARR_INIT_CAP);
     x.elem_size = elem_size;
-    x.count = 0;
+    x.size = 0;
     x.cap = DYN_ARR_INIT_CAP;
     return x;
 };
 
 void
 free_dynarr(dynarr_t* x) {
-    if (x->data != NULL && x->count != 0) {
+    if (x->data != NULL && x->size != 0) {
         free(x->data);
-        x->count = x->cap = 0;
+        x->size = x->cap = 0;
     } 
 };
 
@@ -33,39 +33,39 @@ void*
 to_str(dynarr_t* x) {
     if (x->data == NULL) return NULL;
     void* arr;
-    arr = malloc(x->elem_size * x->count + 1);
-    ((char*) arr)[x->elem_size * x->count] = '\0';
-    memcpy(arr, x->data, x->elem_size * x->count);
+    arr = malloc(x->elem_size * x->size + 1);
+    ((char*) arr)[x->elem_size * x->size] = '\0';
+    memcpy(arr, x->data, x->elem_size * x->size);
     return arr;
 }
 
 void
-append(dynarr_t* x, void* elem) {
+append(dynarr_t* x, const void* const elem) {
     if (x->data == NULL) return;
-    if (x->count == x->cap) {
+    if (x->size == x->cap) {
         x->cap *= 2;
         int new_cap_byte_sz = x->elem_size * x->cap;
         void* tmp_mem = malloc(new_cap_byte_sz);
         memset(tmp_mem, 0, new_cap_byte_sz);
-        memcpy(tmp_mem, x->data, x->elem_size * x->count);
+        memcpy(tmp_mem, x->data, x->elem_size * x->size);
         free(x->data);
         x->data = tmp_mem;
     }
-    memcpy(x->data + x->count * x->elem_size, elem, x->elem_size);
-    x->count += 1;
+    memcpy(x->data + x->size * x->elem_size, elem, x->elem_size);
+    x->size += 1;
 };
 
 void
 pop(dynarr_t* x) {
-    x->count--;
+    x->size--;
 }
 
 void*
 back(dynarr_t* x) {
-    if (x->data == NULL || x->count == 0) {
+    if (x->data == NULL || x->size == 0) {
         return NULL;
     }
-    return x->data + (x->count - 1) * x->elem_size;
+    return x->data + (x->size - 1) * x->elem_size;
 }
 
 /* concat y onto x
@@ -79,8 +79,8 @@ concat(dynarr_t* x, dynarr_t* y) {
     if (x->elem_size == y->elem_size) {
         return 0;
     }
-    if (x->count + y->count > x->cap) {
-        x->cap = x->count + y->count;
+    if (x->size + y->size > x->cap) {
+        x->cap = x->size + y->size;
         int new_cap_byte_sz = x->elem_size * x->cap;
         void* tmp_mem = malloc(new_cap_byte_sz);
         memset(tmp_mem, 0, new_cap_byte_sz);
@@ -89,10 +89,10 @@ concat(dynarr_t* x, dynarr_t* y) {
         x->data = tmp_mem;
     }
     memcpy(
-        x->data + x->count * x->elem_size,
+        x->data + x->size * x->elem_size,
         y->data,
-        y->count * y->elem_size
+        y->size * y->elem_size
     );
-    x->count += y->count;
+    x->size += y->size;
     return 1;
 };

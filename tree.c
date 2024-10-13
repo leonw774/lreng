@@ -24,7 +24,7 @@ tree_iter_init(tree_t tree) {
 
 token_t*
 tree_iter_get(tree_infix_iterater_t* iter) {
-    if (iter->index_stack.count == 0) {
+    if (iter->index_stack.size == 0) {
         return NULL;
     }
     int cur_index = *(int*) back(&iter->index_stack);
@@ -33,7 +33,7 @@ tree_iter_get(tree_infix_iterater_t* iter) {
 
 void
 tree_iter_next(tree_infix_iterater_t* iter) {
-    if (iter->index_stack.count == 0) {
+    if (iter->index_stack.size == 0) {
         return;
     }
     /* get */
@@ -63,7 +63,7 @@ free_tree_iter(tree_infix_iterater_t* tree_iter) {
 void
 print_tree(tree_t tree) {
     tree_infix_iterater_t iter = tree_iter_init(tree);
-    while (iter.index_stack.count != 0) {
+    while (iter.index_stack.size != 0) {
         /* get */
         int cur_index = *(int*) back(&iter.index_stack),
             next_depth = (*(int*) back(&iter.depth_stack)) + 1;
@@ -72,10 +72,10 @@ print_tree(tree_t tree) {
 
         if (cur_index != -1) {
             /* print */
-            token_t cur_token_ptr =
+            token_t cur_token =
                 ((token_t*) (iter.tree.tokens.data))[cur_index];
             printf("%*c", next_depth - 1, ' ');
-            print_token(cur_token_ptr);
+            print_token(cur_token);
             printf("\n");
             fflush(stdout);
             

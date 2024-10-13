@@ -1,17 +1,19 @@
 #include "token.h"
 #include <stdio.h>
 
+const char* const RESERVED_IDS[RESERVED_ID_NUM] = {
+    "null", "input", "output"
+};
+
 int
 print_token(token_t t) {
     const char* token_str;
     const char* type_str;
-    int op_enum_int = -1;
     if (t.type == TOK_OP || t.type == TOK_LB || t.type == TOK_RB) {
-        token_str = OP_STRS[t.payload.op];
-        op_enum_int = t.payload.op;
+        token_str = OP_STRS[t.name];
     }
     else {
-        token_str = t.payload.str;
+        token_str = t.str;
     }
     switch (t.type) {
         case TOK_ID:
@@ -34,7 +36,7 @@ print_token(token_t t) {
             type_str = "";
             break;
     }
-    return (op_enum_int == -1)
-        ? printf("(%s, \"%s\")", type_str, token_str)
-        : printf("(%s, \"%s\", %d)", type_str, token_str, op_enum_int);
+    return (t.name == -1)
+        ? printf("[%s \"%s\"]", type_str, token_str, t.name)
+        : printf("[%s \"%s\" %d]", type_str, token_str, t.name);
 }

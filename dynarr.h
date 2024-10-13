@@ -7,7 +7,7 @@
 typedef struct dynarr {
     void* data;
     int elem_size; 
-    int count;
+    int size;
     int cap;
 } dynarr_t;
 
@@ -19,7 +19,7 @@ extern void reset_dynarr(dynarr_t* x);
 
 extern void* to_str(dynarr_t* x);
 
-extern void append(dynarr_t* x, void* elem);
+extern void append(dynarr_t* x, const void* const elem);
 
 extern void pop(dynarr_t* x);
 
