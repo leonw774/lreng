@@ -33,9 +33,10 @@ void*
 to_str(dynarr_t* x) {
     if (x->data == NULL) return NULL;
     void* arr;
-    arr = malloc(x->elem_size * x->size + 1);
-    ((char*) arr)[x->elem_size * x->size] = '\0';
-    memcpy(arr, x->data, x->elem_size * x->size);
+    int arr_sz = x->elem_size * x->size;
+    arr = malloc(arr_sz + 1);
+    ((char*) arr)[arr_sz] = '\0';
+    memcpy(arr, x->data, arr_sz);
     return arr;
 }
 
@@ -51,7 +52,7 @@ append(dynarr_t* x, const void* const elem) {
         free(x->data);
         x->data = tmp_mem;
     }
-    memcpy(x->data + x->size * x->elem_size, elem, x->elem_size);
+    memcpy(x->data + x->elem_size * x->size, elem, x->elem_size);
     x->size += 1;
 };
 
@@ -88,11 +89,8 @@ concat(dynarr_t* x, dynarr_t* y) {
         free(x->data);
         x->data = tmp_mem;
     }
-    memcpy(
-        x->data + x->size * x->elem_size,
-        y->data,
-        y->size * y->elem_size
-    );
+    int arr_sz = x->size * x->elem_size;
+    memcpy(x->data + arr_sz, y->data, arr_sz);
     x->size += y->size;
     return 1;
 };

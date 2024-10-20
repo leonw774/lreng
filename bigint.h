@@ -1,10 +1,8 @@
 #include <stdlib.h>
+#include <stdint.h>
 
 #ifndef BIGINT_H
 #define BIGINT_H
-
-typedef unsigned long int uint32_t;
-typedef unsigned long long int uint64_t;
 
 typedef struct bigint {
     uint32_t invalid : 1;

@@ -360,45 +360,47 @@ bi_sub(bigint_t* a, bigint_t* b) {
     return c;
 }
 
-// bigint_t bi_mul(bigint_t* a, bigint_t* b);
+bigint_t bi_mul(bigint_t* a, bigint_t* b) {
+
+}
 
 void
-bi_abs_divmod(bigint_t* u, bigint_t* v, bigint_t* q, bigint_t* r) {
-    /* u and v would not be zero (handled in bi_div or bi_mod)
+bi_abs_divmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
+    /* _u and _v would not be zero (handled in bi_div or bi_mod)
        q and r would be renewed and are owned by caller
     */
 
     /* algorithm from Donald Knuth's 'Art of Computer Programming, Volume 2, 
        Section 4.3.1 Algorithm D
     
-       given nonnegative integers u (m+n digits) and v (n digits), we form
+       given nonnegative integers _u (m+n digits) and _v (n digits), we form
        quotent q (m+1 digits) and remainder r = u mod v (n digits)
     */
     
-    bigint_t u1, v1, a;
+    bigint_t u, v, a;
     uint32_t *uj, *v0;
-    uint32_t u_size = u->size, v_size = v->size, sign = 0;
+    uint32_t u_size = _u->size, v_size = _v->size, sign = 0;
     uint32_t d, j, k, qj, rj, vnm1, vnm2;
     uint64_t utop2;
 
-    /* ensure that q & r are zero */
+    /* ensure that q & r are new here */
     free_bigint(q);
     free_bigint(r);
 
     /* ensure that u > v */
     if (u_size < v_size) {
-        bigint_t* tmp = u; u = v; v = tmp;
+        bigint_t* tmp = _u; _u = _v; _v = tmp;
         uint32_t tmp_size = u_size; v_size = u_size; u_size = tmp_size;
         sign = 1;
     }
     else {
         *q = ZERO_BIGINT();
-        *r = copy_bigint(u);
+        *r = copy_bigint(_u);
         return;
     }
     if (u_size == v_size) {
         int i = u_size - 1;
-        while (i >= 0 && u->digit[i] == v->digit[i]) {
+        while (i >= 0 && _u->digit[i] == _v->digit[i]) {
             i--;
         }
         if (i == -1) {
@@ -406,51 +408,116 @@ bi_abs_divmod(bigint_t* u, bigint_t* v, bigint_t* q, bigint_t* r) {
             *r = ZERO_BIGINT();
             return;
         }
-        if (u->digit[i] < v->digit[i]) {
+        if (_u->digit[i] < _v->digit[i]) {
             *q = ZERO_BIGINT();
-            *r = copy_bigint(u);
+            *r = copy_bigint(_u);
             return;
         }
         u_size = v_size = i + 1;
     }
 
+    /* explanation
+
+        this algorithm is long division with fast estimation of each digits. in
+        long division, where dividing _u (m+n) digit by _v (n) is performed as
+        dividing first n+1 digit of _u with n digits of v m times.
+
+        a good estimation of u/v when u has n digits and v has n-1 digits is 
+        q' = min(floor((u[n] * b + u[n-1]) / v[n-1]), b-1). we have q' >= q
+        because
+
+          q' * v[n-1] >= u[n] * b + u[n-1]
+          q' * v[n-1] * b^(n-1) >= u
+          q' >= u / (v[n-1] * b^(n-1))
+             >= u / v
+             >= floor(u / v) = q
+
+        q' is good enough because
+
+          q' <= (u[n] * b + u[n-1]) / v[n-1]
+              = (u[n] * b^n + u[n-1]) * b^(n-1) / (v[n-1] * b^(n-1))
+             <= u / (v[n-1] * b^(n-1))
+              < u / (v - b^(n-1))
+
+        and with q > u / v - 1, we have:
+
+          q' - q < u / (v - b^(n-1)) - (u / v - 1)
+                 = (uv - (uv - u * b^(n-1))) / (v * (v - b^(n-1))) + 1
+                 = u * b^(n-1) / v / (v - b^(n-1)) + 1
+                 = u / v * (b^(n-1) / (v - b^(n-1))) + 1
+                 = u / v / v[n-1] + 1
+
+          q' - q - 1 < (u / v) / v[n-1] < (q + 1) / v[n-1]
+
+          (q' - q - 1) * v[n-1] < (q + 1) <= b
+
+          q' - q < b / v[n-1] + 1
+
+        . we see that the difference of q' and q is decided by v[n-1]. if we
+        want q' - q < 3, we need b / v[n-1] + 1 < 3, which means v[n-1] > b / 2.
+        this is what the normalization step does.
+        
+        to eliminate the case that q' = q + 2, we need the second significant
+        digit of u and v. using:
+
+          r' = (u[n] * b + u[n-1]) - (q' * v[n-1])
+        
+        , there is that:
+
+          u - q'v <= u - q' * v[n-1] * b^(n-1) - ... - v[0]
+                  <= u - q' * v[n-1] * b^(n-1) - q' * v[n-2] * b^(n-2)
+                  <= u - q' * v[n-1] * b^(n-1) - q' * v[n-2] * b^(n-2)
+                   < u[n] * b^[n] + u[n-1] * b^(n-1) + (u[n-2] + 1) * b^(n-2)
+                     - q' * v[n-1] * b^(n-1) - q' * v[n-2] * b^(n-2)
+                  == (r' * b + (u[n-2] + 1) - q' * v[n2]) * b^(n-2)
+        
+        . so when q' * v[n-2] > r' * b + u[n-2], u - q'v < 0, therefore q' > q
+        and we can safely substract q' with 1 to eliminate the q' = q + 2 case.
+
+    */
+
     /* 1. normalize:
-       shift u and v so that the top digit of v > floor(base / 2) and increase
+       shift u and v so that the top digit of v >= floor(base / 2) and increase
        the size of u by one */
-    d = BASE_SHIFT - bit_length(v->digit[v->size-1]);
-    u1 = copy_bigint(u);
-    v1 = copy_bigint(v);
-    bi_extend(&u1, 1);
+    d = BASE_SHIFT - bit_length(_v->digit[_v->size-1]);
+    u = copy_bigint(_u);
+    v = copy_bigint(_v);
+    bi_extend(&u, 1);
     u_size += 1;
     if (d != 0) {
-        bi_shl(&u1, d);
-        bi_shl(&v1, d);
+        bi_shl(&u, d);
+        bi_shl(&v, d);
     }
     /* 2. initialize j:
        now u has at most m+n+1 digits and v has n digits, the quotent will
-       have at most m+1 digits. in the loop, we get these digits one by one
-       from j = m+1 to 0, by performing u[j:j+n-1] / v[0:n-1] */
-    j = u_size - v_size;
+       have at most m+1 digits. in the loop, we get quotent's digits one by one
+       from j = m to 0, by performing u[j:j+n] / v[0:n-1] (long division) */
+    j = u_size - v_size - 1;
     free_bigint(q);
     *q = new_bigint(j);
-    v0 = v->digit;
-    vnm1 = v->digit[v_size-1];
-    vnm2 = v->digit[v_size-2];
-    for (uj = u->digit + j; uj >= u->digit; uj--) {
-        /* 3. Estimate qj and rj */
+    v0 = v.digit;
+    vnm1 = v.digit[v_size-1];
+    vnm2 = v.digit[v_size-2];
+    /* for j = m to 0 */
+    for (uj = u.digit + j - 1; uj >= u.digit; uj--) {
+        /* 3. Estimate qj and rj:
+           this step guarentee that q[j] <= qj <= q[j] + 1 */
         utop2 = (uint64_t) uj[v_size] << BASE_SHIFT + uj[v_size-1];
-        qj = (uint32_t) (utop2 / vnm1);
+        qj = (uint32_t) (utop2 / vnm1); /* this makes q[j] <= qj <= q[j] + 2 */
         rj = (uint32_t) (utop2 % vnm1);
+        /* this check if makes qj == q[j] + 2 */
         while (qj == DIGIT_BASE
             || qj * vnm2 > ((uint64_t) rj << BASE_SHIFT) | uj[u_size-2]) {
             qj -= 1;
             rj += vnm1;
-            if (rj < DIGIT_BASE) {
+            if (rj >= DIGIT_BASE) {
                 break;
             }
         }
 
-        /* 4. Substract u[j:j+n] by qj * v[0:n-1] */
+        /* 4. Substract u[j:j+n] by qj * v[0:n-1]
+           because qj could be larger byone, the borrow need to be signed to
+           detect that */
         int32_t borrow = 0;
         int64_t borrow_tmp = 0;
         for (k = 0; k < v_size; k++) {
@@ -463,7 +530,7 @@ bi_abs_divmod(bigint_t* u, bigint_t* v, bigint_t* q, bigint_t* r) {
         }
 
         /* 5. if the result of last step is negative i.e. borrow + u[j+n] < 0,
-           decrease qj by 1. */
+           decrease qj by 1 and add v[0:n-1] back to u[j:j+n] */
         if ((int32_t) uj[v_size] + borrow < 0) {
             uint32_t carry = 0;
             /* add v[0:n-1] back to u[j:j+n] */
@@ -480,7 +547,7 @@ bi_abs_divmod(bigint_t* u, bigint_t* v, bigint_t* q, bigint_t* r) {
     }
 
     /* the content of u1 (shifted u) is now shifted remainder, shift it back */  
-    *r = copy_bigint(&u1);
+    *r = copy_bigint(&u);
     bi_shr(r, d);
 
     /* normalize the result */
@@ -489,26 +556,82 @@ bi_abs_divmod(bigint_t* u, bigint_t* v, bigint_t* q, bigint_t* r) {
 }
 
 
-bigint_t bi_div(bigint_t* a, bigint_t* b);
+bigint_t bi_div(bigint_t* a, bigint_t* b) {
+    if (b->size == 0) {
+        printf("bi_div: divided by zero\n");
+        exit(OTHER_ERR_CODE);
+        // return INVALID_BIGINT();
+    }
+    if (a->size == 0) {
+        return ZERO_BIGINT();
+    }
+    // if b == 1, return a
+    if (b->size == 1 && b->digit[0] == 1) {
+        return *a;
+    }
+    // a == b, return 1
+    if (bi_eq(a, b).size != 0) {
+        return ONE_BIGINT();
+    }
+    // if a < b, return 0
+    if (a->size == b->size && a->digit[a->size -1] < b->digit[b->size -1]
+        || a->size < b->size) {
+        return ZERO_BIGINT();
+    }
+    bigint_t q, r;
+    bi_abs_divmod(a, b, &q, &r);
+    if (a->sign == b->sign) {
+        return q;
+    }
+    else {
+        return r;
+    }
+}
 
 bigint_t
 bi_mod(bigint_t* a, bigint_t* b) {
-    if (b->sign == 1) {
+    if (b->size == 0) {
+        printf("bi_mod: divided by zero\n");
         return INVALID_BIGINT();
     }
-    if (a->size == 0 || a->size > b->size) {
+    if (a->size == 0) {
         return ZERO_BIGINT();
     }
-    if (a->size == b->size && a->digit[a->size -1] < b->digit[b->size -1]) {
+    // if b == 1, return 0
+    if (b->size == 1 && b->digit[0] == 1) {
         return ZERO_BIGINT();
     }
-    bigint_t q;
-    bigint_t tmp = copy_bigint(a);
-    /* estimated quotent = (a_size - b_size) * base */
-    /* tmp = a - estimated quotent * b */
-    bigint_t m;
-    /* m = tmp - tmp / b */
-    return m;
+    // a == b, return 0
+    if (bi_eq(a, b).size != 0) {
+        return ZERO_BIGINT();
+    }
+    // if a < b, return a
+    if (a->size == b->size && a->digit[a->size -1] < b->digit[b->size -1]
+        || a->size < b->size) {
+        return *a;
+    }
+    bigint_t q, r, _r;
+    bi_abs_divmod(a, b, &q, &r);
+    if (a->sign) {
+        if (b->sign) {
+            r.sign = 1;
+            return r;
+        }
+        else {
+            return bi_abs_sub(&r, b);
+        }
+    }
+    else {
+        if (b->sign) {
+            _r = bi_abs_sub(&r, b);
+            _r.sign = 1;
+            return _r;
+        }
+        else {
+            bi_abs_divmod(a, b, &q, &r);
+            return r;
+        }
+    }
 }
 
 bigint_t
@@ -517,13 +640,16 @@ bi_eq(bigint_t* a, bigint_t* b) {
         || memcmp(a->digit, b->digit, a->size)) {
         return ZERO_BIGINT();
     }
-    bigint_t res = new_bigint(1);
-    res.digit[0] = 1;
-    return res;
-
+    return ONE_BIGINT();
 }
 
-// bigint_t bi_lt(bigint_t* a, bigint_t* b);
+bigint_t bi_lt(bigint_t* a, bigint_t* b) {
+    bigint_t is_eq = bi_eq(a, b);
+    if (is_eq.size != 0) {
+        return ZERO_BIGINT();
+    }
+    return (bi_sub(b, a).sign == 0) ? ONE_BIGINT() : ZERO_BIGINT();
+}
 
 
 /* expect string of decimal, heximal, or binary uint32_teger */
