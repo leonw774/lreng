@@ -34,4 +34,5 @@
 # Others
 .vscode/
 lreng
+bigint_test
 debug.txt

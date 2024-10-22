@@ -14,16 +14,18 @@ typedef struct bigint {
 extern bigint_t new_bigint(uint32_t size);
 extern bigint_t copy_bigint(bigint_t* x);
 extern void free_bigint(bigint_t*);
-extern int print_bigint(bigint_t* x);
+
+extern int bi_eq(bigint_t* a, bigint_t* b);
+extern int bi_lt(bigint_t* a, bigint_t* b);
 
 extern bigint_t bi_add(bigint_t* a, bigint_t* b);
 extern bigint_t bi_sub(bigint_t* a, bigint_t* b);
 extern bigint_t bi_mul(bigint_t* a, bigint_t* b);
 extern bigint_t bi_div(bigint_t* a, bigint_t* b);
 extern bigint_t bi_mod(bigint_t* a, bigint_t* b);
-extern bigint_t bi_eq(bigint_t* a, bigint_t* b);
-extern bigint_t bi_lt(bigint_t* a, bigint_t* b);
 
+extern void print_bigint(bigint_t* x);
+extern void print_bigint_dec(bigint_t* x);
 extern bigint_t bigint_from_str(const char* str);
 extern bigint_t bigint_from_tens_power(uint32_t exp);
 
