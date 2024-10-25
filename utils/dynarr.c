@@ -46,8 +46,7 @@ append(dynarr_t* x, const void* const elem) {
     if (x->size == x->cap) {
         x->cap *= 2;
         int new_cap_byte_sz = x->elem_size * x->cap;
-        void* tmp_mem = malloc(new_cap_byte_sz);
-        memset(tmp_mem, 0, new_cap_byte_sz);
+        void* tmp_mem = calloc(x->elem_size, x->cap);
         memcpy(tmp_mem, x->data, x->elem_size * x->size);
         free(x->data);
         x->data = tmp_mem;
@@ -82,10 +81,8 @@ concat(dynarr_t* x, dynarr_t* y) {
     }
     if (x->size + y->size > x->cap) {
         x->cap = x->size + y->size;
-        int new_cap_byte_sz = x->elem_size * x->cap;
-        void* tmp_mem = malloc(new_cap_byte_sz);
-        memset(tmp_mem, 0, new_cap_byte_sz);
-        memcpy(tmp_mem, x->data, new_cap_byte_sz);
+        void* tmp_mem = calloc(x->elem_size, x->cap);
+        memcpy(tmp_mem, x->data, x->elem_size * x->size);
         free(x->data);
         x->data = tmp_mem;
     }

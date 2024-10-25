@@ -1,15 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "errors.h"
 #include "dynarr.h"
-#include "objects.h"
+#include "bigint.h"
 
 int bit_length(unsigned long x) {
 #if (defined(__clang__) || defined(__GNUC__))
     if (x != 0) {
-        // __builtin_clzl() is available since GCC 3.4.
-        // Undefined behavior for x == 0.
+        /* __builtin_clzl() is available since GCC 3.4.
+           Undefined behavior for x == 0. */
         return (int)sizeof(unsigned long) * 8 - __builtin_clzl(x);
     }
     else {
@@ -34,8 +33,6 @@ int bit_length(unsigned long x) {
 #define DIGIT_BASE ((uint32_t) 1 << BASE_SHIFT)
 #define CARRY_MASK ((uint32_t) 1 << BASE_SHIFT)
 #define DIGIT_MASK ((uint32_t) 1 << BASE_SHIFT) - 1
-#define IS_ONE_DIGIT(x) (x->size == 1 \
-    && x->digit[0] < ((uint32_t) 1 << (BASE_SHIFT - 1)))
 #define ZERO_BIGINT() ((bigint_t) {\
     .invalid = 0, .sign = 0, .size = 0, .digit = NULL})
 #define INVALID_BIGINT() ((bigint_t) {\
@@ -58,7 +55,7 @@ new_bigint(uint32_t size) {
     x.size = size;
     x.sign = 0;
     if (size != 0) {
-        x.digit = (uint32_t*) malloc(size * sizeof(uint32_t));
+        x.digit = (uint32_t*) calloc(size, sizeof(uint32_t));
         memset(x.digit, 0, size * sizeof(uint32_t));
     }
     else {
@@ -83,7 +80,7 @@ copy_bigint(bigint_t* x) {
     y.invalid = 0;
     y.size = x->size;
     y.sign = x->sign;
-    y.digit = malloc(x->size * sizeof(uint32_t));
+    y.digit = calloc(x->size, sizeof(uint32_t));
     memcpy(y.digit, x->digit, x->size * sizeof(uint32_t));
     return y;
 }
@@ -218,7 +215,7 @@ bi_abs_add(bigint_t* a, bigint_t* b) {
     bigint_t p;
     uint32_t a_size = a->size, b_size = b->size;
     /* handle one digit */
-    if (IS_ONE_DIGIT(a) && IS_ONE_DIGIT(b)) {
+    if (a->size == 1 && b->size == 1) {
         uint32_t carry = a->digit[0] + b->digit[0];
         if (carry & CARRY_MASK) {
             p = new_bigint(2);
@@ -234,7 +231,7 @@ bi_abs_add(bigint_t* a, bigint_t* b) {
     /* ensure a's size is larger */
     if (a_size < b_size) {
         bigint_t* tmp = a; a = b; b = tmp;
-        uint32_t tmp_size = a_size; b_size = a_size; a_size = tmp_size;
+        uint32_t tmp_size = a_size; a_size = b_size; b_size = tmp_size;
     }
     p = new_bigint(a_size + 1);
     uint32_t i, carry = 0;
@@ -259,7 +256,7 @@ bi_abs_sub(bigint_t* a, bigint_t* b) {
     uint32_t a_size = a->size, b_size = b->size;
     uint32_t sign = 0;
     /* handle one digit */
-    if (IS_ONE_DIGIT(a) && IS_ONE_DIGIT(b)) {
+    if (a->size == 1 && b->size == 1) {
         d = new_bigint(1);
         if (a->digit[0] > b->digit[0]) {
             d.digit[0] = a->digit[0] - b->digit[0];
@@ -273,7 +270,7 @@ bi_abs_sub(bigint_t* a, bigint_t* b) {
     /* ensure that a > b */
     if (a_size < b_size) {
         bigint_t* tmp = a; a = b; b = tmp;
-        uint32_t tmp_size = a_size; b_size = a_size; a_size = tmp_size;
+        uint32_t tmp_size = a_size; a_size = b_size; b_size = tmp_size;
         sign = 1;
     }
     if (a_size == b_size) {
@@ -429,9 +426,6 @@ bi_abs_divmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
     d = BASE_SHIFT - bit_length(_v->digit[_v->size-1]);
     u = copy_bigint(_u);
     v = copy_bigint(_v);
-    printf("d %d\n", d);
-    printf("u before shift\n"); print_bigint(&u); puts("");
-    printf("v before shift\n"); print_bigint(&v); puts("");
 
     bi_extend(&u, 1);
     u_size += 1;
@@ -439,8 +433,6 @@ bi_abs_divmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
         bi_shl(&u, d);
         bi_shl(&v, d);
     }
-    printf("u\n"); print_bigint(&u); puts("");
-    printf("v\n"); print_bigint(&v); puts("");
 
     /* 2. initialize j:
        now u has at most m+n+1 digits and v has n digits, the quotent will
@@ -457,25 +449,20 @@ bi_abs_divmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
         ujn = uj[v_size];
         ujnm1 = uj[v_size-1];
         ujnm2 = (v_size > 1) ? uj[v_size-2] : 0;
-        printf("j=%d uj[v_size+1]=%lx uj[v_size]=%lx uj[v_size-1]=%lx\n",
-            j, ujn, ujnm1, ujnm2);
         /* 3. Estimate qj and rj:
            this step guarentee that q[j] <= qj <= q[j] + 1 */
         utop2 = ((uint64_t) ujn << BASE_SHIFT) | ujnm1;
-        qj = (uint32_t) (utop2 / vnm1); /* this makes q[j] <= qj <= q[j] + 2 */
+        qj = (uint32_t) (utop2 / vnm1);
         rj = (uint32_t) (utop2 % vnm1);
-        printf("utop2=%016lx qj=%08x rj=%08x\n", utop2, qj, rj);
-        /* this check if makes qj == q[j] + 2 */
         while (qj == DIGIT_BASE
             || (uint64_t) qj * vnm2 > ((uint64_t) rj << BASE_SHIFT) + ujnm2) {
-            printf("check: qj * v[n-2] > rj * b + u[j+n-2]\n");
             qj -= 1;
             rj += vnm1;
-            printf("new qj=%08x rj=%08x\n", utop2, qj, rj);
             if (rj < DIGIT_BASE) {
                 break;
             }
         }
+
         /* 4. Substract u[j:j+n] by qj * v[0:n-1]
            because qj could be larger byone, the borrow need to be signed to
            detect that */
@@ -483,22 +470,16 @@ bi_abs_divmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
         int64_t borrow_64 = 0;
         for (k = 0; k < v_size; k++) {
             /* need to use 64 bit because qj * v[k] has 64 bit result */
-            printf("k=%d qj * v[k]=%016lx\n", k, (uint64_t) qj * (v0[k]));
             borrow_64 = (int64_t) uj[k] + borrow - (int64_t) qj * v0[k];
-            printf("borrow_64=%016lx\n", borrow_64 );
             uj[k] = (uint32_t) borrow_64 & DIGIT_MASK;
-            printf("u[%d+%d]=%08x\n", j, k, uj[k]);
             /* preform arithmetic right shift and cast to 32 bit */
             borrow = (int32_t) (borrow_64 >> BASE_SHIFT);
-            printf("borrow=%08x\n", borrow);
         }
         uj[v_size] += borrow;
-        printf("uj[v_size] as int32 %d\n", (int32_t) uj[v_size]);
 
         /* 5. if the result of last step is negative i.e. borrow + u[j+n] < 0,
            decrease qj by 1 and add v[0:n-1] back to u[j:j+n] */
         if (((int32_t) uj[v_size]) < 0) {
-            printf("uj[vize] - borrow < 0");
             uint32_t carry = 0;
             /* add v[0:n-1] back to u[j:j+n] */
             for (k = 0; k < v_size; k++) {
@@ -510,16 +491,12 @@ bi_abs_divmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
         }
 
         /* 6. store and quotent digit qj into q */
-        printf("qj=%d\n", qj);
         q->digit[j] = qj;
-        printf("q\n"); print_bigint(q); puts("");
     }
 
     /* the content of u (shifted _u) is now shifted remainder, shift it back */  
     *r = copy_bigint(&u);
-    printf("r shifted\n"); print_bigint(r); puts("");
     bi_shr(r, d);
-    printf("r\n"); print_bigint(r); puts("");
     /* normalize the result */
     bi_normalize(r);
     bi_normalize(q);
@@ -596,28 +573,158 @@ bi_sub(bigint_t* a, bigint_t* b) {
 }
 
 bigint_t bi_mul(bigint_t* a, bigint_t* b) {
+    bigint_t m;
+    uint64_t i64m, a0, carry = 0;
+    uint32_t i, a_size = a->size, b_size = b->size;
+    
+    /* base conditions */
+    if (a->size == 0 || b->size == 0) {
+        return ZERO_BIGINT();
+    }
+    if (a->size == 1 && a->digit[0] == 1) {
+        return copy_bigint(b);
+    }
+    if (b->size == 1 && b->digit[0] == 1) {
+        return copy_bigint(a);
+    }
+    if (a->size == 1 && b->size == 1) {
+        i64m = (uint64_t) a->digit[0] * b->digit[0];
+        m = new_bigint(2);
+        m.digit[0] = (uint32_t) i64m & DIGIT_MASK;
+        m.digit[1] = (uint32_t) (i64m >> BASE_SHIFT) & DIGIT_MASK;
+        return m;
+    }
+    if (a_size == 1 || b_size == 1) {
+        /* ensure x <= y */
+        if (a_size > b_size) {
+            bigint_t* tmp;
+            uint32_t tmp_size;
+            tmp = a; a = b; b = tmp;
+            tmp_size = a_size; a_size = b_size; b_size = tmp_size;
+        }
+        m = new_bigint(b_size + 1);
+        a0 = a->digit[0];
+        carry = 0;
+        for (i = 0; i < b_size; i++) {
+            carry += a0 * b->digit[i];
+            m.digit[i] = carry & DIGIT_MASK;
+            carry = carry >> BASE_SHIFT;
+        }
+        m.digit[i] = carry;
+        bi_normalize(&m);
+        return m;
+    }
 
+    /* karatsuba algorithm */
+    bigint_t a_high, a_low, b_high, b_low, z0, z1, z2, tmp1, tmp2;
+    uint32_t low_size;
+    uint32_t* tmp_mem;
+
+    low_size = ((a_size > b_size) ? a_size : b_size) / 2;
+    /* split a and b */
+    if (a_size <= low_size) {
+        a_low = copy_bigint(a);
+        a_high = ZERO_BIGINT();
+    }
+    else {
+        a_low = new_bigint(low_size);
+        memcpy(a_low.digit, a->digit, low_size * sizeof(uint32_t));
+        a_high = new_bigint(a_size - low_size);
+        memcpy(
+            a_high.digit,
+            a->digit + low_size,
+            (a_size - low_size) * sizeof(uint32_t)
+        );
+    }
+    bi_normalize(&a_low);
+    bi_normalize(&a_high);
+    if (b_size <= low_size) {
+        b_low = copy_bigint(b);
+        b_high = ZERO_BIGINT();
+    }
+    else {
+        b_low = new_bigint(low_size);
+        memcpy(b_low.digit, b->digit, low_size * sizeof(uint32_t));
+        b_high = new_bigint(b_size - low_size);
+        memcpy(
+            b_high.digit,
+            b->digit + low_size,
+            (b_size - low_size) * sizeof(uint32_t)
+        );
+    }
+    bi_normalize(&b_low);
+    bi_normalize(&b_high);
+
+    /* z0 */
+    z0 = bi_mul(&a_low, &b_low);
+
+    /* z1' */
+    tmp1 = bi_add(&a_low, &a_high);
+    tmp2 = bi_add(&b_low, &b_high);
+
+    z1 = bi_mul(&tmp1, &tmp2);
+    free_bigint(&tmp1);
+    free_bigint(&tmp2);
+    free_bigint(&a_low);
+    free_bigint(&b_low);
+    
+    /* z2' */
+    z2 = bi_mul(&a_high, &b_high);
+    free_bigint(&a_high);
+    free_bigint(&b_high);
+
+    /* z1 = (z1' - z2' - z0) * b^split_size */
+    tmp1 = bi_sub(&z1, &z0);
+    free_bigint(&z1);
+    z1 = bi_sub(&tmp1, &z2);
+    free_bigint(&tmp1);
+    tmp_mem = calloc(z1.size + low_size, sizeof(uint32_t));
+    memcpy(tmp_mem + low_size, z1.digit, z1.size * sizeof(uint32_t));
+    free(z1.digit);
+    z1.digit = tmp_mem;
+    z1.size = z1.size + low_size;
+
+    /* z2 = z2' * b^(2*split_size) */
+    if (z2.size != 0) {
+        tmp_mem = calloc(z2.size + low_size * 2, sizeof(uint32_t));
+        memcpy(tmp_mem + (low_size * 2), z2.digit, z2.size * sizeof(uint32_t));
+        free(z2.digit);
+        z2.digit = tmp_mem;
+        z2.size = z2.size + (low_size * 2);
+    }
+
+    /* m = z0 + z1 + z2 */
+    tmp1 = bi_add(&z0, &z1);
+    m = bi_add(&tmp1, &z2);
+    free_bigint(&z0);
+    free_bigint(&z1);
+    free_bigint(&z2);
+    return m;
+
+    if (a->sign != b->sign) {
+        m.sign = 1;
+    }
+    return m;
 }
 
 
 bigint_t bi_div(bigint_t* a, bigint_t* b) {
     if (b->size == 0) {
         printf("bi_div: divided by zero\n");
-        exit(OTHER_ERR_CODE);
-        // return INVALID_BIGINT();
+        return INVALID_BIGINT();
     }
     if (a->size == 0) {
         return ZERO_BIGINT();
     }
-    // if b == 1, return a
+    /* if b == 1, return a */
     if (b->size == 1 && b->digit[0] == 1) {
         return *a;
     }
-    // a == b, return 1
+    /* a == b, return 1 */
     if (bi_eq(a, b)) {
         return ONE_BIGINT();
     }
-    // if a < b, return 0
+    /* if a < b, return 0 */
     if (a->size == b->size && a->digit[a->size -1] < b->digit[b->size -1]
         || a->size < b->size) {
         return ZERO_BIGINT();
@@ -643,20 +750,20 @@ bi_mod(bigint_t* a, bigint_t* b) {
     if (a->size == 0) {
         return ZERO_BIGINT();
     }
-    // if b == 1, return 0
+    /* if b == 1, return 0 */
     if (b->size == 1 && b->digit[0] == 1) {
         return ZERO_BIGINT();
     }
-    // a == b, return 0
+    /* a == b, return 0 */
     if (bi_eq(a, b)) {
         return ZERO_BIGINT();
     }
-    // if a < b, return a
+    /* if a < b, return a */
     if (a->size == b->size && a->digit[a->size -1] < b->digit[b->size -1]
         || a->size < b->size) {
-        return *a;
+        return copy_bigint(a);
     }
-    bigint_t q, r, _r;
+    bigint_t q = ZERO_BIGINT(), r = ZERO_BIGINT(), _r;
     bi_abs_divmod(a, b, &q, &r);
     if (a->sign) {
         if (b->sign) {
@@ -685,8 +792,11 @@ bi_mod(bigint_t* a, bigint_t* b) {
 void
 print_bigint(bigint_t* x) {
     int i;
-    printf("[BigInt] sign=%d, size=%d digit=", x->sign, x->size);
+    printf("[BigInt] sign=%d, size=%d, digit=", x->sign, x->size);
     fflush(stdout);
+    if (x->size == 0) {
+        return;
+    }
     for (i = 0; i< x->size; i++) {
         printf("%8x, ", x->digit[i]);
         fflush(stdout);
@@ -695,7 +805,7 @@ print_bigint(bigint_t* x) {
 
 void
 print_bigint_dec(bigint_t* x) {
-    printf("[BigInt] decimal=");
+    printf("[BigInt] (dec) ");
     if (x->invalid) {
         printf("NaN");
         return;
@@ -707,14 +817,17 @@ print_bigint_dec(bigint_t* x) {
         printf("0");
     }
     else {
-        // if (x->size == 1) {
-        //     printf("%d", x->digit[0]);
-        //     return;
-        // }
-        // else if (x->size == 2) {
-        //     printf("%lld", ((uint64_t) x->digit[1]) << BASE_SHIFT | x->digit[0]);
-        //     return;
-        // }
+        if (x->size == 1) {
+            printf("%d", x->digit[0]);
+            return;
+        }
+        else if (x->size == 2) {
+            printf(
+                "%lld",
+                (((uint64_t) x->digit[1]) << BASE_SHIFT) | x->digit[0]
+            );
+            return;
+        }
         bigint_t y = copy_bigint(x),
             ten = new_bigint(1),
             q = ZERO_BIGINT(),
@@ -744,10 +857,12 @@ bigint_from_str(const char* str) {
     bigint_t x, t1, t2;
     uint32_t str_length = strlen(str), base = 10;
     /* bin & hex can determine needed size quickly */
-    uint32_t i, carry = 0, j = 0, d, safe_size;
+    uint32_t i, carry = 0, j = 0, d, safe_size, is_neg = 0;
 
     if (str[0] == '-') {
         str += 1;
+        str_length -= 1;
+        is_neg = 1;
     }
     if (str_length > 2 && str[0] == '0') {
         if (str[1] == 'x') {
@@ -765,10 +880,9 @@ bigint_from_str(const char* str) {
     if (base == 2) {
         x = new_bigint(safe_size);
         /* set it bit by bit */
-        for (i = str_length - 1; i >= 0; i--) {
+        for (i = 0, j = str_length - 1; i < str_length; i++, j--) {
             if (str[i] == '1') {
-                uint32_t digit_index = str_length - 1 - i;
-                x.digit[digit_index / 31] |= (1 << (digit_index % 31));
+                x.digit[j / 31] |= (1 << (j % 31));
             }
         }
     }
@@ -781,11 +895,8 @@ bigint_from_str(const char* str) {
                     /* x * 10 = (x << 2 + x) << 1 */
                     t1 = copy_bigint(&x);
                     bi_shl(&t1, 2);
-                    // printf("t1:"); print_bigint(&t1); puts("");
                     t2 = bi_abs_add(&t1, &x);
-                    // printf("t2:"); print_bigint(&t2); puts("");
                     bi_shl(&t2, 1);
-                    // printf("t2:"); print_bigint(&t2); puts("");
                     free_bigint(&x);
                     free_bigint(&t1);
                     x = copy_bigint(&t2);
@@ -815,11 +926,14 @@ bigint_from_str(const char* str) {
                 j += 1;
                 bi_extend(&x, 1);
             }
-
-            // printf("i=%d, '%c'\n", i, str[i]);
-            // print_bigint(&x); puts("");
+        }
+        if (carry != 0) {
+            x.digit[j] += carry;
         }
         bi_normalize(&x);
+    }
+    if (is_neg) {
+        x.sign = 1;
     }
     return x;
 }
@@ -872,10 +986,6 @@ bigint_from_tens_power(uint32_t exp) {
             x = copy_bigint(&t2);
             exp -= 3;
         }
-
-        // printf("exp=%d\n", exp);
-        // print_bigint(&x);
-        // puts("");
     }
     return x;
 }

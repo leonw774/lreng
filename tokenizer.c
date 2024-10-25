@@ -1,5 +1,5 @@
 #include <ctype.h>
-#include "dynarr.h"
+#include "utils/dynarr.h"
 #include "errors.h"
 #include "token.h"
 #include "operators.h"
@@ -34,7 +34,7 @@ get_op_tok_type(char* op_str) {
 op_name_enum
 get_op_enum(token_t* last_token, char* op_str) {
     if (op_str[1] == '\0') {
-        // POS & NEG
+        /* POS & NEG */
         if (last_token == NULL
             || last_token->type == TOK_OP || last_token->type == TOK_LB) {
             if (op_str[0] == '+') {
@@ -44,7 +44,7 @@ get_op_enum(token_t* last_token, char* op_str) {
                 return OP_NEG;
             }
         }
-        // FCALL
+        /* FCALL */
         if (last_token != NULL
             && (last_token->type == TOK_ID || last_token->type == TOK_RB)) {
             if (op_str[0] == '(') {
@@ -332,17 +332,14 @@ state_ret
 hex_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     char c = linecol_read(pos_iter);
     if (c == '\0') {
-        // rebase_to_dec(&cur_cargo.str);
         harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {NULL, cur_cargo};
     }
     else if (isspace(c)) {
-        // rebase_to_dec(&cur_cargo.str);
         harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {&ws_state, cur_cargo};
     }
     else if (c == COMMENT_CHAR) {
-        // rebase_to_dec(&cur_cargo.str);
         harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {&comment_state, cur_cargo};
     }
@@ -351,7 +348,6 @@ hex_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&hex_state, cur_cargo};
     }
     else if (IS_OP(c)) {
-        // rebase_to_dec(&cur_cargo.str);
         harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         append(&cur_cargo.str, &c);
         return (state_ret) {&op_state, cur_cargo};
@@ -370,17 +366,14 @@ state_ret
 bin_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     char c = linecol_read(pos_iter);
     if (c == '\0') {
-        // rebase_to_dec(&cur_cargo.str);
         harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {NULL, cur_cargo};
     }
     else if (isspace(c)) {
-        // rebase_to_dec(&cur_cargo.str);
         harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {&ws_state, cur_cargo};
     }
     else if (c == COMMENT_CHAR) {
-        // rebase_to_dec(&cur_cargo.str);
         harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         return (state_ret) {&comment_state, cur_cargo};
     }
@@ -389,7 +382,6 @@ bin_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&hex_state, cur_cargo};
     }
     else if (IS_OP(c)) {
-        // rebase_to_dec(&cur_cargo.str);
         harvest(&cur_cargo, TOK_NUM, pos_iter->pos);
         append(&cur_cargo.str, &c);
         return (state_ret) {&op_state, cur_cargo};

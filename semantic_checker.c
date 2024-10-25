@@ -1,4 +1,4 @@
-#include "dynarr.h"
+#include "utils/dynarr.h"
 #include "tree.h"
 #include "frame.h"
 

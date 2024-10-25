@@ -1,4 +1,4 @@
-#include "dynarr.h"
+#include "utils/dynarr.h"
 #include "objects.h"
 
 typedef struct frame {

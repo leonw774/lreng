@@ -36,9 +36,9 @@ shunting_yard(const dynarr_t tokens, const unsigned char is_debug) {
             print_token(cur_token);
             puts("");
         }
-        // is an operator or left bracket
+        /* is an operator or left bracket */
         if (cur_token.type == TOK_OP || cur_token.type == TOK_LB) {
-            // check expectation
+            /* check expectation */
             if (IS_PREFIXABLE(cur_token.name)) {
                 if (expectation == BINARY_OPERATOR) {
                     sprintf(
@@ -83,7 +83,7 @@ shunting_yard(const dynarr_t tokens, const unsigned char is_debug) {
             /* push */
             append(&op_stack, &cur_token);
         }
-        // is a right bracket
+        /* is a right bracket */
         else if (cur_token.type == TOK_RB) {
             /* check expectation */
             if (expectation == PREFIXABLE) {
@@ -145,9 +145,9 @@ shunting_yard(const dynarr_t tokens, const unsigned char is_debug) {
                 );
             }
         }
-        // is other
+        /* is other */
         else {
-            // check expectation
+            /* check expectation */
             if (expectation == BINARY_OPERATOR) {
                 sprintf(
                     SYNTAX_ERR_MSG,

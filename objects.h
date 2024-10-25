@@ -1,5 +1,5 @@
-#include "dynarr.h"
-#include "bigint.h"
+#include "utils/dynarr.h"
+#include "utils/bigint.h"
 #include "token.h"
 
 #ifndef OBJECT_H
