@@ -8,7 +8,11 @@
 int
 main(int argc, char** argv) {
     char* filename = NULL;
+    FILE* fp = fopen(filename, "r");
+    long fsize = 0;
+    char* src = NULL;
     int is_debug = 0;
+
     if (argc == 2) {
         filename = argv[1];
     }
@@ -25,9 +29,7 @@ main(int argc, char** argv) {
         return 0;
     }
 
-    FILE* fp = fopen(filename, "r");
-    long fsize = 0;
-    char* src = NULL;
+    fp = fopen(filename, "r");
     fseek(fp, 0L, SEEK_END);
     fsize = ftell(fp);
     if (fsize == 0) {
