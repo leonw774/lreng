@@ -8,10 +8,6 @@
 #define DIGIT_BASE ((u32) 1 << BASE_SHIFT)
 #define CARRY_MASK ((u32) 1 << BASE_SHIFT)
 #define DIGIT_MASK ((u32) 1 << BASE_SHIFT) - 1
-
-#define ZERO_BIGINT() ((bigint_t) {.nan = 0, .sign = 0, .size = 0, .digit = 0})
-#define NAN_BIGINT() ((bigint_t) {.nan = 1, .sign = 0, .size = 0, .digit = 0})
-
 #define BIPTR_IS_ZERO(x) (x->size == 0)
 
 int
@@ -42,27 +38,29 @@ bit_length(unsigned long x) {
 
 bigint_t
 ONE_BIGINT() {
-    bigint_t x;
-    x.nan = 0;
-    x.size = 1;
-    x.sign = 0;
-    x.digit = (u32*) malloc(sizeof(u32));
-    x.digit[0] = 1;
+    static bigint_t x;
+    if (!x.digit) {
+        x.nan = 0;
+        x.size = 1;
+        x.sign = 0;
+        x.digit = (u32*) malloc(sizeof(u32));
+        x.digit[0] = 1;
+    }
     return x;
 }
 
 void
-bi_new(bigint_t* p, u32 size) {
+bi_new(bigint_t* x, u32 size) {
     /* p must be freed */
-    p->nan = 0;
-    p->size = size;
-    p->sign = 0;
+    x->nan = 0;
+    x->size = size;
+    x->sign = 0;
     if (size != 0) {
-        p->digit = (u32*) calloc(size, sizeof(u32));
-        memset(p->digit, 0, size * sizeof(u32));
+        x->digit = (u32*) calloc(size, sizeof(u32));
+        memset(x->digit, 0, size * sizeof(u32));
     }
     else {
-        p->digit = NULL;
+        x->digit = NULL;
     }
 }
 
@@ -313,7 +311,7 @@ bi_usub(bigint_t* res, bigint_t* a, bigint_t* b) {
     q and r must be freed */
 void
 bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
-    bigint_t u, v, a;
+    bigint_t u, v;
     u32 *uj, *v0;
     u32 u_size = _u->size, v_size = _v->size, sign = 0;
     u32 d, j, k, qj, rj, ujn, ujnm1, ujnm2, vnm1, vnm2;
@@ -424,7 +422,7 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
     bi_copy(&v, _v);
 
     bi_extend(&u, 1);
-    u_size += 1;
+    u_size++;
     if (d != 0) {
         bi_shl(&u, d);
         bi_shl(&v, d);
@@ -451,7 +449,7 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
         rj = (u32) (utop2 % vnm1);
         while (qj == DIGIT_BASE
             || (u64) qj * vnm2 > ((u64) rj << BASE_SHIFT) + ujnm2) {
-            qj -= 1;
+            qj--;
             rj += vnm1;
             if (rj < DIGIT_BASE) {
                 break;
@@ -482,7 +480,7 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
                 uj[k] = carry & DIGIT_MASK;
                 carry >>= BASE_SHIFT;
             }
-            qj -= 1;
+            qj--;
         }
 
         /* 6. store and quotent digit qj into q */
@@ -700,6 +698,7 @@ bigint_t bi_mul(bigint_t* a, bigint_t* b) {
     bi_free(&z0);
     bi_free(&z1);
     bi_free(&z2);
+    bi_free(&tmp1);
     if (a->sign != b->sign) {
         m.sign = 1;
     }
@@ -790,46 +789,53 @@ bi_mod(bigint_t* a, bigint_t* b) {
 }
 
 
-void
+int
 print_bigint(bigint_t* x) {
-    int i;
+    int i, printed_byte_count = 0;
     if (x->nan) {
-        printf("[BiInt] NaN");
-        return;
+        printed_byte_count = printf("[BiInt] NaN");
+        return printed_byte_count;
     }
-    printf("[BigInt] sign=%d, size=%d, digit=", x->sign, x->size);
+    printed_byte_count = printf(
+        "[BigInt] sign=%d, size=%d, digit=",
+        x->sign, x->size
+    );
     if (BIPTR_IS_ZERO(x)) {
-        return;
+        return printed_byte_count;
     }
     for (i = 0; i< x->size; i++) {
-        printf("%8x, ", x->digit[i]);
+        printed_byte_count += printf("%8x, ", x->digit[i]);
     }
+    return printed_byte_count;
 }
 
-void
+int
 print_bigint_dec(bigint_t* x) {
-    printf("[BigInt] (dec) ");
+    int printed_byte_count = 0;
+    printed_byte_count += printf("[BigInt] ");
     if (x->nan) {
         printf("NaN");
-        return;
+        return 3;
     }
     if (x->sign) {
         printf("-");
+        printed_byte_count++;
     }
     if (BIPTR_IS_ZERO(x)) {
         printf("0");
+        printed_byte_count++;
     }
     else {
         if (x->size == 1) {
-            printf("%d", x->digit[0]);
-            return;
+            printed_byte_count += printf("%d", x->digit[0]);
+            return printed_byte_count;
         }
         else if (x->size == 2) {
-            printf(
+            printed_byte_count += printf(
                 "%lld",
                 (((u64) x->digit[1]) << BASE_SHIFT) | x->digit[0]
             );
-            return;
+            return printed_byte_count;
         }
         bigint_t y, ten, q = ZERO_BIGINT(), r = ZERO_BIGINT();
         dynarr_t dec_digits = new_dynarr(1);
@@ -849,21 +855,27 @@ print_bigint_dec(bigint_t* x) {
         }
         for (i = dec_digits.size - 1; i >= 0; i--) {
             printf("%c", ((char*) (dec_digits.data))[i]);
+            printed_byte_count++;
         }
+        bi_free(&y);
+        bi_free(&ten);
+        bi_free(&q);
+        bi_free(&r);
     }
+    return printed_byte_count;
 }
 
 /* expect string of decimal, heximal, or binary u32eger */
 bigint_t
 bigint_from_str(const char* str) {
     bigint_t x, t1, t2;
-    u32 str_length = strlen(str), base = 10;
+    size_t str_length = strlen(str), base = 10;
     /* bin & hex can determine needed size quickly */
     u32 i, carry = 0, j = 0, d, safe_size, is_neg = 0;
 
     if (str[0] == '-') {
-        str += 1;
-        str_length -= 1;
+        str++;
+        str_length--;
         is_neg = 1;
     }
     if (str_length > 2 && str[0] == '0') {
@@ -925,7 +937,7 @@ bigint_from_str(const char* str) {
             x.digit[j] = carry & DIGIT_MASK;
             carry >>= BASE_SHIFT;
             if (carry) {
-                j += 1;
+                j++;
                 bi_extend(&x, 1);
             }
             /* print_bigint_dec(&x); puts(""); */
@@ -954,7 +966,7 @@ bigint_from_tens_power(u32 exp) {
             bi_free(&x);
             bi_free(&t1);
             x = t2;
-            exp -= 1;
+            exp--;
         }
         else if (exp == 2) {
             /* x *= 100 --> x = ((x << 4) + (x << 3) + x) << 2 */

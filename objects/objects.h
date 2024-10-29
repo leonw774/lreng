@@ -1,6 +1,7 @@
-#include "utils/dynarr.h"
-#include "utils/bigint.h"
-#include "token.h"
+#include "../utils/dynarr.h"
+#include "../utils/bigint.h"
+#include "number.h"
+#include "../token.h"
 
 #ifndef OBJECT_H
 #define OBJECT_H
@@ -18,11 +19,6 @@ typedef struct object object_t;
 typedef struct nullobj {
     const short null;
 } nullobj_t;
-
-typedef struct number {
-    bigint_t numer;
-    bigint_t denom;
-} number_t;
 
 typedef struct pair {
     object_t* left;
@@ -54,9 +50,6 @@ typedef struct object {
 
 extern object_t new_object(token_t* main, token_t* left, token_t* right);
 extern void free_object(object_t* obj);
-
-extern number_t number_from_str(char* str);
-
 
 extern const object_t const RESERVED_OBJS[RESERVED_ID_NUM];
 

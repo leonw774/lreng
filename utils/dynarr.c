@@ -52,7 +52,7 @@ append(dynarr_t* x, const void* const elem) {
         x->data = tmp_mem;
     }
     memcpy(x->data + x->elem_size * x->size, elem, x->elem_size);
-    x->size += 1;
+    x->size++;
 };
 
 void

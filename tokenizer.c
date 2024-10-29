@@ -80,14 +80,14 @@ linecol_read(linecol_iterator_t* const s) {
         return '\0';
     }
     if (s->src[s->index] == '\n') {
-        s->pos.line += 1;
+        s->pos.line++;
         s->pos.col = 1;
     }
     else {
-        s->pos.col += 1;
+        s->pos.col++;
     }
     char c = s->src[s->index];
-    s->index += 1;
+    s->index++;
     return c;
 }
 
