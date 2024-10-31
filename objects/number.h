@@ -42,9 +42,9 @@ typedef struct number {
     .sign = 0, .zero = 0, .flag = NUMBER_FLAG_NAN, \
     .numer = NAN_BIGINT(), .denom = NAN_BIGINT()})
 
-#define NUMPTR_IS_NAN(x) (x->flag | NUMBER_FLAG_NAN) 
-#define NUMPTR_IS_INF(x) (x->flag | NUMBER_FLAG_INF) 
-#define NUMPTR_IS_NINF(x) (x->flag | NUMBER_FLAG_NINF)
+#define NUMPTR_IS_NAN(x) (x->flag & NUMBER_FLAG_NAN) 
+#define NUMPTR_IS_INF(x) (x->flag & NUMBER_FLAG_INF) 
+#define NUMPTR_IS_NINF(x) (x->flag & NUMBER_FLAG_NINF)
 
 extern void number_copy(number_t* dst, number_t* src);
 extern void number_free(number_t* x);

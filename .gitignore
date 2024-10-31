@@ -33,6 +33,9 @@
 
 # Others
 .vscode/
+
+# Outputs
 lreng
 bigint_test
+number_test
 debug.txt

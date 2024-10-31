@@ -38,14 +38,12 @@ bit_length(unsigned long x) {
 
 bigint_t
 ONE_BIGINT() {
-    static bigint_t x;
-    if (!x.digit) {
-        x.nan = 0;
-        x.size = 1;
-        x.sign = 0;
-        x.digit = (u32*) malloc(sizeof(u32));
-        x.digit[0] = 1;
-    }
+    bigint_t x;
+    x.nan = 0;
+    x.size = 1;
+    x.sign = 0;
+    x.digit = (u32*) malloc(sizeof(u32));
+    x.digit[0] = 1;
     return x;
 }
 
@@ -299,8 +297,8 @@ bi_usub(bigint_t* res, bigint_t* a, bigint_t* b) {
     }
     if (borrow != 0) {
         printf("bi_usub: last borrow is not zero\n");
-        print_bigint(a); puts("");
-        print_bigint(b); puts("");
+        print_bigint_dec(a); puts("");
+        print_bigint_dec(b); puts("");
         res->nan = 1;
     }
     res->sign = sign;
@@ -348,6 +346,8 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
         *r = ONE_BIGINT();
         q->digit[0] = _u->digit[0] / _v->digit[0];
         r->digit[0] = _u->digit[0] % _v->digit[0];
+        bi_normalize(q);
+        bi_normalize(r);
         return;
     }
     /* explanation
@@ -777,7 +777,7 @@ bi_mod(bigint_t* a, bigint_t* b) {
     }
     else {
         if (b->sign) {
-            bi_usub(&r, &r, b);
+            bi_usub(&_r, &r, b);
             _r.sign = 1;
             return _r;
         }

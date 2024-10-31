@@ -46,16 +46,19 @@ number_normalize(number_t* x) {
     }
     x->numer.sign = x->denom.sign = 0;
 
-    /* special cases: n == 0, n == 1, d == 0, d == 1, n == d */
+    /* special cases */
+    /* n = 0 */
     if (x->numer.size == 0) {
         bi_free(&x->numer);
         bi_free(&x->denom);
         *x = ZERO_NUMBER();
         return;
     }
+    /* n == 1 or d = 1 */ 
     if (bi_eq(&x->numer, &one) || bi_eq(&x->denom, &one)) {
         return;
     }
+    /* n */
     if (x->denom.size == 0) {
         bi_free(&x->numer);
         bi_free(&x->denom);
@@ -70,7 +73,6 @@ number_normalize(number_t* x) {
         return;
     }
     
-
     /* euclidian algorithm */
     bi_copy(&a, &x->numer);
     bi_copy(&b, &x->denom);
@@ -94,12 +96,13 @@ number_normalize(number_t* x) {
         t2 = bi_div(&x->numer, &a);
         bi_free(&x->denom);
         x->denom = t2;
-        /* dont need to free t1 and ts because they are own by x now */
+        /* dont need to free t1 and t2 because they are own by x now */
     }
     else {
         bi_free(&t1);
         bi_free(&t2);
     }
+    bi_free(&one);
 }
 
 int
@@ -107,8 +110,15 @@ number_eq(number_t* a, number_t* b) {
     if (a->zero == b->zero) {
         return 1;
     }
-    if (a->flag || b->flag) {
+    /*  nan != naything, inf == inf, -inf == -inf */
+    if ((NUMPTR_IS_NAN(a)) && NUMPTR_IS_NAN(b)) {
         return 0;
+    }
+    if (NUMPTR_IS_INF(a)) {
+        return NUMPTR_IS_INF(b);
+    }
+    if (NUMPTR_IS_NINF(a)) {
+        return NUMPTR_IS_NINF(b);
     }
     return (a->sign == b->sign
         && bi_eq(&a->numer, &b->numer) && bi_eq(&a->denom, &b->denom));
@@ -119,6 +129,19 @@ number_lt(number_t* a, number_t* b) {
     /* obvious cases */
     if ((a->sign != b->sign)) {
         return a->sign;
+    }
+    /* if one of them is nan: always false */
+    if ((NUMPTR_IS_NAN(a)) && NUMPTR_IS_NAN(b)) {
+        return 0;
+    }
+    /* comparison involving infinity:
+       inf > anything but nan
+       -inf < anything but nan */
+    if (NUMPTR_IS_INF(a)) {
+        return 0;
+    }
+    if (NUMPTR_IS_NINF(a)) {
+        return 1;
     }
     if (bi_eq(&a->denom, &b->denom)) {
         if (a->sign) {
@@ -180,7 +203,9 @@ print_number_frac(number_t* x) {
 }
 
 int
-print_number_dec(number_t* x, int round);
+print_number_dec(number_t* x, int round) {
+
+}
 
 number_t
 number_from_str(const char* str) {
@@ -201,7 +226,7 @@ number_from_str(const char* str) {
             return n;
         }
         else {
-            printf("number_from_str: end format\n");
+            printf("number_from_str: bad format\n");
             return NAN_NUMBER();
         }
     }
@@ -210,11 +235,12 @@ number_from_str(const char* str) {
     i = j = 0;
     for (i = 0; i < str_length; i++) {
         if (str[i] != '.') {
+            // printf("%c", str[i]);
             str_no_dot[j] = str[i];
             j++;
         }
         else {
-            dot_pos = i;
+            dot_pos = i + 1;
         }
     }
     str_no_dot[j] = '\0';
@@ -222,6 +248,7 @@ number_from_str(const char* str) {
     n.sign = is_neg;
     n.numer = bigint_from_str(str_no_dot);
     n.denom = bigint_from_tens_power(str_length - dot_pos);
+    free(str_no_dot);
     number_normalize(&n);
     return n;
 }
