@@ -1,5 +1,7 @@
 #include <stdio.h>
-#include "utils/dynarr.h"
+#include <stdlib.h>
+#include <string.h>
+#include "dynarr.h"
 #include "tree.h"
 #include "errors.h"
 #include "objects.h"

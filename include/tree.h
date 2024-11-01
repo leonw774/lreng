@@ -1,5 +1,5 @@
 #include "token.h"
-#include "utils/dynarr.h"
+#include "dynarr.h"
 
 #ifndef TREE_H
 #define TREE_H

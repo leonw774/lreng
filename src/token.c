@@ -1,9 +1,7 @@
-#include "token.h"
 #include <stdio.h>
+#include "token.h"
 
-const char* const RESERVED_IDS[RESERVED_ID_NUM] = {
-    "null", "input", "output"
-};
+const char* const RESERVED_IDS[RESERVED_ID_NUM] = {"null", "input", "output"};
 
 int
 print_token(token_t t) {

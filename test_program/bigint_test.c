@@ -1,5 +1,6 @@
 #include <stdio.h>
-#include "../utils/bigint.h"
+#include <stdlib.h>
+#include "bigint.h"
 
 int assert(int b) {
     if (b == 0) {

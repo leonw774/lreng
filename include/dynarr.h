@@ -1,6 +1,3 @@
-#include<stdlib.h>
-#include<string.h>
-
 #ifndef DYNARR_H
 #define DYNARR_H
 
@@ -17,7 +14,7 @@ extern void free_dynarr(dynarr_t* x);
 
 extern void reset_dynarr(dynarr_t* x);
 
-extern void* to_str(dynarr_t* x);
+extern char* to_str(dynarr_t* x);
 
 extern void append(dynarr_t* x, const void* const elem);
 

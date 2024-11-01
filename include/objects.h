@@ -1,7 +1,7 @@
-#include "../utils/dynarr.h"
-#include "../utils/bigint.h"
+#include "dynarr.h"
+#include "bigint.h"
 #include "number.h"
-#include "../token.h"
+#include "token.h"
 
 #ifndef OBJECT_H
 #define OBJECT_H

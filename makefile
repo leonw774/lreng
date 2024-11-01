@@ -1,22 +1,25 @@
-CFLAGS = -O2
-MAIN_DEPS = *.c
-UTIL_DEPS = objects/*.c utils/*.c
+CFLAGS = -I include/ -O2
+TEST_FLAGS = -I include/ -g
+INCLUDES = include/*.h
+TEST_C = src/**/*.c
+MAIN_C = src/*.c src/**/*.c
+TEST_TARGET = test_program/bigint_test.out test_program/number_test.out
 
 all: lreng test
 
-test: test_program/bigint_test.out test_program/number_test.out
+test: ${TEST_TARGET}
 
-debug: CFLAGS = -g
+debug: CFLAGS = ${TEST_FLAGS}
 debug: all
 
-test_program/bigint_test: ${UTIL_DEPS} test_program/bigint_test.c
-	gcc -g -o $@ $^
+test_program/bigint_test.out: ${INCLUDES} ${TEST_C} test_program/bigint_test.c
+	gcc ${TEST_FLAGS} -o $@ ${TEST_C} test_program/bigint_test.c
 
-test_program/number_test: ${UTIL_DEPS} test_program/number_test.c
-	gcc -g -o $@ $^
+test_program/number_test.out: ${INCLUDES} ${TEST_C} test_program/number_test.c
+	gcc ${TEST_FLAGS} -o $@ ${TEST_C} test_program/number_test.c
 
-lreng: ${UTIL_DEPS} ${MAIN_DEPS} lreng.c
-	gcc ${CFLAGS} -o $@ $^;
+lreng: ${MAIN_C} ${DEPS}
+	gcc ${CFLAGS} -o $@ $^
 
 clean:
-	rm lreng bigint_test
+	rm lreng ${TEST_TARGET}

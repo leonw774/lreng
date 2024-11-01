@@ -1,5 +1,5 @@
-#include <stdlib.h>
 #include <stdint.h>
+#include "dynarr.h"
 
 #ifndef BIGINT_H
 #define BIGINT_H
@@ -35,6 +35,7 @@ extern bigint_t bi_div(bigint_t* a, bigint_t* b);
 extern bigint_t bi_mod(bigint_t* a, bigint_t* b);
 
 extern int print_bigint(bigint_t* x);
+dynarr_t bigint_to_dec_string(bigint_t* x);
 extern int print_bigint_dec(bigint_t* x);
 extern bigint_t bigint_from_str(const char* str);
 extern bigint_t bigint_from_tens_power(u32 exp);

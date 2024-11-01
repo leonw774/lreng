@@ -1,8 +1,10 @@
+#include <string.h>
 #include "token.h"
 #include "frame.h"
 #include "objects.h"
 
-const frame_t DEFAULT_FRAME() {
+const frame_t
+DEFAULT_FRAME() {
     frame_t f;
     f.parent = NULL;
     f.objects = new_dynarr(sizeof(object_t));
@@ -16,7 +18,8 @@ const frame_t DEFAULT_FRAME() {
     return f;
 }
 
-frame_t new_frame(frame_t* parent, object_t* init_obj, int* init_name) {
+frame_t
+new_frame(frame_t* parent, object_t* init_obj, int* init_name) {
     frame_t f;
     f.parent = parent;
     f.objects = new_dynarr(sizeof(object_t));
@@ -27,7 +30,8 @@ frame_t new_frame(frame_t* parent, object_t* init_obj, int* init_name) {
     return f;
 }
 
-object_t* frame_get(const frame_t* f, const int name) {
+object_t*
+frame_get(const frame_t* f, const int name) {
     int i;
     for (i = 0; i < f->names.size; i++) {
         if (name == ((int*) f->names.data)[i]) {
@@ -40,7 +44,8 @@ object_t* frame_get(const frame_t* f, const int name) {
     return frame_get(f->parent, name);
 }
 
-object_t* frame_find(const frame_t* f, const int name) {
+object_t*
+frame_find(const frame_t* f, const int name) {
     int i;
     for (i = 0; i < f->names.size; i++) {
         if (name == ((int*) f->names.data)[i]) {
@@ -53,7 +58,8 @@ object_t* frame_find(const frame_t* f, const int name) {
     return frame_get(f->parent, name);
 }
 
-void frame_set(frame_t* f, const int name, const object_t* obj) {
+void
+frame_set(frame_t* f, const int name, const object_t* obj) {
     object_t* found_obj = frame_find(f, name);
     if (found_obj == NULL) {
         append(&f->names, &name);

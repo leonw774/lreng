@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include "errors.h"
 
 char SYNTAX_ERR_MSG[256];

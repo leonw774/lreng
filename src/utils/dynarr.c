@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include <string.h>
 #include "dynarr.h"
 
 #define DYN_ARR_INIT_CAP 4
@@ -29,10 +31,10 @@ reset_dynarr(dynarr_t* x) {
 }
 
 /* copy the array as a C-string */
-void*
+char*
 to_str(dynarr_t* x) {
     if (x->data == NULL) return NULL;
-    void* arr;
+    char* arr;
     int arr_sz = x->elem_size * x->size;
     arr = malloc(arr_sz + 1);
     ((char*) arr)[arr_sz] = '\0';

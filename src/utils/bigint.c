@@ -16,7 +16,7 @@ bit_length(unsigned long x) {
     if (x != 0) {
         /* __builtin_clzl() is available since GCC 3.4.
            Undefined behavior for x == 0. */
-        return (int)sizeof(unsigned long) * 8 - __builtin_clzl(x);
+        return (int) sizeof(unsigned long) * 8 - __builtin_clzl(x);
     }
     else {
         return 0;
@@ -312,9 +312,9 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
     bigint_t u, v;
     u32 *uj, *v0;
     u32 u_size = _u->size, v_size = _v->size, sign = 0;
-    u32 d, j, k, qj, rj, ujn, ujnm1, ujnm2, vnm1, vnm2;
+    u32 d, j, k, qj, rj, ujn, ujnm1, ujnm2;
     i32 borrow;
-    u64 utop2;
+    u64 utop2, vnm1, vnm2;
     i64 borrow64;
 
     /* if u < v, no need to compute */
@@ -338,7 +338,6 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
             bi_copy(r, _u);
             return;
         }
-        u_size = v_size = i + 1;
     }
     /* if size == 1 */
     if (u_size == 1 && v_size == 1) {
@@ -427,6 +426,8 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
         bi_shl(&u, d);
         bi_shl(&v, d);
     }
+    // printf("u "); print_bigint(&u); puts("");
+    // printf("v "); print_bigint(&v); puts("");
 
     /* 2. initialize j:
        now u has at most m+n+1 digits and v has n digits, the quotent will
@@ -435,16 +436,18 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
     j = u_size - v_size - 1;
     bi_new(q, j+1);
     v0 = v.digit;
-    vnm1 = v.digit[v_size-1];
-    vnm2 = (v_size > 1) ? v.digit[v_size-2] : 0;
+    vnm1 = (u64) v.digit[v_size-1];
+    vnm2 = (u64) (v_size > 1) ? v.digit[v_size-2] : 0;
     /* for j = m to 0 */
     for (uj = u.digit + j; uj >= u.digit; uj--, j--) {
         ujn = uj[v_size];
         ujnm1 = uj[v_size-1];
         ujnm2 = (v_size > 1) ? uj[v_size-2] : 0;
+        // printf("ujn %d ujnm1 %d\n", ujn, ujnm1);
         /* 3. Estimate qj and rj:
            this step guarentee that q[j] <= qj <= q[j] + 1 */
-        utop2 = ((u64) ujn << BASE_SHIFT) | ujnm1;
+        utop2 = (((u64) ujn) << BASE_SHIFT) | (u64) ujnm1;
+        // printf("utop2 %lld vnm1 %lld\n", utop2, vnm1);
         qj = (u32) (utop2 / vnm1);
         rj = (u32) (utop2 % vnm1);
         while (qj == DIGIT_BASE
@@ -455,6 +458,7 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
                 break;
             }
         }
+        // printf("qj rj %lld %lld \n", qj, rj);
 
         /* 4. Substract u[j:j+n] by qj * v[0:n-1]
            because qj could be larger byone, the borrow need to be signed to
@@ -473,6 +477,7 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
         /* 5. if the result of last step is negative i.e. borrow + u[j+n] < 0,
            decrease qj by 1 and add v[0:n-1] back to u[j:j+n] */
         if (((i32) uj[v_size]) < 0) {
+            // printf("uj[v_size]) < 0\n");
             u32 carry = 0;
             /* add v[0:n-1] back to u[j:j+n] */
             for (k = 0; k < v_size; k++) {
@@ -485,11 +490,13 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
 
         /* 6. store and quotent digit qj into q */
         q->digit[j] = qj;
+        // printf("%d ", j); print_bigint(q); puts("");
     }
 
     /* the content of u (shifted _u) is now shifted remainder, shift it back */  
     bi_copy(r, &u);
     bi_shr(r, d);
+    // printf("r "); print_bigint(r); puts("");
     /* normalize the result */
     bi_normalize(r);
     bi_normalize(q);
@@ -592,6 +599,7 @@ bigint_t bi_mul(bigint_t* a, bigint_t* b) {
         bi_new(&m, 2);
         m.digit[0] = (u32) i64m & DIGIT_MASK;
         m.digit[1] = (u32) (i64m >> BASE_SHIFT) & DIGIT_MASK;
+        bi_normalize(&m);
         return m;
     }
     if (a_size == 1 || b_size == 1) {
@@ -800,46 +808,58 @@ print_bigint(bigint_t* x) {
         "[BigInt] sign=%d, size=%d, digit=",
         x->sign, x->size
     );
+    fflush(stdout);
     if (BIPTR_IS_ZERO(x)) {
         return printed_byte_count;
     }
     for (i = 0; i< x->size; i++) {
         printed_byte_count += printf("%8x, ", x->digit[i]);
+        fflush(stdout);
     }
     return printed_byte_count;
 }
 
-int
-print_bigint_dec(bigint_t* x) {
-    int printed_byte_count = 0;
-    printed_byte_count += printf("[BigInt] ");
+/* returned dynarr contains does not always contains terminating NULL */
+dynarr_t
+bigint_to_dec_string(bigint_t* x) {
+    dynarr_t string;
+    char buf[24];
+    char nan[4] = "NaN";
+    int i, figure_num = 0;
+    string = new_dynarr(1);
     if (x->nan) {
-        printf("NaN");
-        return 3;
+        for (i = 0; i < 3; i++) {
+            append(&string, &nan[i]);
+        }
+        return string;
     }
     if (x->sign) {
-        printf("-");
-        printed_byte_count++;
+        append(&string, "-");
     }
     if (BIPTR_IS_ZERO(x)) {
-        printf("0");
-        printed_byte_count++;
+        append(&string, "0");
     }
     else {
         if (x->size == 1) {
-            printed_byte_count += printf("%d", x->digit[0]);
-            return printed_byte_count;
+            figure_num = sprintf(buf, "%d", x->digit[0]);
+            for (i = 0; i < figure_num; i++) {
+                append(&string, &buf[i]);
+            }
+            return string;
         }
         else if (x->size == 2) {
-            printed_byte_count += printf(
+            figure_num = sprintf(
+                buf,
                 "%lld",
-                (((u64) x->digit[1]) << BASE_SHIFT) | x->digit[0]
+                (((u64) x->digit[1]) << BASE_SHIFT) | (u64) x->digit[0]
             );
-            return printed_byte_count;
+            for (i = 0; i < figure_num; i++) {
+                append(&string, &buf[i]);
+            }
+            return string;
         }
         bigint_t y, ten, q = ZERO_BIGINT(), r = ZERO_BIGINT();
-        dynarr_t dec_digits = new_dynarr(1);
-        int i;
+        dynarr_t reversed_digits = new_dynarr(1);
         char d;
         bi_copy(&y, x);
         bi_new(&ten, 1);
@@ -847,21 +867,31 @@ print_bigint_dec(bigint_t* x) {
         while (y.size != 0) {
             bi_udivmod(&y, &ten, &q, &r);
             d = (r.digit ? r.digit[0] : 0) + '0';
-            append(&dec_digits, &d);
+            append(&reversed_digits, &d);
             bi_free(&y);
             bi_free(&r);
             bi_copy(&y, &q);
             bi_free(&q);
         }
-        for (i = dec_digits.size - 1; i >= 0; i--) {
-            printf("%c", ((char*) (dec_digits.data))[i]);
-            printed_byte_count++;
+        for (i = reversed_digits.size - 1; i >= 0; i--) {
+            append(&string, &((char*) (reversed_digits.data))[i]);
         }
         bi_free(&y);
         bi_free(&ten);
         bi_free(&q);
         bi_free(&r);
     }
+    return string;
+}
+
+int
+print_bigint_dec(bigint_t* x) {
+    int printed_byte_count = 0;
+    printed_byte_count += printf("");
+    dynarr_t x_str = bigint_to_dec_string(x);
+    char* x_cstr = to_str(&x_str);
+    printed_byte_count = printf("[BigInt] %s", x_cstr);
+    free(x_cstr);
     return printed_byte_count;
 }
 
@@ -878,7 +908,10 @@ bigint_from_str(const char* str) {
         str_length--;
         is_neg = 1;
     }
-    if (str_length > 2 && str[0] == '0') {
+    if (str[0] == '0') {
+        if (str_length == 1) {
+            return ZERO_BIGINT();
+        }
         if (str[1] == 'x') {
             safe_size = (str_length - 2) * 4 / 31 + 1;
             base = 16;

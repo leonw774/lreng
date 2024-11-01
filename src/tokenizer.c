@@ -1,5 +1,8 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <ctype.h>
-#include "utils/dynarr.h"
+#include "dynarr.h"
 #include "errors.h"
 #include "token.h"
 #include "operators.h"
