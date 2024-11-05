@@ -5,7 +5,7 @@
 #include "number.h"
 
 void
-number_copy(number_t* dst, number_t* src) {
+copy_number(number_t* dst, number_t* src) {
     dst->sign = src->sign;
     dst->zero = src->zero;
     dst->nan = src->nan;
@@ -18,16 +18,16 @@ number_copy(number_t* dst, number_t* src) {
         dst->denom = ZERO_BIGINT();
     }
     else {
-        bi_copy(&dst->numer, &src->numer);
-        bi_copy(&dst->denom, &src->denom);
+        copy_bi(&dst->numer, &src->numer);
+        copy_bi(&dst->denom, &src->denom);
     }
 }
 
 void
-number_free(number_t* x) {
+free_number(number_t* x) {
     x->sign = x->zero = x->nan = 0;
-    bi_free(&x->numer);
-    bi_free(&x->denom);
+    free_bi(&x->numer);
+    free_bi(&x->denom);
 }
 
 void
@@ -35,8 +35,8 @@ number_normalize(number_t* x) {
     bigint_t a, b, t1 = ZERO_BIGINT(), t2 = ZERO_BIGINT(), one = ONE_BIGINT();
     /* flags */
     if (x->nan || x->numer.nan || x->denom.nan) {
-        bi_free(&x->numer);
-        bi_free(&x->denom);
+        free_bi(&x->numer);
+        free_bi(&x->denom);
         x->numer = NAN_BIGINT();
         x->denom = NAN_BIGINT();
         x->sign = x->zero = 0;
@@ -51,8 +51,8 @@ number_normalize(number_t* x) {
     /* special cases */
     /* n = 0 */
     if (x->numer.size == 0) {
-        bi_free(&x->numer);
-        bi_free(&x->denom);
+        free_bi(&x->numer);
+        free_bi(&x->denom);
         *x = ZERO_NUMBER();
         return;
     }
@@ -62,51 +62,51 @@ number_normalize(number_t* x) {
     }
     /* n */
     if (x->denom.size == 0) {
-        bi_free(&x->numer);
-        bi_free(&x->denom);
+        free_bi(&x->numer);
+        free_bi(&x->denom);
         *x = NAN_NUMBER();
         return;
     }
     if (bi_eq(&x->numer, &x->denom)) {
-        bi_free(&x->numer);
-        bi_free(&x->denom);
+        free_bi(&x->numer);
+        free_bi(&x->denom);
         x->numer = ONE_BIGINT();
         x->denom = ONE_BIGINT();
         return;
     }
     
     /* euclidian algorithm */
-    bi_copy(&a, &x->numer);
-    bi_copy(&b, &x->denom);
+    copy_bi(&a, &x->numer);
+    copy_bi(&b, &x->denom);
     while (b.size != 0) {
-        bi_free(&t1);
-        bi_copy(&t1, &b); /* t1 = b */
+        free_bi(&t1);
+        copy_bi(&t1, &b); /* t1 = b */
         t2 = bi_mod(&a, &b); /* t2 = a mod b */
-        bi_free(&b);
-        bi_copy(&b, &t2);  /* b = t2 */
-        bi_free(&a);
-        bi_copy(&a, &t1); /* a = t1 */
-        // printf("a "); print_bigint(&a); puts("");
-        // printf("b "); print_bigint(&b); puts("");
+        free_bi(&b);
+        copy_bi(&b, &t2);  /* b = t2 */
+        free_bi(&a);
+        copy_bi(&a, &t1); /* a = t1 */
+        // printf("a "); print_bi(&a); puts("");
+        // printf("b "); print_bi(&b); puts("");
     }
 
     /* a is gcd of numer & denom */
     if (!bi_eq(&a, &one)) {
-        bi_free(&t1);
+        free_bi(&t1);
         t1 = bi_div(&x->numer, &a);
-        bi_free(&x->numer);
+        free_bi(&x->numer);
         x->numer = t1;
-        bi_free(&t2);
+        free_bi(&t2);
         t2 = bi_div(&x->denom, &a);
-        bi_free(&x->denom);
+        free_bi(&x->denom);
         x->denom = t2;
         /* dont need to free t1 and t2 because they are own by x now */
     }
     else {
-        bi_free(&t1);
-        bi_free(&t2);
+        free_bi(&t1);
+        free_bi(&t2);
     }
-    bi_free(&one);
+    free_bi(&one);
 }
 
 int
@@ -152,8 +152,8 @@ number_lt(number_t* a, number_t* b) {
     bigint_t l = bi_mul(&a->numer, &b->denom),
         r = bi_mul(&b->numer, &a->denom);
     int res = bi_lt(&l, &r);
-    bi_free(&l);
-    bi_free(&r);
+    free_bi(&l);
+    free_bi(&r);
     return res;
 }
 
@@ -171,8 +171,8 @@ number_add(number_t* a, number_t* b) {
     t2.sign = b->sign;
     n = bi_add(&t1, &t2);
     d = bi_mul(&a->denom, &b->denom);
-    bi_free(&t1);
-    bi_free(&t2);
+    free_bi(&t1);
+    free_bi(&t2);
     res.numer = n;
     res.denom = d;
     number_normalize(&res);
@@ -192,10 +192,10 @@ number_sub(number_t* a, number_t* b) {
     t2.sign = b->sign;
     n = bi_sub(&t1, &t2);
     d = bi_mul(&a->denom, &b->denom);
-    bi_free(&t1);
-    bi_free(&t2);
-    bi_copy(&res.numer, &n);
-    bi_copy(&res.denom, &d);
+    free_bi(&t1);
+    free_bi(&t2);
+    copy_bi(&res.numer, &n);
+    copy_bi(&res.denom, &d);
     number_normalize(&res);
     return res;
 }
@@ -242,8 +242,8 @@ number_mod(number_t* a, number_t* b) {
     t2.sign = b->sign;
     n = bi_mod(&t1, &t2);
     d = bi_mul(&a->denom, &b->denom);
-    bi_free(&t1);
-    bi_free(&t2);
+    free_bi(&t1);
+    free_bi(&t2);
     res.numer = n;
     res.denom = d;
     number_normalize(&res);
@@ -253,8 +253,8 @@ number_mod(number_t* a, number_t* b) {
 
 int print_number_struct(number_t* x) {
     printf("[Number] sign=%u zero=%u nan=%u\n", x->sign, x->zero, x->nan);
-    printf("\tnumer="); print_bigint(&x->numer); puts("");
-    printf("\tdenom="); print_bigint(&x->denom); puts("");
+    printf("\tnumer="); print_bi(&x->numer); puts("");
+    printf("\tdenom="); print_bi(&x->denom); puts("");
     return 0;
 }
 
@@ -271,9 +271,9 @@ print_number_frac(number_t* x) {
         putchar('-');
         printed_byte_count++;
     }
-    printed_byte_count += print_bigint_dec(&x->numer);
+    printed_byte_count += print_bi_dec(&x->numer);
     printf(", ");
-    printed_byte_count += print_bigint_dec(&x->denom);
+    printed_byte_count += print_bi_dec(&x->denom);
     putchar(')');
     return printed_byte_count + 4;
 }
@@ -293,8 +293,8 @@ print_number_dec(number_t* x, int precision) {
     }
 
     /* find the lowest m such that 10^m >= abs(n/d) */
-    n_str = bigint_to_dec_string(&x->numer);
-    d_str = bigint_to_dec_string(&x->denom);
+    n_str = bi_to_dec_str(&x->numer);
+    d_str = bi_to_dec_str(&x->denom);
     n_cstr = to_str(&n_str);
     d_cstr = to_str(&d_str);
     n_exp = strlen(n_cstr);
@@ -311,7 +311,7 @@ print_number_dec(number_t* x, int precision) {
          x -= q * 10^(m-i)
     */
     i = 1;
-    ten_to_abs_m = bigint_from_tens_power((m < 0) ? -m - i : m - i);
+    ten_to_abs_m = bi_from_tens_power((m < 0) ? -m - i : m - i);
     if (m < 0) {
         ten_to_m.numer = ONE_BIGINT();
         ten_to_m.denom = ten_to_abs_m;
@@ -320,11 +320,11 @@ print_number_dec(number_t* x, int precision) {
         ten_to_m.numer = ten_to_abs_m;
         ten_to_m.denom = ONE_BIGINT();
     }
-    number_copy(&_x, x);
+    copy_number(&_x, x);
     while (1) {
-        number_free(&r);
-        number_free(&t);
-        number_free(&q);
+        free_number(&r);
+        free_number(&t);
+        free_number(&q);
         r = number_mod(&_x, &ten_to_m);
         t = number_sub(&_x, &r);
         q = number_div(&t, &ten_to_m);
@@ -345,21 +345,21 @@ print_number_dec(number_t* x, int precision) {
             break;
         }
         /* x -= q * 10^(m-i) */
-        number_free(&r);
+        free_number(&r);
         r = number_mul(&q, &ten_to_m);
         // printf("q*10^(m-i)   "); print_number_struct(&r); puts("");
-        number_free(&q);
+        free_number(&q);
         q = number_sub(&_x, &r);
         // printf("x-q*10^(m-i) "); print_number_struct(&q); puts("");
-        number_free(&_x);
-        number_copy(&_x, &q);
+        free_number(&_x);
+        copy_number(&_x, &q);
         /* ten_to_m /= 10 */
-        number_free(&t);
+        free_number(&t);
         t = number_div(&ten_to_m, &ten);
-        number_free(&ten_to_m);
-        number_copy(&ten_to_m, &t);
+        free_number(&ten_to_m);
+        copy_number(&ten_to_m, &t);
     }
-    number_free(&t);
+    free_number(&t);
     res_cstr = to_str(&res_str);
     for (i = 0; i < res_str.size; i++) {
         res_cstr[i] += '0';
@@ -383,7 +383,7 @@ number_from_str(const char* str) {
             return ZERO_NUMBER();
         }
         if (str[1] == 'b' || str[1] == 'x') {
-            n.numer = bigint_from_str(str);
+            n.numer = bi_from_str(str);
             n.denom = ONE_BIGINT();
             n.sign = is_neg;
             return n;
@@ -414,8 +414,8 @@ number_from_str(const char* str) {
     str_no_dot[j] = '\0';
     // printf("%s %d %d\n", str_no_dot, dot_pos, str_length - dot_pos);
     n.sign = is_neg;
-    n.numer = bigint_from_str(str_no_dot);
-    n.denom = bigint_from_tens_power(str_length - dot_pos);
+    n.numer = bi_from_str(str_no_dot);
+    n.denom = bi_from_tens_power(str_length - dot_pos);
     // print_bigint_dec(&n.numer); puts("");
     // print_bigint_dec(&n.denom); puts("");
     free(str_no_dot);

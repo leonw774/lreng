@@ -3,7 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "dynarr.h"
-#include "errors.h"
+#include "errormsg.h"
 #include "token.h"
 #include "operators.h"
 
@@ -225,11 +225,11 @@ ws_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
-        sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
+        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
         throw_syntax_error(
             pos_iter->pos.line,
             pos_iter->pos.col,
-            SYNTAX_ERR_MSG
+            ERR_MSG_BUF
         );
     }
 }
@@ -281,11 +281,11 @@ zero_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
-        sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
+        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
         throw_syntax_error(
             pos_iter->pos.line,
             pos_iter->pos.col,
-            SYNTAX_ERR_MSG
+            ERR_MSG_BUF
         );
     }
 }
@@ -322,11 +322,11 @@ num_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
-        sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
+        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
         throw_syntax_error(
             pos_iter->pos.line,
             pos_iter->pos.col,
-            SYNTAX_ERR_MSG
+            ERR_MSG_BUF
         );
     }
 }
@@ -356,11 +356,11 @@ hex_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
-        sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
+        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
         throw_syntax_error(
             pos_iter->pos.line,
             pos_iter->pos.col,
-            SYNTAX_ERR_MSG
+            ERR_MSG_BUF
         );
     }
 }
@@ -390,11 +390,11 @@ bin_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
-        sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
+        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
         throw_syntax_error(
             pos_iter->pos.line,
             pos_iter->pos.col,
-            SYNTAX_ERR_MSG
+            ERR_MSG_BUF
         );
     }
 }
@@ -410,11 +410,11 @@ ch_open_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&ch_lit_state, cur_cargo};
     }
     else {
-        sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
+        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
         throw_syntax_error(
             pos_iter->pos.line,
             pos_iter->pos.col,
-            SYNTAX_ERR_MSG
+            ERR_MSG_BUF
         );
     }
 }
@@ -435,11 +435,11 @@ ch_esc_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         c = '\r';
     }
     else {
-        sprintf(SYNTAX_ERR_MSG, "Invalid escape character: %c\n", c);
+        sprintf(ERR_MSG_BUF, "Invalid escape character: %c", c);
         throw_syntax_error(
             pos_iter->pos.line,
             pos_iter->pos.col,
-            SYNTAX_ERR_MSG
+            ERR_MSG_BUF
         );
     }
     append(&cur_cargo.str, &c);
@@ -451,11 +451,11 @@ ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     /* take the ending single quote */
     char c = linecol_read(pos_iter);
     if (c != '\'') {
-        sprintf(SYNTAX_ERR_MSG, "Expect a single quote, get '%c'", c);
+        sprintf(ERR_MSG_BUF, "Expect a single quote, get '%c'", c);
         throw_syntax_error(
             pos_iter->pos.line,
             pos_iter->pos.col,
-            SYNTAX_ERR_MSG
+            ERR_MSG_BUF
         );
     }
 
@@ -485,11 +485,11 @@ ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
-        sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
+        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
         throw_syntax_error(
             pos_iter->pos.line,
             pos_iter->pos.col,
-            SYNTAX_ERR_MSG
+            ERR_MSG_BUF
         );
     }
 }
@@ -519,11 +519,11 @@ id_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
-        sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
+        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
         throw_syntax_error(
             pos_iter->pos.line,
             pos_iter->pos.col,
-            SYNTAX_ERR_MSG
+            ERR_MSG_BUF
         );
     }
 }
@@ -546,6 +546,12 @@ op_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         type = get_op_tok_type(cur_cargo.str.data);
         harvest(&cur_cargo, type, pos_iter->pos);
         return (state_ret) {&comment_state, cur_cargo};
+    }
+    else if (IS_NUM(c)) {
+        type = get_op_tok_type(cur_cargo.str.data);
+        harvest(&cur_cargo, type, pos_iter->pos);
+        append(&cur_cargo.str, &c);
+        return (state_ret) {&num_state, cur_cargo};
     }
     else if (c == '\'') {
         type = get_op_tok_type(cur_cargo.str.data);
@@ -570,11 +576,11 @@ op_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
-        sprintf(SYNTAX_ERR_MSG, "Invalid character: %c\n", c);
+        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
         throw_syntax_error(
             pos_iter->pos.line,
             pos_iter->pos.col,
-            SYNTAX_ERR_MSG
+            ERR_MSG_BUF
         );
     }
 }
@@ -585,10 +591,10 @@ tokenize(const char* src, const int src_len, const unsigned char is_debug) {
     linecol_t pos = {1, 0}; /* start at line 1 col 1 */
     linecol_iterator_t pos_iter = {src, src_len, 0, pos};
     cargo cur_cargo;
-    cur_cargo.tokens = new_dynarr(sizeof(token_t));
-    cur_cargo.str = new_dynarr(sizeof(char));
     state_ret (*state_func)(linecol_iterator_t*, cargo) = ws_state;
     int prev_tokens_count = 0;
+    cur_cargo.tokens = new_dynarr(sizeof(token_t));
+    cur_cargo.str = new_dynarr(sizeof(char));
 
     if (is_debug) {
         puts("tokenize");
@@ -664,6 +670,7 @@ tokenize(const char* src, const int src_len, const unsigned char is_debug) {
             append(&name_str_map, &cur_token_str);
         }
     }
+    free_dynarr(&name_str_map);
 
     free_dynarr(&cur_cargo.str);
     return cur_cargo.tokens;

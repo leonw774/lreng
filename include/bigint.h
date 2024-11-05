@@ -21,9 +21,9 @@ typedef struct bigint {
 #define NAN_BIGINT() ((bigint_t) {.nan = 1, .sign = 0, .size = 0, .digit = 0})
 extern bigint_t ONE_BIGINT();
 
-extern void bi_new(bigint_t* x, u32 size);
-extern void bi_copy(bigint_t* dst, bigint_t* src);
-extern void bi_free(bigint_t* x);
+extern void new_bi(bigint_t* x, u32 size);
+extern void copy_bi(bigint_t* dst, bigint_t* src);
+extern void free_bi(bigint_t* x);
 
 extern int bi_eq(bigint_t* a, bigint_t* b);
 extern int bi_lt(bigint_t* a, bigint_t* b);
@@ -34,10 +34,10 @@ extern bigint_t bi_mul(bigint_t* a, bigint_t* b);
 extern bigint_t bi_div(bigint_t* a, bigint_t* b);
 extern bigint_t bi_mod(bigint_t* a, bigint_t* b);
 
-extern int print_bigint(bigint_t* x);
-dynarr_t bigint_to_dec_string(bigint_t* x);
-extern int print_bigint_dec(bigint_t* x);
-extern bigint_t bigint_from_str(const char* str);
-extern bigint_t bigint_from_tens_power(u32 exp);
+extern int print_bi(bigint_t* x);
+extern dynarr_t bi_to_dec_str(bigint_t* x);
+extern int print_bi_dec(bigint_t* x);
+extern bigint_t bi_from_str(const char* str);
+extern bigint_t bi_from_tens_power(u32 exp);
 
 #endif

@@ -48,8 +48,8 @@ typedef struct number {
 
 #define NUMPTR_IS_NAN(x) (x->flag & NUMBER_FLAG_NAN) 
 
-extern void number_copy(number_t* dst, number_t* src);
-extern void number_free(number_t* x);
+extern void copy_number(number_t* dst, number_t* src);
+extern void free_number(number_t* x);
 
 extern int number_eq(number_t* a, number_t* b);
 extern int number_lt(number_t* a, number_t* b);

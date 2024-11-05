@@ -13,8 +13,7 @@ const object_t const RESERVED_OBJS[RESERVED_ID_NUM] = {
 extern void
 free_object(object_t* obj) {
     if (obj->type == OBJ_NUMBER) {
-        bi_free(&obj->data.number.numer);
-        bi_free(&obj->data.number.denom);
+        free_number(&obj->data.number);
     }
     else if (obj->type == OBJ_PAIR) {
         free_object(obj->data.pair.left);

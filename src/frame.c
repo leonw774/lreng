@@ -19,14 +19,19 @@ DEFAULT_FRAME() {
 }
 
 frame_t
-new_frame(frame_t* parent, object_t* init_obj, int* init_name) {
+new_frame(frame_t* parent, object_t* init_obj, int init_name) {
     frame_t f;
     f.parent = parent;
     f.objects = new_dynarr(sizeof(object_t));
     f.names = new_dynarr(sizeof(int));
-    f.size = 1;
-    append(&f.objects, init_obj);
-    append(&f.names, init_name);
+    if (init_obj != NULL) {
+        append(&f.objects, init_obj);
+        append(&f.names, &init_name);
+        f.size = 1;
+    }
+    else {
+        f.size = 0;
+    }
     return f;
 }
 
@@ -69,4 +74,12 @@ frame_set(frame_t* f, const int name, const object_t* obj) {
         free_object(found_obj);
         memcpy(found_obj, obj, sizeof(object_t));
     }
+}
+
+/* free frame and set frame = frame->parent */
+void frame_return(frame_t* f) {
+    frame_t* parent = f->parent;
+    free_dynarr(&f->objects);
+    free_dynarr(&f->names);
+    *f = *parent;
 }

@@ -29,7 +29,7 @@ typedef enum reserved_id_name {
 
 typedef struct token {
     const char* const str;
-    int name;
+    int name; /* the name of operator or id */
     token_type_enum type;
     linecol_t pos;
 } token_t;

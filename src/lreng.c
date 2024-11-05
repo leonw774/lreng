@@ -3,7 +3,7 @@
 #include <string.h>
 #include "dynarr.h"
 #include "tree.h"
-#include "errors.h"
+#include "errormsg.h"
 #include "objects.h"
 #include "lreng.h"
 
@@ -47,10 +47,14 @@ main(int argc, char** argv) {
     fread(src, 1, fsize, fp);
     fclose(fp);
 
-    dynarr_t token_list = tokenize(src, fsize, is_debug);
-    tree_t syntax_tree = tree_parser(token_list, is_debug);
+    dynarr_t tokens = tokenize(src, fsize, is_debug);
+    tree_t syntax_tree = tree_parser(tokens, is_debug);
+    int is_good_semantic = semantic_checker(syntax_tree, is_debug);
+    if (!is_good_semantic) {
+        return SEMANTIC_ERR_CODE;
+    }
 
-    free_dynarr(&token_list);
+    free_dynarr(&tokens);
     free_tree(&syntax_tree);
     free(src);
     return 0;

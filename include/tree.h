@@ -5,18 +5,19 @@
 #define TREE_H
 
 typedef struct tree {
-    dynarr_t tokens;
+    dynarr_t tokens; /* type: token_t */
     int* lefts;/* index of left child, -1 of none */
     int* rights; /* index of right child, -1 of none */
-    int root; /* index of the root node */
+    unsigned int root; /* index of the root node */
+    unsigned int max_id_name; /* number of ids in tree */
 } tree_t;
 
 extern void free_tree(tree_t*);
 
 typedef struct tree_infix_iterater {
     tree_t tree;
-    dynarr_t index_stack;
-    dynarr_t depth_stack;
+    dynarr_t index_stack; /* type: int */
+    dynarr_t depth_stack; /* type: int */
 } tree_infix_iterater_t;
 
 extern tree_infix_iterater_t tree_iter_init(tree_t);

@@ -1,0 +1,6 @@
+x = 'H', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '\n', null;
++x = x => {
+    string != null && ( output $ `x; print(~x) ); # recursive
+    null
+};
+print(hello_world)

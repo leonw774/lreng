@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-#include "errors.h"
+#include "errormsg.h"
 #include "lreng.h"
 
 #define IS_PREFIXABLE(op) \
@@ -44,21 +44,21 @@ shunting_yard(const dynarr_t tokens, const unsigned char is_debug) {
             if (IS_PREFIXABLE(cur_token.name)) {
                 if (expectation == BINARY_OPERATOR) {
                     sprintf(
-                        SYNTAX_ERR_MSG,
+                        ERR_MSG_BUF,
                         "Expect binary operator or closing bracket. Get '%s'",
                         OP_STRS[cur_token.name]
                     );
                     throw_syntax_error(
                         cur_token.pos.line,
                         cur_token.pos.col,
-                        SYNTAX_ERR_MSG
+                        ERR_MSG_BUF
                     );
                 }
             }
             else {
                 if (expectation == PREFIXABLE) {
                     sprintf(
-                        SYNTAX_ERR_MSG,
+                        ERR_MSG_BUF,
                         "Expect unary operator, number, identifier,"
                         "or open bracket. Get '%s'",
                         OP_STRS[cur_token.name]
@@ -66,7 +66,7 @@ shunting_yard(const dynarr_t tokens, const unsigned char is_debug) {
                     throw_syntax_error(
                         cur_token.pos.line,
                         cur_token.pos.col,
-                        SYNTAX_ERR_MSG
+                        ERR_MSG_BUF
                     );
                 }
                 expectation = PREFIXABLE;
@@ -90,7 +90,7 @@ shunting_yard(const dynarr_t tokens, const unsigned char is_debug) {
             /* check expectation */
             if (expectation == PREFIXABLE) {
                 sprintf(
-                    SYNTAX_ERR_MSG,
+                    ERR_MSG_BUF,
                     "Expect unary operator, number, identifier,"
                     "or open bracket. Get '%s'",
                     cur_token.str
@@ -98,7 +98,7 @@ shunting_yard(const dynarr_t tokens, const unsigned char is_debug) {
                 throw_syntax_error(
                     cur_token.pos.line,
                     cur_token.pos.col,
-                    SYNTAX_ERR_MSG
+                    ERR_MSG_BUF
                 );
             }
             expectation = BINARY_OPERATOR;
@@ -136,14 +136,14 @@ shunting_yard(const dynarr_t tokens, const unsigned char is_debug) {
             }
             else if (!(top_op == OP_LPAREN && cur_op == OP_RPAREN)) {
                 sprintf(
-                    SYNTAX_ERR_MSG,
+                    ERR_MSG_BUF,
                     "Unmatched closing bracket: Found '%s' to '%s'",
                     OP_STRS[top_op], OP_STRS[cur_op]
                 );
                 throw_syntax_error(
                     cur_token.pos.line,
                     cur_token.pos.col,
-                    SYNTAX_ERR_MSG
+                    ERR_MSG_BUF
                 );
             }
         }
@@ -152,14 +152,14 @@ shunting_yard(const dynarr_t tokens, const unsigned char is_debug) {
             /* check expectation */
             if (expectation == BINARY_OPERATOR) {
                 sprintf(
-                    SYNTAX_ERR_MSG,
+                    ERR_MSG_BUF,
                     "Expect binary operator or closing bracket. Get '%s'",
                     cur_token.str
                 );
                 throw_syntax_error(
                     cur_token.pos.line,
                     cur_token.pos.col,
-                    SYNTAX_ERR_MSG
+                    ERR_MSG_BUF
                 );
             }
             expectation = BINARY_OPERATOR;
@@ -203,19 +203,29 @@ shunting_yard(const dynarr_t tokens, const unsigned char is_debug) {
 
 tree_t
 tree_parser(const dynarr_t tokens, const unsigned char is_debug) {
+    int i = 0;
     dynarr_t stack = new_dynarr(sizeof(int));
     tree_t tree = {
         .tokens = shunting_yard(tokens, is_debug),
         .lefts = NULL,
         .rights = NULL,
-        .root = -1
+        .root = -1,
+        .max_id_name = -1
     };
     tree.lefts = malloc(tree.tokens.size * sizeof(int));
     tree.rights = malloc(tree.tokens.size * sizeof(int));
     memset(tree.lefts, -1, tree.tokens.size * sizeof(int));
     memset(tree.rights, -1, tree.tokens.size * sizeof(int));
+    for (i = tokens.size - 1; i >=0; i--) {
+        token_t t = ((token_t*) tokens.data)[i];
+        if (t.type != TOK_ID) {
+            continue;
+        }
+        if (tree.max_id_name > t.name) {
+            tree.max_id_name = t.name;
+        }
+    }
 
-    int i;
     for (i = 0; i < tree.tokens.size; i++) {
         token_t cur_token = GET_TOKEN_AT(tree, i);
         if (is_debug) {
@@ -268,11 +278,11 @@ tree_parser(const dynarr_t tokens, const unsigned char is_debug) {
             }
         }
         sprintf(
-            SYNTAX_ERR_MSG,
+            ERR_MSG_BUF,
             "Bad syntax somewhere: %d tokens left in stack when parsing tree",
             stack.size
         );
-        throw_syntax_error(0, 0, SYNTAX_ERR_MSG);
+        throw_syntax_error(0, 0, ERR_MSG_BUF);
     }
     tree.root = *((int*) stack.data);
     free_dynarr(&stack);

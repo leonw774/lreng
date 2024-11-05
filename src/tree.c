@@ -17,7 +17,7 @@ tree_iter_init(tree_t tree) {
         .index_stack = new_dynarr(sizeof(int)),
         .depth_stack = new_dynarr(sizeof(int))
     };
-    int zero = 0;
+    unsigned long long zero = 0;
     append(&iter.index_stack, &tree.root);
     append(&iter.depth_stack, &zero);
     return iter;
