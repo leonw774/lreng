@@ -4,11 +4,15 @@
 #ifndef BIGINT_H
 #define BIGINT_H
 
+#define BASE_SHIFT 31
+#define DIGIT_BASE ((u32) 1 << BASE_SHIFT)
+#define CARRY_MASK ((u32) 1 << BASE_SHIFT)
+#define DIGIT_MASK ((u32) 1 << BASE_SHIFT) - 1
+
 typedef int32_t i32;
 typedef int64_t i64;
 typedef uint32_t u32;
 typedef uint64_t u64;
-
 
 typedef struct bigint {
     u32 size : 30; /* size is zero if the value is zero */
@@ -22,7 +26,7 @@ typedef struct bigint {
 extern bigint_t ONE_BIGINT();
 
 extern void new_bi(bigint_t* x, u32 size);
-extern void copy_bi(bigint_t* dst, bigint_t* src);
+extern void copy_bi(bigint_t* dst, const bigint_t* src);
 extern void free_bi(bigint_t* x);
 
 extern int bi_eq(bigint_t* a, bigint_t* b);

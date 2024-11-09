@@ -54,9 +54,6 @@ const char R_ASSOCIATIVE_OPS[] = {
 /* if the left and right chars make up to an operator */
 unsigned char
 is_2char_op(char left, char right) {
-    if (right == '!') {
-        return left == '+' || left == '-';
-    }
     if (right == '=') {
         return left == '<' || left == '=' || left == '>' || left == '!';
     }

@@ -37,7 +37,7 @@ get_op_tok_type(char* op_str) {
 op_name_enum
 get_op_enum(token_t* last_token, char* op_str) {
     if (op_str[1] == '\0') {
-        /* POS & NEG */
+        /* NEG */
         if (last_token == NULL
             || last_token->type == TOK_OP || last_token->type == TOK_LB) {
             if (op_str[0] == '+') {
@@ -121,8 +121,8 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos) {
         if (((token_t*) back(&cur_cargo->tokens))->name == OP_FCALL
             && type == TOK_RB) {
             token_t null_tok = {
-                RESERVED_IDS[RESERVED_ID_NULL],
-                RESERVED_ID_NULL,
+                RESERVED_IDS[RESERVED_ID_NAME_NULL],
+                RESERVED_ID_NAME_NULL,
                 TOK_ID,
                 pos
             };

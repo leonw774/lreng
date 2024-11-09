@@ -42,13 +42,16 @@ typedef struct number {
 #define ZERO_NUMBER() ((number_t) { \
     .sign = 0, .zero = 1, .nan = 0, \
     .numer = ZERO_BIGINT(), .denom = ZERO_BIGINT()})
+#define ONE_NUMBER() ((number_t) { \
+    .sign = 0, .zero = 0, .nan = 0, \
+    .numer = ONE_BIGINT(), .denom = ONE_BIGINT()})
 #define NAN_NUMBER() ((number_t) { \
     .sign = 0, .zero = 0, .nan = NUMBER_FLAG_NAN, \
     .numer = NAN_BIGINT(), .denom = NAN_BIGINT()})
 
 #define NUMPTR_IS_NAN(x) (x->flag & NUMBER_FLAG_NAN) 
 
-extern void copy_number(number_t* dst, number_t* src);
+extern void copy_number(number_t* dst, const number_t* src);
 extern void free_number(number_t* x);
 
 extern int number_eq(number_t* a, number_t* b);
@@ -63,6 +66,6 @@ extern number_t number_mod(number_t* a, number_t* b);
 extern int print_number_frac(number_t* x);
 extern int print_number_dec(number_t* x, int precision);
 extern number_t number_from_str(const char* str);
-extern number_t number_from_bigint(bigint_t* str);
+extern number_t number_from_i32(i32 n);
 
 #endif

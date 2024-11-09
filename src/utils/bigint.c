@@ -4,10 +4,6 @@
 #include "dynarr.h"
 #include "bigint.h"
 
-#define BASE_SHIFT 31
-#define DIGIT_BASE ((u32) 1 << BASE_SHIFT)
-#define CARRY_MASK ((u32) 1 << BASE_SHIFT)
-#define DIGIT_MASK ((u32) 1 << BASE_SHIFT) - 1
 #define BIPTR_IS_ZERO(x) (x->size == 0)
 
 int
@@ -65,7 +61,7 @@ new_bi(bigint_t* x, u32 size) {
 /* this function do new and move
    dst must be freed, src must not be freed */
 void
-copy_bi(bigint_t* dst, bigint_t* src) {
+copy_bi(bigint_t* dst, const bigint_t* src) {
     if (src->nan) {
         *dst = *src; // just copy
         dst->digit = NULL;

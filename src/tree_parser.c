@@ -72,6 +72,11 @@ shunting_yard(const dynarr_t tokens, const unsigned char is_debug) {
                 expectation = PREFIXABLE;
             }
 
+            /* positive sign do nothing, can discard */
+            if (cur_token.name == OP_POS) {
+                continue;
+            }
+
             /* pop stack until top is left braclet or precedence is higher */
             token_t* stack_top = back(&op_stack);
             while (stack_top != NULL && stack_top->type != TOK_LB
@@ -209,7 +214,7 @@ tree_parser(const dynarr_t tokens, const unsigned char is_debug) {
         .tokens = shunting_yard(tokens, is_debug),
         .lefts = NULL,
         .rights = NULL,
-        .root = -1,
+        .root_index = -1,
         .max_id_name = -1
     };
     tree.lefts = malloc(tree.tokens.size * sizeof(int));
@@ -284,11 +289,11 @@ tree_parser(const dynarr_t tokens, const unsigned char is_debug) {
         );
         throw_syntax_error(0, 0, ERR_MSG_BUF);
     }
-    tree.root = *((int*) stack.data);
+    tree.root_index = *((int*) stack.data);
     free_dynarr(&stack);
     if (is_debug) {
         printf("final_tree=\n");
-        print_tree(tree);
+        print_tree(&tree);
     }
     return tree;
 }

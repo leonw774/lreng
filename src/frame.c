@@ -1,7 +1,7 @@
 #include <string.h>
 #include "token.h"
-#include "frame.h"
 #include "objects.h"
+#include "frame.h"
 
 const frame_t
 DEFAULT_FRAME() {
@@ -19,9 +19,9 @@ DEFAULT_FRAME() {
 }
 
 frame_t
-new_frame(frame_t* parent, object_t* init_obj, int init_name) {
+new_frame(const frame_t* parent, const object_t* init_obj, const int init_name) {
     frame_t f;
-    f.parent = parent;
+    f.parent = (frame_t*) parent;
     f.objects = new_dynarr(sizeof(object_t));
     f.names = new_dynarr(sizeof(int));
     if (init_obj != NULL) {
@@ -66,19 +66,25 @@ frame_find(const frame_t* f, const int name) {
 void
 frame_set(frame_t* f, const int name, const object_t* obj) {
     object_t* found_obj = frame_find(f, name);
+    /* need to deep copy because of pair */
+    object_t clone_obj = copy_object(obj);
     if (found_obj == NULL) {
         append(&f->names, &name);
-        append(&f->objects, obj);
+        append(&f->objects, &clone_obj);
     }
     else {
         free_object(found_obj);
-        memcpy(found_obj, obj, sizeof(object_t));
+        *found_obj = clone_obj;
     }
 }
 
-/* free frame and set frame = frame->parent */
-void frame_return(frame_t* f) {
+/* free frame f and set it to its parent */
+void pop_frame(frame_t* f) {
     frame_t* parent = f->parent;
+    int i;
+    for (i = 0; i < f->objects.size; i++) {
+        free_object(&((object_t*) f->objects.data)[i]);
+    }
     free_dynarr(&f->objects);
     free_dynarr(&f->names);
     *f = *parent;

@@ -17,8 +17,8 @@ typedef enum op_name {
     OP_PAIR,
     OP_FCALLR,
     OP_ARG,
-    OP_LAND,
-    OP_LOR,
+    OP_CONDAND,
+    OP_CONDOR,
     OP_ASSIGN, OP_CONDFCALL,
     OP_EXPRSEP
 } op_name_enum;

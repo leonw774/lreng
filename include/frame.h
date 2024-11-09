@@ -1,6 +1,9 @@
 #include "dynarr.h"
 #include "objects.h"
 
+#ifndef FRAME_H
+#define FRAME_H
+
 typedef struct frame {
     struct frame* parent;
     dynarr_t objects; /* type: object */
@@ -10,7 +13,11 @@ typedef struct frame {
 
 extern const frame_t DEFAULT_FRAME();
 
-extern frame_t new_frame(frame_t* parent, object_t* init_obj, int init_name);
+extern frame_t new_frame(
+    const frame_t* parent,
+    const object_t* init_obj,
+    const int init_name
+);
 
 extern object_t* frame_get(const frame_t* f, const int name);
 
@@ -18,4 +25,6 @@ extern object_t* frame_find(const frame_t* f, const int name);
 
 extern void frame_set(frame_t* f, const int name, const object_t* obj);
 
-extern void frame_return(frame_t* f);
+extern void pop_frame(frame_t* f);
+
+#endif

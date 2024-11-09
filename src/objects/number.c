@@ -5,7 +5,7 @@
 #include "number.h"
 
 void
-copy_number(number_t* dst, number_t* src) {
+copy_number(number_t* dst, const number_t* src) {
     dst->sign = src->sign;
     dst->zero = src->zero;
     dst->nan = src->nan;
@@ -424,4 +424,24 @@ number_from_str(const char* str) {
 }
 
 number_t
-number_from_bigint(bigint_t* n);
+number_from_i32(i32 i) {
+    number_t n = EMPTY_NUMBER();
+    n.denom = ONE_BIGINT();
+    u32 j;
+    if (i < 0) {
+        n.sign = 1;
+        /* cast to 64 bit to prevent overflow at -2^31 */
+        j = -((i64) i);
+    }
+    if (j >= DIGIT_BASE) {
+        new_bi(&n.numer, 2);
+        n.numer.digit[0] = j & DIGIT_MASK;
+        n.numer.digit[1] = 1;
+    }
+    else {
+        new_bi(&n.numer, 1);
+        n.numer.digit[0] = j;
+    }
+    return n;
+}
+

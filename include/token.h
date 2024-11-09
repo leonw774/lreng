@@ -21,14 +21,14 @@ typedef enum token_type {
 #define RESERVED_ID_NUM 3
 extern const char* const RESERVED_IDS[RESERVED_ID_NUM];
 typedef enum reserved_id_name {
-    RESERVED_ID_NULL,
-    RESERVED_ID_INPUT,
-    RESERVED_ID_OUTPUT
+    RESERVED_ID_NAME_NULL,
+    RESERVED_ID_NAME_INPUT,
+    RESERVED_ID_NAME_OUTPUT
 } reserved_id_name_enum;
 
 
 typedef struct token {
-    const char* const str;
+    const char* str;
     int name; /* the name of operator or id */
     token_type_enum type;
     linecol_t pos;

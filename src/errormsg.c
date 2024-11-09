@@ -25,3 +25,14 @@ print_semantic_error(int line, int col, const char* msg) {
         fprintf(stderr, "[SyntaxError]: Line %d col %d: %s\n", line, col, msg);
     }
 }
+
+void
+throw_runtime_error(int line, int col, const char* msg) {
+    if (line == 0 && col == 0) {
+        fprintf(stderr, "[RuntimError]: %s\n", msg);
+    }
+    else {
+        fprintf(stderr, "[RuntimeError]: Line %d col %d: %s\n", line, col, msg);
+    }
+    exit(RUNTIME_ERR_CODE);
+}

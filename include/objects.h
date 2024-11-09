@@ -2,55 +2,60 @@
 #include "bigint.h"
 #include "number.h"
 #include "token.h"
+#include "tree.h"
 
 #ifndef OBJECT_H
 #define OBJECT_H
 
+#define OBJECT_TYPE_NUM 5
 typedef enum object_type {
-    OBJ_NULL,
-    OBJ_NUMBER,
-    OBJ_PAIR,
-    OBJ_FUNC,
-    OBJ_BUILTIN_FUNC
+    TYPE_NULL,
+    TYPE_NUMBER,
+    TYPE_PAIR,
+    TYPE_FUNC,
+    TYPE_BUILTIN_FUNC,
+    TYPE_ANY
 } object_type_enum;
 
 typedef struct object object_t;
-
-typedef struct nullobj {
-    const short null;
-} nullobj_t;
 
 typedef struct pair {
     object_t* left;
     object_t* right;
 } pair_t;
 
+typedef struct frame frame_t;
+
 typedef struct func {
+    int builtin_name; /* -1 if is not builtin function */
     int arg_name;
-    int root_index;
+    tree_t* local_tree;
+    const frame_t* frame;
 } func_t;
 
-typedef struct builtin_func {
-    int name;
-} builtin_func_t;
-
 union object_union {
-    nullobj_t null;
     number_t number;
     pair_t pair;
     func_t func;
-    builtin_func_t builtin_func;
 };
 
 typedef struct object {
-    const object_type_enum type;
+    object_type_enum type;
     union object_union data;
 } object_t;
 
-
-extern object_t new_object(token_t* main, token_t* left, token_t* right);
-extern void free_object(object_t* obj);
+#define OBJECT_STRUCT_SIZE sizeof(object_t)
+#define NULL_OBJECT ((object_t) {.type = TYPE_NULL})
 
 extern const object_t const RESERVED_OBJS[RESERVED_ID_NUM];
+extern const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM];
+
+extern object_t* alloc_empty_object(int type);
+/* deep copy an object */
+extern object_t copy_object(const object_t* obj);
+extern void free_object(object_t* obj);
+extern int print_object(object_t* obj);
+
+extern int to_boolean(object_t* obj);
 
 #endif

@@ -9,6 +9,7 @@
 
 int
 main(int argc, char** argv) {
+    const char* usage = "Usage: lreng {filename} [-d]\n";
     char* filename = NULL;
     FILE* fp = fopen(filename, "r");
     long fsize = 0;
@@ -20,14 +21,14 @@ main(int argc, char** argv) {
     }
     else if (argc == 3) {
         if (strcmp(argv[2], "-d") != 0) {
-            fputs("lreng {filename} [-d]\n", stdout);
+            fputs(usage, stdout);
             return 0;
         }
         filename = argv[1];
         is_debug = 1;
     }
     else {
-        fputs("lreng {filename} [-d]\n", stdout);
+        fputs(usage, stdout);
         return 0;
     }
 
@@ -53,9 +54,11 @@ main(int argc, char** argv) {
     if (!is_good_semantic) {
         return SEMANTIC_ERR_CODE;
     }
-
-    free_dynarr(&tokens);
+    frame_t main_frame = DEFAULT_FRAME();
+    eval_tree(&syntax_tree, &main_frame, is_debug);
+    pop_frame(&main_frame);
     free_tree(&syntax_tree);
+    free_dynarr(&tokens);
     free(src);
     return 0;
 }

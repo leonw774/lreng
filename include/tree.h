@@ -8,26 +8,26 @@ typedef struct tree {
     dynarr_t tokens; /* type: token_t */
     int* lefts;/* index of left child, -1 of none */
     int* rights; /* index of right child, -1 of none */
-    unsigned int root; /* index of the root node */
+    int root_index; /* index of the root node */
     unsigned int max_id_name; /* number of ids in tree */
 } tree_t;
 
 extern void free_tree(tree_t*);
 
-typedef struct tree_infix_iterater {
-    tree_t tree;
+typedef struct tree_preorder_iterator {
+    const tree_t* tree;
     dynarr_t index_stack; /* type: int */
     dynarr_t depth_stack; /* type: int */
-} tree_infix_iterater_t;
+} tree_preorder_iterator_t;
 
-extern tree_infix_iterater_t tree_iter_init(tree_t);
+extern tree_preorder_iterator_t tree_iter_init(const tree_t*);
 
-extern token_t* tree_iter_get(tree_infix_iterater_t* iter);
+extern token_t* tree_iter_get(tree_preorder_iterator_t*);
 
-extern void tree_iter_next(tree_infix_iterater_t* iter);
+extern void tree_iter_next(tree_preorder_iterator_t*);
 
-extern void free_tree_iter(tree_infix_iterater_t*);
+extern void free_tree_iter(tree_preorder_iterator_t*);
 
-extern void print_tree(tree_t);
+extern void print_tree(const tree_t* tree);
 
 #endif
