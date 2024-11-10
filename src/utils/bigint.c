@@ -795,24 +795,24 @@ bi_mod(bigint_t* a, bigint_t* b) {
 
 int
 print_bi(bigint_t* x) {
-    int i, printed_byte_count = 0;
+    int i, printed_bytes_count = 0;
     if (x->nan) {
-        printed_byte_count = printf("[BiInt] NaN");
-        return printed_byte_count;
+        printed_bytes_count = printf("[BiInt] NaN");
+        return printed_bytes_count;
     }
-    printed_byte_count = printf(
+    printed_bytes_count = printf(
         "[BigInt] sign=%d, size=%d, digit=",
         x->sign, x->size
     );
     fflush(stdout);
     if (BIPTR_IS_ZERO(x)) {
-        return printed_byte_count;
+        return printed_bytes_count;
     }
     for (i = 0; i< x->size; i++) {
-        printed_byte_count += printf("%8x, ", x->digit[i]);
+        printed_bytes_count += printf("%8x, ", x->digit[i]);
         fflush(stdout);
     }
-    return printed_byte_count;
+    return printed_bytes_count;
 }
 
 /* returned dynarr contains does not always contains terminating NULL */
@@ -882,13 +882,13 @@ bi_to_dec_str(bigint_t* x) {
 
 int
 print_bi_dec(bigint_t* x) {
-    int printed_byte_count = 0;
-    printed_byte_count += printf("");
+    int printed_bytes_count = 0;
+    printed_bytes_count += printf("");
     dynarr_t x_str = bi_to_dec_str(x);
     char* x_cstr = to_str(&x_str);
-    printed_byte_count = printf("[BigInt] %s", x_cstr);
+    printed_bytes_count = printf("[BigInt] %s", x_cstr);
     free(x_cstr);
-    return printed_byte_count;
+    return printed_bytes_count;
 }
 
 /* expect string of decimal, heximal, or binary u32eger */

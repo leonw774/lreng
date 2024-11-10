@@ -8,46 +8,46 @@
 #include "frame.h"
 #include "lreng.h"
 
-#define NO_ARG -1
+#define NO_OPRAND -1
 
 void
-check_arg_type(
+check_operand_type(
     token_t op_token,
-    object_type_enum l_arg_type,
-    object_type_enum r_arg_type,
-    object_t* l_obj_p,
-    object_t* r_obj_p
+    object_type_enum l_type,
+    object_type_enum r_type,
+    object_t* l_obj,
+    object_t* r_obj
 ) {
-    if ((l_obj_p == NULL) || (r_arg_type == NO_ARG) != (r_obj_p == NULL)
-        || l_arg_type != l_obj_p->type || r_arg_type != r_obj_p->type) {
+    if ((l_obj == NULL) || (r_type == NO_OPRAND) != (r_obj == NULL)
+        || l_type != l_obj->type || r_type != r_obj->type) {
         sprintf(
             ERR_MSG_BUF,
             "Bad argument type for operator %s: expect (%s, %s), get (%s, %s)",
             op_token.str,
-            l_arg_type >= OBJECT_TYPE_NUM ? "" : OBJECT_TYPE_STR[l_arg_type],
-            r_arg_type >= OBJECT_TYPE_NUM ? "" : OBJECT_TYPE_STR[r_arg_type],
-            l_obj_p == NULL ? "" : OBJECT_TYPE_STR[l_obj_p->type],
-            r_obj_p == NULL ? "" : OBJECT_TYPE_STR[r_obj_p->type]
+            l_type >= OBJECT_TYPE_NUM ? "" : OBJECT_TYPE_STR[l_type],
+            r_type >= OBJECT_TYPE_NUM ? "" : OBJECT_TYPE_STR[r_type],
+            l_obj == NULL ? "" : OBJECT_TYPE_STR[l_obj->type],
+            r_obj == NULL ? "" : OBJECT_TYPE_STR[r_obj->type]
         );
-        throw_runtime_error(op_token.pos.line, op_token.pos.col, ERR_MSG_BUF);
+        print_runtime_error(op_token.pos.line, op_token.pos.col, ERR_MSG_BUF);
     }
 }
 
-object_t
+object_or_error_t
 exec_call_builtin(int name, object_t* arg_obj) {
     switch (name) {
-        case RESERVED_ID_NAME_INPUT:
-            return builtin_func_input(arg_obj);
-        case RESERVED_ID_NAME_OUTPUT:
-            return builtin_func_output(arg_obj);
-        default:
-            exit(OTHER_ERR_CODE);
+    case RESERVED_ID_NAME_INPUT:
+        return builtin_func_input(arg_obj);
+    case RESERVED_ID_NAME_OUTPUT:
+        return builtin_func_output(arg_obj);
+    default:
+        return ERR_OBJERR();
     }
 }
 
-object_t
+object_or_error_t
 exec_call(object_t* func_obj, object_t* arg_obj) {
-    object_t res;
+    object_or_error_t res;
     /* if is builtin */
     if (func_obj->data.func.builtin_name != -1) {
         return exec_call_builtin(func_obj->data.func.builtin_name, arg_obj);
@@ -63,72 +63,175 @@ exec_call(object_t* func_obj, object_t* arg_obj) {
     res = eval_tree(func_obj->data.func.local_tree, &f, 1);
     /* pop frame */
     pop_frame(&f);
+    return res;
 }
 
-object_t
-exec_op(token_t op_token, object_t* left_obj, object_t* right_obj) {
+object_or_error_t
+exec_op(token_t op_token, object_t* l_obj, object_t* r_obj) {
     object_t res;
+    number_t res_number;
+    int tmp_bool;
     switch(op_token.name) {
-        /* case OP_POS: */ /* discarded in tree parser */
-        case OP_NEG:
-            check_arg_type(op_token, TYPE_NUMBER, NO_ARG, left_obj, right_obj);
-            res = copy_object(left_obj);
-            res.data.number.sign = !res.data.number.sign;
-            return res;
-        case OP_NOT:
-            check_arg_type(op_token, TYPE_ANY, NO_ARG, left_obj, right_obj);
-            return (object_t) {.type = TYPE_NUMBER, .data = {.number = 
-                (to_boolean(left_obj) ? ONE_NUMBER() : ZERO_NUMBER())
-            }};
-        case OP_GETL:
-            check_arg_type(op_token, TYPE_PAIR, NO_ARG, left_obj, right_obj);
-            return copy_object(left_obj->data.pair.left);
-        case OP_GETR:
-            check_arg_type(op_token, TYPE_PAIR, NO_ARG, left_obj, right_obj);
-            return copy_object(left_obj->data.pair.right);
-        case OP_EXP:
-            check_arg_type(
-                op_token, TYPE_NUMBER, TYPE_NUMBER, left_obj, right_obj);
-            if (right_obj->data.number.denom.size != 1
-                || right_obj->data.number.denom.digit[0] != 1) {
-                throw_runtime_error(
-                    op_token.pos.line,
-                    op_token.pos.col,
-                    "Exponent must be integer"
-                );
+    /* case OP_POS: */ /* OP_POS would be discarded in tree parser */
+    case OP_NEG:
+        check_operand_type(op_token, TYPE_NUMBER, NO_OPRAND, l_obj, r_obj);
+        res = copy_object(l_obj);
+        res.data.number.sign = !res.data.number.sign;
+        return OBJ_OBJERR(res);
+    case OP_NOT:
+        check_operand_type(op_token, TYPE_ANY, NO_OPRAND, l_obj, r_obj);
+        return OBJ_OBJERR(((object_t) {
+            .type = TYPE_NUMBER,
+            .data = {
+                .number = to_boolean(l_obj) ? ONE_NUMBER() : ZERO_NUMBER()
             }
-            return (object_t) {.type = TYPE_NUMBER, .data = {.number =
-                number_exp(&left_obj->data.number, &right_obj->data.number)
-            }};
-        case OP_MUL:
-        case OP_DIV:
-        case OP_MOD:
-        case OP_ADD:
-        case OP_SUB:
-        case OP_LT:
-        case OP_LE:
-        case OP_GT:
-        case OP_GE:
-        case OP_EQ:
-        case OP_NEQ:
-        case OP_AND:
-        case OP_OR:
-        case OP_PAIR:
-        case OP_FCALLR:
-        case OP_CONDAND:
-        case OP_CONDOR:
-        case OP_CONDFCALL:
-        case OP_EXPRSEP:
-        default:
-            throw_runtime_error(
+        }));
+    case OP_GETL:
+        check_operand_type(op_token, TYPE_PAIR, NO_OPRAND, l_obj, r_obj);
+        return OBJ_OBJERR(copy_object(l_obj->data.pair.left));
+    case OP_GETR:
+        check_operand_type(op_token, TYPE_PAIR, NO_OPRAND, l_obj, r_obj);
+        return OBJ_OBJERR(copy_object(l_obj->data.pair.right));
+    case OP_EXP:
+        check_operand_type(op_token, TYPE_NUMBER, TYPE_NUMBER, l_obj, r_obj);
+        if (r_obj->data.number.denom.size != 1
+            || r_obj->data.number.denom.digit[0] != 1) {
+            print_runtime_error(
                 op_token.pos.line,
                 op_token.pos.col,
-                "exec_op: bad op name"
+                "Exponent must be integer"
             );
+            return ERR_OBJERR();
+        }
+        return OBJ_OBJERR(((object_t) {
+            .type = TYPE_NUMBER,
+            .data = {
+                .number = number_exp(&l_obj->data.number, &r_obj->data.number)
+            }
+        }));
+    case OP_MUL:
+        check_operand_type(op_token, TYPE_NUMBER, TYPE_NUMBER, l_obj, r_obj);
+        return OBJ_OBJERR(((object_t) {
+            .type = TYPE_NUMBER,
+            .data = {
+                .number = number_mul(&l_obj->data.number, &r_obj->data.number)
+            }
+        }));
+    case OP_DIV:
+        check_operand_type(op_token, TYPE_NUMBER, TYPE_NUMBER, l_obj, r_obj);
+        return OBJ_OBJERR(((object_t) {
+            .type = TYPE_NUMBER,
+            .data = {
+                .number = number_div(&l_obj->data.number, &r_obj->data.number)
+            }
+        }));
+    case OP_MOD:
+        check_operand_type(op_token, TYPE_NUMBER, TYPE_NUMBER, l_obj, r_obj);
+        return OBJ_OBJERR(((object_t) {
+            .type = TYPE_NUMBER,
+            .data = {
+                .number = number_mod(&l_obj->data.number, &r_obj->data.number)
+            }
+        }));
+    case OP_ADD:
+        check_operand_type(op_token, TYPE_NUMBER, TYPE_NUMBER, l_obj, r_obj);
+        return OBJ_OBJERR(((object_t) {
+            .type = TYPE_NUMBER,
+            .data = {
+                .number = number_add(&l_obj->data.number, &r_obj->data.number)
+            }
+        }));
+    case OP_SUB:
+        check_operand_type(op_token, TYPE_NUMBER, TYPE_NUMBER, l_obj, r_obj);
+        return OBJ_OBJERR(((object_t) {
+            .type = TYPE_NUMBER,
+            .data = {
+                .number = number_sub(&l_obj->data.number, &r_obj->data.number)
+            }
+        }));
+    case OP_LT:
+        check_operand_type(op_token, TYPE_NUMBER, TYPE_NUMBER, l_obj, r_obj);
+        tmp_bool = number_lt(&l_obj->data.number, &r_obj->data.number);
+        return OBJ_OBJERR(((object_t) {
+            .type = TYPE_NUMBER,
+            .data = {.number = number_from_i32(tmp_bool)}
+        }));
+    case OP_LE:
+        check_operand_type(op_token, TYPE_NUMBER, TYPE_NUMBER, l_obj, r_obj);
+        tmp_bool = !number_lt(&r_obj->data.number, &l_obj->data.number);
+        return OBJ_OBJERR(((object_t) {
+            .type = TYPE_NUMBER,
+            .data = {.number = number_from_i32(tmp_bool)}
+        }));
+    case OP_GT:
+        check_operand_type(op_token, TYPE_NUMBER, TYPE_NUMBER, l_obj, r_obj);
+        tmp_bool = number_lt(&r_obj->data.number, &l_obj->data.number);
+        return OBJ_OBJERR(((object_t) {
+            .type = TYPE_NUMBER,
+            .data = {.number = number_from_i32(tmp_bool)}
+        }));
+    case OP_GE:
+        check_operand_type(op_token, TYPE_NUMBER, TYPE_NUMBER, l_obj, r_obj);
+        tmp_bool = !number_lt(&l_obj->data.number, &r_obj->data.number);
+        return OBJ_OBJERR(((object_t) {
+            .type = TYPE_NUMBER,
+            .data = {.number = number_from_i32(tmp_bool)}
+        }));
+    case OP_EQ:
+        check_operand_type(op_token, TYPE_NUMBER, TYPE_NUMBER, l_obj, r_obj);
+        tmp_bool = number_eq(&l_obj->data.number, &r_obj->data.number);
+        return OBJ_OBJERR(((object_t) {
+            .type = TYPE_NUMBER,
+            .data = {.number = number_from_i32(tmp_bool)}
+        }));
+    case OP_NE:
+        check_operand_type(op_token, TYPE_NUMBER, TYPE_NUMBER, l_obj, r_obj);
+        tmp_bool = !number_eq(&l_obj->data.number, &r_obj->data.number);
+        return OBJ_OBJERR(((object_t) {
+            .type = TYPE_NUMBER,
+            .data = {.number = number_from_i32(tmp_bool)}
+        }));
+    case OP_AND:
+        check_operand_type(op_token, TYPE_ANY, TYPE_ANY, l_obj, r_obj);
+        tmp_bool = to_boolean(l_obj) && to_boolean(r_obj);
+        return OBJ_OBJERR(((object_t) {
+            .type = TYPE_NUMBER,
+            .data = {.number = number_from_i32(tmp_bool)}
+        }));
+    case OP_OR:
+        check_operand_type(op_token, TYPE_ANY, TYPE_ANY, l_obj, r_obj);
+        tmp_bool = to_boolean(l_obj) || to_boolean(r_obj);
+        return OBJ_OBJERR(((object_t) {
+            .type = TYPE_NUMBER,
+            .data = {.number = number_from_i32(tmp_bool)}
+        }));
+    case OP_PAIR:
+        check_operand_type(op_token, TYPE_ANY, TYPE_ANY, l_obj, r_obj);
+        res = (object_t) {
+            .type = TYPE_NUMBER,
+            .data = {.pair = {
+                .left = alloc_empty_object(l_obj->type),
+                .right = alloc_empty_object(r_obj->type),
+            }}
+        };
+        *res.data.pair.left = copy_object(l_obj);
+        *res.data.pair.right = copy_object(r_obj);
+        return OBJ_OBJERR(res);
+    case OP_FCALLR:
+    case OP_CONDAND:
+    case OP_CONDOR:
+    case OP_CONDFCALL:
+    case OP_EXPRSEP:
+    default:
+        print_runtime_error(
+            op_token.pos.line,
+            op_token.pos.col,
+            "exec_op: bad op name"
+        );
     }
 }
 
-object_t
+object_or_error_t
 eval_tree(
     tree_t* tree,
     const frame_t* cur_frame,
@@ -145,6 +248,8 @@ eval_tree(
 
     token_t cur_token;
     int cur_index, cur_local_index;
+
+    object_or_error_t return_obj_err;
 
     if (is_debug) {
         printf("eval_tree: root=%d parent_frame=%016x ",
@@ -205,7 +310,7 @@ eval_tree(
                     continue;
                 }
                 if (right_obj_p->type != TYPE_FUNC) {
-                    throw_runtime_error(
+                    print_runtime_error(
                         cur_token.pos.line,
                         cur_token.pos.col,
                         "Right side of argument binder should be function"
@@ -225,7 +330,7 @@ eval_tree(
                         "Repeated initialization of identifier '%s'",
                         left_token.str
                     );
-                    throw_runtime_error(
+                    print_runtime_error(
                         left_token.pos.line,
                         left_token.pos.col,
                         ERR_MSG_BUF
@@ -285,8 +390,11 @@ eval_tree(
                         continue;
                     }
                 }
-                *obj_table[cur_index] =
-                    exec_op(cur_token, left_obj_p, right_obj_p);
+                return_obj_err = exec_op(cur_token, left_obj_p, right_obj_p);
+                if (return_obj_err.is_error) {
+                    return return_obj_err;
+                }
+                *obj_table[cur_index] = return_obj_err.obj;
             }
             if (is_debug) {
                 printf("node id: %d eval result: ", cur_index);
@@ -302,7 +410,7 @@ eval_tree(
                     "Identifier '%s' used uninitialized",
                     cur_token.str
                 );
-                throw_runtime_error(
+                print_runtime_error(
                     cur_token.pos.line, cur_token.pos.col, ERR_MSG_BUF
                 );
             }
@@ -328,10 +436,12 @@ eval_tree(
     }
 
     /* copy return object */
-    object_t return_obj = copy_object(
+    return_obj_err = OBJ_OBJERR(copy_object(
         obj_table[tree->root_index - min_local_index]
-    );
-    /* free all middle objects */
+    ));
+
+    /* free things */
+    free_dynarr(&token_index_stack);
     int i;
     for (i = 0; i < tree_size; i++) {
         if (obj_table[i]) {
@@ -339,5 +449,5 @@ eval_tree(
             free(obj_table[i]);
         }
     }
-    return return_obj;
+    return return_obj_err;
 }

@@ -307,26 +307,27 @@ int print_number_struct(number_t* x) {
 
 int
 print_number_frac(number_t* x) {
-    int i, printed_byte_count = 0;
-    printed_byte_count += printf("[Number] ");
+    int i, printed_bytes_count = 0;
+    printed_bytes_count += printf("[Number] ");
     if (x->nan & NUMBER_FLAG_NAN) {
-        printed_byte_count += printf("NaN");
-        return printed_byte_count;
+        printed_bytes_count += printf("NaN");
+        return printed_bytes_count;
     }
     putchar('(');
     if (x->sign) {
         putchar('-');
-        printed_byte_count++;
+        printed_bytes_count++;
     }
-    printed_byte_count += print_bi_dec(&x->numer);
+    printed_bytes_count += print_bi_dec(&x->numer);
     printf(", ");
-    printed_byte_count += print_bi_dec(&x->denom);
+    printed_bytes_count += print_bi_dec(&x->denom);
     putchar(')');
-    return printed_byte_count + 4;
+    return printed_bytes_count + 4;
 }
 
 int
 print_number_dec(number_t* x, int precision) {
+    int printed_bytes_count = 0;
     int i, n_exp, d_exp, m, e;
     dynarr_t n_str, d_str, res_str;
     char *n_cstr, *d_cstr, *res_cstr;
@@ -412,7 +413,9 @@ print_number_dec(number_t* x, int precision) {
     for (i = 0; i < res_str.size; i++) {
         res_cstr[i] += '0';
     }
-    return printf("[Number] %s", res_cstr);
+    printed_bytes_count = printf("[Number] %s", res_cstr);
+    free(res_cstr);
+    return printed_bytes_count;
 }
 
 number_t

@@ -123,5 +123,6 @@ semantic_checker(const tree_t tree, const unsigned char is_debug) {
         tree_iter_next(&tree_preorder_iterator);
         cur_token_p = tree_iter_get(&tree_preorder_iterator);
     }
+    free(id_usage);
     return is_passed;
 }

@@ -1,19 +1,28 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "token.h"
 
 const char* const RESERVED_IDS[RESERVED_ID_NUM] = {"null", "input", "output"};
 
+void
+free_token_str(token_t* token) {
+    if ((token->type == TOK_ID || token->type == TOK_NUM) && token->str) {
+        free(token->str);
+        token->str = NULL;
+    }
+}
+
 int
-print_token(token_t t) {
+print_token(token_t token) {
     const char* token_str;
     const char* type_str;
-    if (t.type == TOK_OP || t.type == TOK_LB || t.type == TOK_RB) {
-        token_str = OP_STRS[t.name];
+    if (token.type == TOK_OP || token.type == TOK_LB || token.type == TOK_RB) {
+        token_str = OP_STRS[token.name];
     }
     else {
-        token_str = t.str;
+        token_str = token.str;
     }
-    switch (t.type) {
+    switch (token.type) {
         case TOK_ID:
             type_str = "ID";
             break;
@@ -30,11 +39,10 @@ print_token(token_t t) {
             type_str = "RB";
             break;
         default:
-            printf("printf_token: bad token type: %d\n", t.type);
+            printf("printf_token: bad token type: %d\n", token.type);
             type_str = "";
-            break;
     }
-    return (t.name == -1)
-        ? printf("[%s \"%s\"]", type_str, token_str, t.name)
-        : printf("[%s \"%s\" %d]", type_str, token_str, t.name);
+    return (token.name == -1)
+        ? printf("[%s \"%s\"]", type_str, token_str, token.name)
+        : printf("[%s \"%s\" %d]", type_str, token_str, token.name);
 }

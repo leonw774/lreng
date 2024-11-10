@@ -18,7 +18,7 @@ int semantic_checker(
     const unsigned char is_debug
 );
 
-object_t eval_tree(
+object_or_error_t eval_tree(
     tree_t* tree,
     const frame_t* cur_frame,
     const unsigned char is_debug

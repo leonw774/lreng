@@ -7,7 +7,6 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
-#define OBJECT_TYPE_NUM 5
 typedef enum object_type {
     TYPE_NULL,
     TYPE_NUMBER,
@@ -16,6 +15,7 @@ typedef enum object_type {
     TYPE_BUILTIN_FUNC,
     TYPE_ANY
 } object_type_enum;
+#define OBJECT_TYPE_NUM TYPE_ANY
 
 typedef struct object object_t;
 
@@ -44,8 +44,17 @@ typedef struct object {
     union object_union data;
 } object_t;
 
+typedef struct object_or_error {
+    unsigned char is_error;
+    object_t obj;
+} object_or_error_t;
+
 #define OBJECT_STRUCT_SIZE sizeof(object_t)
+#define OBJECT_OR_ERROR_STRUCT_SIZE sizeof(object_or_error_t)
 #define NULL_OBJECT ((object_t) {.type = TYPE_NULL})
+
+#define ERR_OBJERR() ((object_or_error_t) {.is_error = 1, .obj = NULL_OBJECT})
+#define OBJ_OBJERR(o) ((object_or_error_t) {.is_error = 0, .obj = o})
 
 extern const object_t const RESERVED_OBJS[RESERVED_ID_NUM];
 extern const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM];

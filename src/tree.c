@@ -1,13 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "token.h"
 #include "tree.h"
 
 void
-free_tree(tree_t* t) {
-    free_dynarr(&t->tokens);
-    free(t->lefts);
-    free(t->rights);
-    t->root_index = -1;
+free_tree(tree_t* tree) {
+    int i;
+    for (i = 0; i < tree->tokens.size; i++) {
+        free_token_str(&((token_t*) tree->tokens.data)[i]);
+    }
+    free_dynarr(&tree->tokens);
+    free(tree->lefts);
+    free(tree->rights);
+    tree->root_index = -1;
 }
 
 tree_preorder_iterator_t

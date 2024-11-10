@@ -14,7 +14,8 @@ main(int argc, char** argv) {
     FILE* fp = fopen(filename, "r");
     long fsize = 0;
     char* src = NULL;
-    int is_debug = 0;
+    int i;
+    unsigned char is_debug = 0;
 
     if (argc == 2) {
         filename = argv[1];
@@ -56,8 +57,12 @@ main(int argc, char** argv) {
     }
     frame_t main_frame = DEFAULT_FRAME();
     eval_tree(&syntax_tree, &main_frame, is_debug);
+
     pop_frame(&main_frame);
     free_tree(&syntax_tree);
+    for (i = 0; i < tokens.size; i++) {
+        free_token_str(&((token_t*) tokens.data)[i]);
+    }
     free_dynarr(&tokens);
     free(src);
     return 0;

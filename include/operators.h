@@ -11,7 +11,7 @@ typedef enum op_name {
     OP_MUL, OP_DIV, OP_MOD,
     OP_ADD, OP_SUB,
     OP_LT, OP_LE, OP_GT, OP_GE,
-    OP_EQ, OP_NEQ,
+    OP_EQ, OP_NE,
     OP_AND,
     OP_OR,
     OP_PAIR,

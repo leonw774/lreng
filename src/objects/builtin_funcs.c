@@ -3,25 +3,28 @@
 #include "objects.h"
 #include "builtin_funcs.h"
 
-object_t
+object_or_error_t
 builtin_func_input(object_t* obj) {
     int c;
     if (obj->type != TYPE_NULL) {
-        throw_runtime_error(
+        print_runtime_error(
             0, 0, "built-in function 'input': argument type should be null"
         );
     }
     c = getchar();
-    return (object_t) {.type = TYPE_NUMBER, .data = {
-        .number = number_from_i32(c)
-    }};
+    return OBJ_OBJERR(
+        ((object_t) {
+            .type = TYPE_NUMBER,
+            .data = {.number = number_from_i32(c)}
+        })
+    );
 }
 
-object_t
+object_or_error_t
 builtin_func_output(object_t* obj) {
     /* check if obj is number */
     if (obj->type != TYPE_NUMBER) {
-        throw_runtime_error(
+        print_runtime_error(
             0, 0, "built-in function 'output': argument type should be number"
         );
     }
@@ -33,9 +36,11 @@ builtin_func_output(object_t* obj) {
         putchar(n.numer.digit[0]);
     }
     else {
-        throw_runtime_error(
+        print_runtime_error(
             0, 0, "built-in function 'output': argument is not byte"
         );
     }
-    return NULL_OBJECT;
+    free_bi(&one);
+    free_bi(&byte_max);
+    return OBJ_OBJERR(NULL_OBJECT);
 }

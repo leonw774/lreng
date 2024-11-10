@@ -16,6 +16,7 @@ throw_syntax_error(int line, int col, const char* msg) {
     exit(SYNTAX_ERR_CODE);
 }
 
+/* set line col to zero if not availible */
 void
 print_semantic_error(int line, int col, const char* msg) {
     if (line == 0 && col == 0) {
@@ -26,13 +27,13 @@ print_semantic_error(int line, int col, const char* msg) {
     }
 }
 
+/* set line col to zero if not availible */
 void
-throw_runtime_error(int line, int col, const char* msg) {
+print_runtime_error(int line, int col, const char* msg) {
     if (line == 0 && col == 0) {
         fprintf(stderr, "[RuntimError]: %s\n", msg);
     }
     else {
         fprintf(stderr, "[RuntimeError]: Line %d col %d: %s\n", line, col, msg);
     }
-    exit(RUNTIME_ERR_CODE);
 }
