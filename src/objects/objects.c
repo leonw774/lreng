@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "token.h"
 #include "errormsg.h"
 #include "objects.h"
 

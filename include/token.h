@@ -34,7 +34,6 @@ typedef struct token {
     linecol_t pos;
 } token_t;
 
-int
-print_token(token_t t);
+extern int print_token(token_t t);
 
 #endif

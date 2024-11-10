@@ -12,10 +12,10 @@ test: ${TEST_TARGET}
 debug: CFLAGS = ${TEST_FLAGS}
 debug: all
 
-tests/programs/bigint.out: ${INCLUDES} ${TEST_C} tests/programs/bigint.c
+tests/programs/bigint.out: ${TEST_C} tests/programs/bigint.c
 	gcc ${TEST_FLAGS} -o $@ ${TEST_C} tests/programs/bigint.c
 
-tests/programs/number.out: ${INCLUDES} ${TEST_C} tests/programs/number.c
+tests/programs/number.out: ${TEST_C} tests/programs/number.c
 	gcc ${TEST_FLAGS} -o $@ ${TEST_C} tests/programs/number.c
 
 lreng: ${MAIN_C} ${DEPS}

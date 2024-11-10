@@ -983,7 +983,11 @@ bi_from_str(const char* str) {
 }
 
 bigint_t
-bi_from_tens_power(u32 exp) {
+bi_from_tens_power(i32 exp) {
+    if (exp < 0) {
+        printf("bi_from_tens_power: negative exp\n");
+        return NAN_BIGINT();
+    }
     bigint_t x = ONE_BIGINT(), t1, t2, t3;
     while (exp != 0) {
         if (exp == 1) {

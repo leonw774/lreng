@@ -250,6 +250,53 @@ number_mod(number_t* a, number_t* b) {
     return res;
 }
 
+/* the exponent b can only be integer because
+   rational exponent can result in irrational number */
+number_t
+number_exp(number_t* a, number_t* b) {
+    number_t res, cur, t1, t2;
+    bigint_t e, q = ZERO_BIGINT(), r = ZERO_BIGINT(), two = ONE_BIGINT();
+    two.digit[0] = 2;
+    if (b->denom.size != 1 || b->denom.digit[0] != 1) {
+        free_bi(&two);
+        return NAN_NUMBER();
+    }
+    if (b->numer.digit[0] == 0) {
+        free_bi(&two);
+        return ONE_NUMBER();
+    }
+
+    res = ONE_NUMBER(); /* res = 1 */
+    copy_number(&cur, a); /* cur = a */
+    copy_bi(&e, &b->numer); /* e = b */
+    while (e.size != 0) {
+        r = bi_mod(&e, &two); /* r = e % 2 */
+        q = bi_div(&e, &two); /* e = e / 2 */
+        copy_bi(&e, &q);
+        /* if r == 1:
+             res = res * cur */
+        if (r.size != 0) {
+            t1 = number_mul(&res, &cur);
+            free_number(&res);
+            res = t1;
+        }
+        /* cur = cur * cur */
+        t1 = number_mul(&cur, &cur);
+        free_number(&cur);
+        cur = t1;
+        free_bi(&r);
+        free_bi(&q);
+    }
+    free_number(&cur);
+    free_bi(&two);
+    if (b->sign) {
+        bigint_t tmp = res.numer;
+        res.numer = res.denom;
+        res.denom = tmp;
+    }
+    return res;
+}
+
 
 int print_number_struct(number_t* x) {
     printf("[Number] sign=%u zero=%u nan=%u\n", x->sign, x->zero, x->nan);
@@ -281,10 +328,10 @@ print_number_frac(number_t* x) {
 int
 print_number_dec(number_t* x, int precision) {
     int i, n_exp, d_exp, m, e;
-    dynarr_t n_str, d_str, res_str = new_dynarr(1);
+    dynarr_t n_str, d_str, res_str;
     char *n_cstr, *d_cstr, *res_cstr;
     char dot = '.' - '0';
-    bigint_t ten_to_abs_m, one = ONE_BIGINT();
+    bigint_t ten_to_abs_m;
     number_t _x, ten = number_from_str("10"), ten_to_m = EMPTY_NUMBER(),
         t = EMPTY_NUMBER(), q = EMPTY_NUMBER(), r = EMPTY_NUMBER();
 
@@ -320,6 +367,7 @@ print_number_dec(number_t* x, int precision) {
         ten_to_m.numer = ten_to_abs_m;
         ten_to_m.denom = ONE_BIGINT();
     }
+    res_str = new_dynarr(1);
     copy_number(&_x, x);
     while (1) {
         free_number(&r);
@@ -375,6 +423,7 @@ number_from_str(const char* str) {
     
     if (str[0] == '-') {
         str_length--;
+        dot_pos--;
         str++;
         is_neg = 1;
     }
@@ -416,8 +465,8 @@ number_from_str(const char* str) {
     n.sign = is_neg;
     n.numer = bi_from_str(str_no_dot);
     n.denom = bi_from_tens_power(str_length - dot_pos);
-    // print_bigint_dec(&n.numer); puts("");
-    // print_bigint_dec(&n.denom); puts("");
+    // print_bi_dec(&n.numer); puts("");
+    // print_bi_dec(&n.denom); puts("");
     free(str_no_dot);
     number_normalize(&n);
     return n;

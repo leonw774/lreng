@@ -81,8 +81,25 @@ exec_op(token_t op_token, object_t* left_obj, object_t* right_obj) {
                 (to_boolean(left_obj) ? ONE_NUMBER() : ZERO_NUMBER())
             }};
         case OP_GETL:
+            check_arg_type(op_token, TYPE_PAIR, NO_ARG, left_obj, right_obj);
+            return copy_object(left_obj->data.pair.left);
         case OP_GETR:
+            check_arg_type(op_token, TYPE_PAIR, NO_ARG, left_obj, right_obj);
+            return copy_object(left_obj->data.pair.right);
         case OP_EXP:
+            check_arg_type(
+                op_token, TYPE_NUMBER, TYPE_NUMBER, left_obj, right_obj);
+            if (right_obj->data.number.denom.size != 1
+                || right_obj->data.number.denom.digit[0] != 1) {
+                throw_runtime_error(
+                    op_token.pos.line,
+                    op_token.pos.col,
+                    "Exponent must be integer"
+                );
+            }
+            return (object_t) {.type = TYPE_NUMBER, .data = {.number =
+                number_exp(&left_obj->data.number, &right_obj->data.number)
+            }};
         case OP_MUL:
         case OP_DIV:
         case OP_MOD:
@@ -102,11 +119,6 @@ exec_op(token_t op_token, object_t* left_obj, object_t* right_obj) {
         case OP_CONDOR:
         case OP_CONDFCALL:
         case OP_EXPRSEP:
-            throw_runtime_error(
-                op_token.pos.line,
-                op_token.pos.col,
-                "exec_op: not implemented yet"
-            );
         default:
             throw_runtime_error(
                 op_token.pos.line,

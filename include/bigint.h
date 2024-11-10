@@ -42,6 +42,6 @@ extern int print_bi(bigint_t* x);
 extern dynarr_t bi_to_dec_str(bigint_t* x);
 extern int print_bi_dec(bigint_t* x);
 extern bigint_t bi_from_str(const char* str);
-extern bigint_t bi_from_tens_power(u32 exp);
+extern bigint_t bi_from_tens_power(i32 exp);
 
 #endif

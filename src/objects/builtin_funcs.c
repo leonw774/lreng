@@ -8,7 +8,7 @@ builtin_func_input(object_t* obj) {
     int c;
     if (obj->type != TYPE_NULL) {
         throw_runtime_error(
-            0, 0, "built-in function 'input': argument type should be Null"
+            0, 0, "built-in function 'input': argument type should be null"
         );
     }
     c = getchar();
@@ -22,7 +22,7 @@ builtin_func_output(object_t* obj) {
     /* check if obj is number */
     if (obj->type != TYPE_NUMBER) {
         throw_runtime_error(
-            0, 0, "built-in function 'output': argument type should be Number"
+            0, 0, "built-in function 'output': argument type should be number"
         );
     }
     number_t n = obj->data.number;
