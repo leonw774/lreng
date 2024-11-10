@@ -58,11 +58,7 @@ main(int argc, char** argv) {
     frame_t main_frame = DEFAULT_FRAME();
     eval_tree(&syntax_tree, &main_frame, is_debug);
 
-    pop_frame(&main_frame);
     free_tree(&syntax_tree);
-    for (i = 0; i < tokens.size; i++) {
-        free_token_str(&((token_t*) tokens.data)[i]);
-    }
     free_dynarr(&tokens);
     free(src);
     return 0;

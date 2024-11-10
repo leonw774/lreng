@@ -23,7 +23,7 @@ extern object_t* frame_get(const frame_t* f, const int name);
 
 extern object_t* frame_find(const frame_t* f, const int name);
 
-extern void frame_set(frame_t* f, const int name, const object_t* obj);
+extern object_t* frame_set(frame_t* f, const int name, const object_t* obj);
 
 extern void pop_frame(frame_t* f);
 

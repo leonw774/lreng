@@ -15,6 +15,7 @@ typedef enum object_type {
     TYPE_BUILTIN_FUNC,
     TYPE_ANY
 } object_type_enum;
+
 #define OBJECT_TYPE_NUM TYPE_ANY
 
 typedef struct object object_t;
@@ -32,6 +33,8 @@ typedef struct func {
     tree_t* local_tree;
     const frame_t* frame;
 } func_t;
+
+#define NOT_BUILTIN_FUNC -1
 
 union object_union {
     number_t number;

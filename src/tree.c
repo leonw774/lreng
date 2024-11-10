@@ -22,9 +22,9 @@ tree_iter_init(const tree_t* tree) {
         .index_stack = new_dynarr(sizeof(int)),
         .depth_stack = new_dynarr(sizeof(int))
     };
-    unsigned long long zero = 0;
+    int one = 1;
     append(&iter.index_stack, &tree->root_index);
-    append(&iter.depth_stack, &zero);
+    append(&iter.depth_stack, &one);
     return iter;
 }
 

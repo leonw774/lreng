@@ -228,6 +228,7 @@ exec_op(token_t op_token, object_t* l_obj, object_t* r_obj) {
             op_token.pos.col,
             "exec_op: bad op name"
         );
+        return ERR_OBJERR();
     }
 }
 
@@ -249,11 +250,12 @@ eval_tree(
     token_t cur_token;
     int cur_index, cur_local_index;
 
-    object_or_error_t return_obj_err;
+    int is_error = 0;
+    object_or_error_t tmp_obj_err;
 
     if (is_debug) {
-        printf("eval_tree: root=%d parent_frame=%016x ",
-            tree->root_index, cur_frame);
+        printf("eval_tree\n");
+        printf("root=%d parent_frame=%p ", tree->root_index, cur_frame);
     }
 
     /* iterate tree to get tree size from the root */
@@ -267,15 +269,16 @@ eval_tree(
         tree_iter_next(&tree_iter);
     }
     if (tree->root_index - min_local_index + 1 != tree_size) {
-        printf("eval_tree: bad tree\n");
+        printf("\neval_tree: bad tree\n");
         exit(OTHER_ERR_CODE);
     }
     if (is_debug) {
-        printf("tree_size = %d", tree_size);
+        printf("min_local_index = %d ", min_local_index);
+        printf("tree_size = %d\n", tree_size);
     }
  
     /* init object table */
-    obj_table = malloc(tree_size * sizeof(object_t*));
+    obj_table = calloc(tree_size, sizeof(object_t*));
 
     /* begin evaluation */
     token_index_stack = new_dynarr(sizeof(int));
@@ -285,16 +288,24 @@ eval_tree(
         cur_local_index = cur_index - min_local_index;
         int left_index = tree->lefts[cur_index],
             right_index = tree->rights[cur_index];
-        object_t* left_obj_p = obj_table[left_index - min_local_index];
-        object_t* right_obj_p = obj_table[right_index - min_local_index];
+        object_t* left_obj = obj_table[left_index - min_local_index];
+        object_t* right_obj = obj_table[right_index - min_local_index];
+        if (is_debug) {
+            printf("node %d ", cur_index);
+            print_token(cur_token);
+            printf(
+                " (local=%d) left=%d right=%d\n",
+                cur_local_index, left_index, right_index
+            );
+        }
         if (cur_token.type == TOK_OP) {
             /* function definer */
             if (cur_token.name == OP_FDEF) {
                 tree_t* local_tree = tree;
                 local_tree->root_index = tree->lefts[cur_index];
                 obj_table[cur_local_index] = alloc_empty_object(TYPE_FUNC);
-                obj_table[cur_local_index]->data.func = (func_t) {
-                    .builtin_name = -1,
+                (obj_table[cur_local_index])->data.func = (func_t) {
+                    .builtin_name = NOT_BUILTIN_FUNC,
                     .arg_name = -1,
                     .local_tree = local_tree,
                     .frame = cur_frame
@@ -302,22 +313,24 @@ eval_tree(
             }
             /* argument binder */
             else if (cur_token.name == OP_ARG) {
-                if (right_obj_p == NULL) {
+                if (right_obj == NULL) {
                     append(
                         &token_index_stack,
                         &tree->rights[cur_index]
                     );
                     continue;
                 }
-                if (right_obj_p->type != TYPE_FUNC) {
+                if (right_obj->type != TYPE_FUNC) {
                     print_runtime_error(
                         cur_token.pos.line,
                         cur_token.pos.col,
                         "Right side of argument binder should be function"
                     );
+                    is_error = 1;
+                    break;
                 }
                 object_t* o = alloc_empty_object(TYPE_FUNC);
-                *o = copy_object(right_obj_p);
+                *o = copy_object(right_obj);
                 o->data.func.arg_name = global_tokens[left_index].name;
                 obj_table[cur_local_index] = o;
             }
@@ -335,16 +348,25 @@ eval_tree(
                         left_token.pos.col,
                         ERR_MSG_BUF
                     );
+                    is_error = 1;
+                    break;
                 }
-
-                if (right_obj_p == NULL) {
+                if (right_obj == NULL) {
                     append(&token_index_stack, &right_index);
                     continue;
                 }
-                frame_set((frame_t*) cur_frame, left_token.name, right_obj_p);
-                /* move the object pointer from right to current */
-                obj_table[cur_local_index] = right_obj_p;
-                obj_table[right_index - min_local_index] = NULL;
+                /* set frame for the identifier */
+                frame_set((frame_t*) cur_frame, left_token.name, right_obj);
+                /* if right is identifier, do copy */
+                if (global_tokens[right_index].type == TOK_ID) {
+                    object_t* o = alloc_empty_object(right_obj->type);
+                    *o = copy_object(right_obj);
+                    obj_table[cur_local_index] = o;
+                }
+                else {
+                    obj_table[cur_local_index] = right_obj;
+                    obj_table[right_index - min_local_index] = NULL;
+                }
             }
             /* logic-and or logic-or  */
             else if (cur_token.name == OP_CONDAND
@@ -352,7 +374,7 @@ eval_tree(
                 int is_condor = cur_token.name == OP_CONDOR;
                 token_t left_token = global_tokens[left_index];
                 /* eval left first and eval right conditionally */
-                if (left_obj_p == NULL) {
+                if (left_obj == NULL) {
                     append(&token_index_stack, &left_index);
                     continue;
                 }
@@ -361,16 +383,16 @@ eval_tree(
                    F            | T         | T
                    T            | F         | T
                    T            | T         | F             */
-                if (to_boolean(left_obj_p) != is_condor) {
-                    if (right_obj_p == NULL) {
+                if (to_boolean(left_obj) != is_condor) {
+                    if (right_obj == NULL) {
                         append(&token_index_stack, &right_index);
                         continue;
                     }
-                    obj_table[cur_local_index] = right_obj_p;
+                    obj_table[cur_local_index] = right_obj;
                     obj_table[right_index - min_local_index] = NULL;
                 }
                 else {
-                    obj_table[cur_local_index] = left_obj_p;
+                    obj_table[cur_local_index] = left_obj;
                     obj_table[left_index - min_local_index] = NULL;
                 }
             }
@@ -378,23 +400,22 @@ eval_tree(
             else {
                 /* if is unary */
                 if (strchr(UNARY_OPS, cur_token.name)) {
-                    if (left_obj_p == NULL) {
+                    if (left_obj == NULL) {
                         append(&token_index_stack, &left_index);
                         continue;
                     }
                 }
-                else {
-                    if (left_obj_p == NULL && right_obj_p == NULL) {
-                        append(&token_index_stack, &right_index);
-                        append(&token_index_stack, &left_index);
-                        continue;
-                    }
+                else if (left_obj == NULL && right_obj == NULL) {
+                    append(&token_index_stack, &right_index);
+                    append(&token_index_stack, &left_index);
+                    continue;
                 }
-                return_obj_err = exec_op(cur_token, left_obj_p, right_obj_p);
-                if (return_obj_err.is_error) {
-                    return return_obj_err;
+                tmp_obj_err = exec_op(cur_token, left_obj, right_obj);
+                if (tmp_obj_err.is_error) {
+                    is_error = 1;
+                    break;
                 }
-                *obj_table[cur_index] = return_obj_err.obj;
+                *obj_table[cur_index] = tmp_obj_err.obj;
             }
             if (is_debug) {
                 printf("node id: %d eval result: ", cur_index);
@@ -413,12 +434,17 @@ eval_tree(
                 print_runtime_error(
                     cur_token.pos.line, cur_token.pos.col, ERR_MSG_BUF
                 );
+                is_error = 1;
+                break;
             }
             /* bollow object in frame because
                they wont be free before function return */
             obj_table[cur_local_index] = o;
             if (is_debug) {
-                printf("get identifiter '%s' from frame: ", cur_token.str);
+                printf(
+                    "get identifiter '%s' (name=%d) from frame (addr=%p): ",
+                    cur_token.str, cur_token.name, o
+                );
                 print_object(o);
                 puts("");
             }
@@ -435,19 +461,37 @@ eval_tree(
         pop(&token_index_stack);
     }
 
-    /* copy return object */
-    return_obj_err = OBJ_OBJERR(copy_object(
-        obj_table[tree->root_index - min_local_index]
-    ));
+    /* prepare return object */
+    if (is_error) {
+        if (is_debug) {
+            printf("return with error\n");
+        }
+        tmp_obj_err = ERR_OBJERR();
+    }
+    else {
+        tmp_obj_err = OBJ_OBJERR(copy_object(
+            obj_table[tree->root_index - min_local_index]
+        ));
+    }
 
     /* free things */
     free_dynarr(&token_index_stack);
+    if (is_debug) {
+        printf("free obj_tables\n");
+        fflush(stdout);
+    }
     int i;
     for (i = 0; i < tree_size; i++) {
-        if (obj_table[i]) {
+        token_type_enum token_type = global_tokens[i + min_local_index].type;
+        if (token_type != TOK_ID && token_type != TYPE_NULL && obj_table[i]) {
+            if (is_debug) {
+                printf("free [%d] %p\n", i, obj_table[i]);
+                fflush(stdout);
+            }
             free_object(obj_table[i]);
             free(obj_table[i]);
         }
     }
-    return return_obj_err;
+    printf("eval_tree returned\n");
+    return tmp_obj_err;
 }

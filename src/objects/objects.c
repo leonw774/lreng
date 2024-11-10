@@ -96,9 +96,9 @@ print_object(object_t* obj) {
         return printed_bytes_count + 1;
     }
     else if (obj->type == TYPE_FUNC) {
-        if (obj->data.func.builtin_name != 1) {
+        if (obj->data.func.builtin_name != NOT_BUILTIN_FUNC) {
             return printf(
-                "[Func] builtin_id=%d",
+                "[Func] builtin_name=%d",
                 RESERVED_IDS[obj->data.func.builtin_name]
             );
         }

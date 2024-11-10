@@ -40,7 +40,7 @@ frame_get(const frame_t* f, const int name) {
     int i;
     for (i = 0; i < f->names.size; i++) {
         if (name == ((int*) f->names.data)[i]) {
-            return ((object_t*) f->objects.data) + i;
+            return &(((object_t*) f->objects.data)[i]);
         }
     }
     if (f->parent == NULL) {
@@ -63,7 +63,8 @@ frame_find(const frame_t* f, const int name) {
     return frame_get(f->parent, name);
 }
 
-void
+/* return where the object was set */
+object_t*
 frame_set(frame_t* f, const int name, const object_t* obj) {
     object_t* found_obj = frame_find(f, name);
     /* need to deep copy because of pair */
@@ -71,10 +72,12 @@ frame_set(frame_t* f, const int name, const object_t* obj) {
     if (found_obj == NULL) {
         append(&f->names, &name);
         append(&f->objects, &clone_obj);
+        return back(&f->objects);
     }
     else {
         free_object(found_obj);
         *found_obj = clone_obj;
+        return found_obj;
     }
 }
 
