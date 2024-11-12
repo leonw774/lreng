@@ -1,0 +1,37 @@
+concat_list = list_pair => {
+    left_list = `list_pair;
+    right_list = ~list_pair;
+    left_list == null ? {
+        right_list
+    }, {
+        ~left_list == null ? {
+            `left_list, right_list
+        }, {
+            `left_list, concat_list(~left_list, ~list_pair)
+        }
+    }
+};
+format_int = i => {
+    i < 10 ? {
+        (i + '0'), null
+    }, {
+        left = format_int((i - i % 10) / 10);
+        right = ((i % 10) + '0'), null;
+        concat_list(left, right)
+    }
+};
+print = string => {
+    string != null && ( output $ `string; print(~string) );
+    null
+};
+print_ints_with_space = int_list => {
+    int_list != null && (
+        print(format_int(`int_list));
+        output(' ');
+        print_ints_with_space(~int_list)
+    );
+    null
+};
+esc_chars = '\a', '\b', '\n', '\r', '\t', '\v', '\\', '\'', null;
+print_ints_with_space(esc_chars);
+output('\n')

@@ -1,0 +1,18 @@
+add = p => {
+    `p + ~p
+};
+print = string => {
+    string != null && ( output $ `string; print(~string) );
+    null
+};
+print('a', '=', null);
+a = input();
+print(a, '\n', null);
+
+print('b', '=', null);
+b = input();
+print(b, '\n', null);
+
+print('a', '+', 'b', '=', null);
+output $ add(a, b);
+output $ '\n'
