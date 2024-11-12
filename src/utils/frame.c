@@ -4,7 +4,7 @@
 #include "frame.h"
 
 const frame_t
-DEFAULT_FRAME() {
+TOP_FRAME() {
     frame_t f;
     f.parent = NULL;
     f.objects = new_dynarr(sizeof(object_t));
@@ -90,5 +90,10 @@ void pop_frame(frame_t* f) {
     }
     free_dynarr(&f->objects);
     free_dynarr(&f->names);
-    *f = *parent;
+    if (parent != NULL) {
+        *f = *parent;
+    }
+    else {
+        f->parent = NULL;
+    }
 }

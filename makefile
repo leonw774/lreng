@@ -1,6 +1,6 @@
 CFLAGS = -I include/ -O2
 TEST_FLAGS = -I include/ -g
-MEM_CHECK_FLAG = -include include/debug/memory_check.h
+MEM_CHECK_FLAG = -include include/debug/mem_check.h
 
 TEST_C = src/**/*.c
 MAIN_C = src/*.c src/**/*.c
@@ -11,8 +11,11 @@ all: lreng test
 
 test: ${TEST_TARGET}
 
-debug: CFLAGS = ${TEST_FLAGS} ${MEM_CHECK_FLAG}
+debug: CFLAGS = ${TEST_FLAGS}
 debug: all
+
+mem_check: CFLAGS = ${TEST_FLAGS} ${MEM_CHECK_FLAG}
+mem_check: all
 
 tests/programs/bigint.out: ${TEST_C} tests/programs/bigint.c
 	gcc ${TEST_FLAGS} -o $@ ${TEST_C} tests/programs/bigint.c

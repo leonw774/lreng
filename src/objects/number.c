@@ -54,24 +54,29 @@ number_normalize(number_t* x) {
         free_bi(&x->numer);
         free_bi(&x->denom);
         *x = ZERO_NUMBER();
+        free_bi(&one);
         return;
     }
     /* n == 1 or d = 1 */ 
     if (bi_eq(&x->numer, &one) || bi_eq(&x->denom, &one)) {
+        free_bi(&one);
         return;
     }
-    /* n */
+    /* d == 0 */
     if (x->denom.size == 0) {
         free_bi(&x->numer);
         free_bi(&x->denom);
         *x = NAN_NUMBER();
+        free_bi(&one);
         return;
     }
+    /* n == d */
     if (bi_eq(&x->numer, &x->denom)) {
         free_bi(&x->numer);
         free_bi(&x->denom);
         x->numer = ONE_BIGINT();
         x->denom = ONE_BIGINT();
+        free_bi(&one);
         return;
     }
     

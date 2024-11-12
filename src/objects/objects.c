@@ -9,13 +9,15 @@ const object_t const RESERVED_OBJS[RESERVED_ID_NUM] = {
     (object_t) {.type = TYPE_FUNC, .data = { .func = {
         .builtin_name = RESERVED_ID_NAME_INPUT,
         .arg_name = -1,
-        .local_tree = NULL,
+        .entry_index = -1,
+        .tree = NULL,
         .frame = NULL
     }}},
     (object_t) { .type = TYPE_FUNC, .data = { .func = {
         .builtin_name = RESERVED_ID_NAME_OUTPUT,
         .arg_name = -1,
-        .local_tree = NULL,
+        .entry_index = -1,
+        .tree = NULL,
         .frame = NULL
     }}}
 };
@@ -25,8 +27,10 @@ const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM] = {
 };
 
 object_t*
-alloc_empty_object(int type) {
+alloc_empty_object(object_type_enum type) {
     object_t* o = calloc(1, sizeof(object_t));
+    printf("alloc_empty_object %p\n", o);
+    fflush(stdout);
     if (o == NULL) {
         printf("alloc_empty_object: allocation failed\n");
         exit(OTHER_ERR_CODE);
@@ -103,9 +107,9 @@ print_object(object_t* obj) {
             );
         }
         return printf(
-            "[Func] arg_name=%d, root_index=%d",
+            "[Func] arg_name=%d, entry_index=%d",
             obj->data.func.arg_name,
-            obj->data.func.local_tree->root_index
+            obj->data.func.entry_index
         );
     }
     printf("print_object: bad object type: %d\n", obj->type);

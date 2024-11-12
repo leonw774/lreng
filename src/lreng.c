@@ -55,9 +55,10 @@ main(int argc, char** argv) {
     if (!is_good_semantic) {
         return SEMANTIC_ERR_CODE;
     }
-    frame_t main_frame = DEFAULT_FRAME();
-    eval_tree(&syntax_tree, &main_frame, is_debug);
+    frame_t top_frame = TOP_FRAME();
+    eval_tree(&syntax_tree, syntax_tree.root_index, &top_frame, is_debug);
 
+    pop_frame(&top_frame);
     free_tree(&syntax_tree);
     free_dynarr(&tokens);
     free(src);

@@ -30,7 +30,8 @@ typedef struct frame frame_t;
 typedef struct func {
     int builtin_name; /* -1 if is not builtin function */
     int arg_name;
-    tree_t* local_tree;
+    int entry_index;
+    tree_t* tree;
     const frame_t* frame;
 } func_t;
 
@@ -62,7 +63,7 @@ typedef struct object_or_error {
 extern const object_t const RESERVED_OBJS[RESERVED_ID_NUM];
 extern const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM];
 
-extern object_t* alloc_empty_object(int type);
+extern object_t* alloc_empty_object(object_type_enum type);
 /* deep copy an object */
 extern object_t copy_object(const object_t* obj);
 extern void free_object(object_t* obj);

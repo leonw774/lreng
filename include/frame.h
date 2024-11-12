@@ -11,7 +11,7 @@ typedef struct frame {
     int size; /* number of name-object pairs */
 } frame_t;
 
-extern const frame_t DEFAULT_FRAME();
+extern const frame_t TOP_FRAME();
 
 extern frame_t new_frame(
     const frame_t* parent,

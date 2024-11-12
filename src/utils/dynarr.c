@@ -2,7 +2,7 @@
 #include <string.h>
 #include "dynarr.h"
 
-#define DYN_ARR_INIT_CAP 4
+#ifndef MEM_CHECK_H
 
 /* create a new empty dynamic array */
 dynarr_t
@@ -18,9 +18,10 @@ new_dynarr(int elem_size) {
 
 void
 free_dynarr(dynarr_t* x) {
-    if (x->data != NULL && x->size != 0) {
+    if (x->data != NULL) {
         free(x->data);
         x->size = x->cap = 0;
+        x->data = NULL;
     } 
 };
 
@@ -56,6 +57,8 @@ append(dynarr_t* x, const void* const elem) {
     memcpy(x->data + x->elem_size * x->size, elem, x->elem_size);
     x->size++;
 };
+
+#endif
 
 void
 pop(dynarr_t* x) {

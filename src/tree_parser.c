@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "errormsg.h"
 #include "lreng.h"
@@ -130,7 +131,7 @@ shunting_yard(const dynarr_t tokens, const unsigned char is_debug) {
             }
             /* special operators */
             else if (top_op == OP_FCALL && cur_op == OP_RPAREN) {
-                /* function call */
+                /* create function call */
                 token_t fcall = {NULL, OP_FCALL, TOK_OP, stack_top->pos};
                 append(&output, &fcall);
             }
@@ -192,6 +193,7 @@ shunting_yard(const dynarr_t tokens, const unsigned char is_debug) {
         append(&output, back(&op_stack));
         pop(&op_stack);
     }
+    free_dynarr(&op_stack);
 
     if (is_debug) {
         printf("result=");
@@ -289,7 +291,7 @@ tree_parser(const dynarr_t tokens, const unsigned char is_debug) {
         );
         throw_syntax_error(0, 0, ERR_MSG_BUF);
     }
-    tree.root_index = *((int*) stack.data);
+    tree.root_index = ((int*) stack.data)[0];
     free_dynarr(&stack);
     if (is_debug) {
         printf("final_tree=\n");

@@ -20,6 +20,7 @@ int semantic_checker(
 
 object_or_error_t eval_tree(
     tree_t* tree,
+    const int entry_index,
     const frame_t* cur_frame,
     const unsigned char is_debug
 );

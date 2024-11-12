@@ -15,13 +15,13 @@ semantic_checker(const tree_t tree, const unsigned char is_debug) {
     id_usage[RESERVED_ID_NAME_INPUT] = 1;
     id_usage[RESERVED_ID_NAME_OUTPUT] = 1;
 
-    frame_t main_frame = DEFAULT_FRAME();
-    frame_t* cur_frame_p = &main_frame;
+    frame_t top_frame = TOP_FRAME();
+    frame_t* cur_frame_p = &top_frame;
     dynarr_t frame_stack = new_dynarr(sizeof(frame_t));
     object_t objnull = RESERVED_OBJS[RESERVED_ID_NAME_NULL];
 
-    tree_preorder_iterator_t tree_preorder_iterator = tree_iter_init(&tree);
-    token_t* cur_token_p = tree_iter_get(&tree_preorder_iterator);
+    tree_preorder_iterator_t tree_iter = tree_iter_init(&tree);
+    token_t* cur_token_p = tree_iter_get(&tree_iter);
     int cur_depth = -1, cur_index = -1, cur_func_depth = -1;
     dynarr_t func_depth_stack = new_dynarr(sizeof(int));
     append(&func_depth_stack, &cur_depth);
@@ -30,8 +30,8 @@ semantic_checker(const tree_t tree, const unsigned char is_debug) {
         printf("check semantic\n");
     }
     while (cur_token_p != NULL) {
-        cur_index = *((int*) back(&tree_preorder_iterator.index_stack));
-        cur_depth = *((int*) back(&tree_preorder_iterator.depth_stack));
+        cur_index = *((int*) back(&tree_iter.index_stack));
+        cur_depth = *((int*) back(&tree_iter.depth_stack));
         cur_func_depth = *((int*) back(&func_depth_stack));
         if (cur_token_p->type == TOK_OP) {
             if (cur_depth <= cur_func_depth) {
@@ -120,9 +120,13 @@ semantic_checker(const tree_t tree, const unsigned char is_debug) {
             }
         }
 
-        tree_iter_next(&tree_preorder_iterator);
-        cur_token_p = tree_iter_get(&tree_preorder_iterator);
+        tree_iter_next(&tree_iter);
+        cur_token_p = tree_iter_get(&tree_iter);
     }
+    free_tree_iter(&tree_iter);
+    free_dynarr(&func_depth_stack);
+    free_dynarr(&frame_stack);
+    pop_frame(&top_frame);
     free(id_usage);
     return is_passed;
 }

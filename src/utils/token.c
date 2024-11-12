@@ -7,7 +7,7 @@ const char* const RESERVED_IDS[RESERVED_ID_NUM] = {"null", "input", "output"};
 void
 free_token_str(token_t* token) {
     if ((token->type == TOK_ID || token->type == TOK_NUM) && token->str) {
-        free(token->str);
+        free((char*) token->str);
         token->str = NULL;
     }
 }
