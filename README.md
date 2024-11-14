@@ -29,7 +29,11 @@ Variable identifiers should match regex `[_A-Za-z][_A-Za-z0-9]+`. All variables 
 
 ### Arithmetics
 
-The `+`, `-`, `*`, `/`, `%` (modulo), `^` (exponent) only accept numbers and work just as you expect.
+The `+`, `-`, `*`, `/`, `%` (modulo), `^` (exponent) only accept numbers.
+
+- The division is real number division so there is *no* rounding happening.
+- The module of `a` and `b` returns a smallest real number `r` such that `a / (b - r)` is a integer.
+- The exponent only allow *integer* power, since otherwise the result will not be rational.
 
 ### Comparison
 
