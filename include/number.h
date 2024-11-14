@@ -3,10 +3,6 @@
 #ifndef NUMBER_H
 #define NUMBER_H
 
-#define NUMBER_FLAG_NAN  0x1
-#define NUMBER_FLAG_INF  0x2
-#define NUMBER_FLAG_NINF 0x4
-
 /* number are normalized as such:
    no flag is set
     - sign: 0 or 1
@@ -46,10 +42,8 @@ typedef struct number {
     .sign = 0, .zero = 0, .nan = 0, \
     .numer = ONE_BIGINT(), .denom = ONE_BIGINT()})
 #define NAN_NUMBER() ((number_t) { \
-    .sign = 0, .zero = 0, .nan = NUMBER_FLAG_NAN, \
+    .sign = 0, .zero = 0, .nan = 1, \
     .numer = NAN_BIGINT(), .denom = NAN_BIGINT()})
-
-#define NUMPTR_IS_NAN(x) (x->flag & NUMBER_FLAG_NAN) 
 
 extern void copy_number(number_t* dst, const number_t* src);
 extern void free_number(number_t* x);

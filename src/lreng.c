@@ -34,6 +34,10 @@ main(int argc, char** argv) {
     }
 
     fp = fopen(filename, "r");
+    if (fp == NULL) {
+        printf("Cannot open file: %s", filename);
+        return OS_ERR_CODE;
+    }
     fseek(fp, 0L, SEEK_END);
     fsize = ftell(fp);
     if (fsize == 0) {
@@ -44,7 +48,7 @@ main(int argc, char** argv) {
     src = (char*) malloc(fsize);
     if (src == NULL) {
         fputs("memory error", stderr);
-        exit(OS_ERR_CODE);
+        return OS_ERR_CODE;
     }
     fread(src, 1, fsize, fp);
     fclose(fp);

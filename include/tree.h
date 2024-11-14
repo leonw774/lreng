@@ -20,7 +20,7 @@ typedef struct tree_preorder_iterator {
     dynarr_t depth_stack; /* type: int */
 } tree_preorder_iterator_t;
 
-extern tree_preorder_iterator_t tree_iter_init(const tree_t*);
+extern tree_preorder_iterator_t tree_iter_init(const tree_t*, int entry_index);
 
 extern token_t* tree_iter_get(tree_preorder_iterator_t*);
 

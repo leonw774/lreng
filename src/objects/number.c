@@ -170,6 +170,14 @@ number_add(number_t* a, number_t* b) {
     if (a->nan || b->nan) {
         return NAN_NUMBER();
     }
+    if (a->zero) {
+        copy_number(&res, b);
+        return res;
+    }
+    if (b->zero) {
+        copy_number(&res, a);
+        return res;
+    }
     t1 = bi_mul(&a->numer, &b->denom);
     t1.sign = a->sign;
     t2 = bi_mul(&b->numer, &a->denom);
@@ -190,6 +198,15 @@ number_sub(number_t* a, number_t* b) {
     bigint_t n, d, t1, t2;
     if (a->nan || b->nan) {
         return NAN_NUMBER();
+    }
+    if (a->zero) {
+        copy_number(&res, b);
+        res.sign = !res.sign;
+        return res;
+    }
+    if (b->zero) {
+        copy_number(&res, a);
+        return res;
     }
     t1 = bi_mul(&a->numer, &b->denom);
     t1.sign = a->sign;
@@ -212,6 +229,9 @@ number_mul(number_t* a, number_t* b) {
     if (a->nan || b->nan) {
         return NAN_NUMBER();
     }
+    if (a->zero || b->zero) {
+        return ZERO_NUMBER();
+    }
     n = bi_mul(&a->numer, &b->numer);
     d = bi_mul(&a->denom, &b->denom);
     res.sign = a->sign != b->sign;
@@ -226,6 +246,12 @@ number_div(number_t* a, number_t* b) {
     number_t res = EMPTY_NUMBER();
     bigint_t n, d;
     if (a->nan || b->nan) {
+        return NAN_NUMBER();
+    }
+    if (a->zero) {
+        return ZERO_NUMBER();
+    }
+    if (a->zero) {
         return NAN_NUMBER();
     }
     n = bi_mul(&a->numer, &b->denom);
@@ -314,8 +340,12 @@ int
 print_number_frac(number_t* x) {
     int i, printed_bytes_count = 0;
     printed_bytes_count += printf("[Number] ");
-    if (x->nan & NUMBER_FLAG_NAN) {
+    if (x->nan) {
         printed_bytes_count += printf("NaN");
+        return printed_bytes_count;
+    }
+    if (x->zero) {
+        printed_bytes_count += printf("0");
         return printed_bytes_count;
     }
     putchar('(');
@@ -341,6 +371,9 @@ print_number_dec(number_t* x, int precision) {
     number_t _x, ten = number_from_str("10"), ten_to_m = EMPTY_NUMBER(),
         t = EMPTY_NUMBER(), q = EMPTY_NUMBER(), r = EMPTY_NUMBER();
 
+    if (x->nan) {
+        return printf("[Number] NaN");
+    }
     if (x->zero) {
         return printf("[Number] 0");
     }
@@ -436,7 +469,7 @@ number_from_str(const char* str) {
         is_neg = 1;
     }
     if (str[0] == '0') {
-        if (str_length == 2) {
+        if (str_length == 1) {
             return ZERO_NUMBER();
         }
         if (str[1] == 'b' || str[1] == 'x') {
@@ -483,8 +516,14 @@ number_from_str(const char* str) {
 number_t
 number_from_i32(i32 i) {
     number_t n = EMPTY_NUMBER();
-    n.denom = ONE_BIGINT();
     u32 j;
+    if (i == 0) {
+        return ZERO_NUMBER();
+    }
+    if (i == 1) {
+        return ONE_NUMBER();
+    }
+    n.denom = ONE_BIGINT();
     if (i < 0) {
         n.sign = 1;
         /* cast to 64 bit to prevent overflow at -2^31 */

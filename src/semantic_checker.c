@@ -20,7 +20,7 @@ semantic_checker(const tree_t tree, const unsigned char is_debug) {
     dynarr_t frame_stack = new_dynarr(sizeof(frame_t));
     object_t objnull = RESERVED_OBJS[RESERVED_ID_NAME_NULL];
 
-    tree_preorder_iterator_t tree_iter = tree_iter_init(&tree);
+    tree_preorder_iterator_t tree_iter = tree_iter_init(&tree, -1);
     token_t* cur_token_p = tree_iter_get(&tree_iter);
     int cur_depth = -1, cur_index = -1, cur_func_depth = -1;
     dynarr_t func_depth_stack = new_dynarr(sizeof(int));

@@ -15,15 +15,19 @@ free_tree(tree_t* tree) {
     tree->root_index = -1;
 }
 
+/* set entry_index to -1 to use tree's root index */
 tree_preorder_iterator_t
-tree_iter_init(const tree_t* tree) {
+tree_iter_init(const tree_t* tree, int entry_index) {
+    int one = 1;
     tree_preorder_iterator_t iter = {
         .tree = tree,
         .index_stack = new_dynarr(sizeof(int)),
         .depth_stack = new_dynarr(sizeof(int))
     };
-    int one = 1;
-    append(&iter.index_stack, &tree->root_index);
+    append(
+        &iter.index_stack,
+        (entry_index == -1) ? &tree->root_index : &entry_index
+    );
     append(&iter.depth_stack, &one);
     return iter;
 }
@@ -68,7 +72,7 @@ free_tree_iter(tree_preorder_iterator_t* tree_iter) {
 
 void
 print_tree(const tree_t* tree) {
-    tree_preorder_iterator_t iter = tree_iter_init(tree);
+    tree_preorder_iterator_t iter = tree_iter_init(tree, -1);
     while (iter.index_stack.size != 0) {
         /* get */
         int cur_index = *(int*) back(&iter.index_stack),

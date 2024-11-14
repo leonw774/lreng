@@ -8,8 +8,7 @@
 dynarr_t
 new_dynarr(int elem_size) {
     dynarr_t x;
-    x.data = malloc(elem_size * DYN_ARR_INIT_CAP);
-    memset(x.data, 0, elem_size * DYN_ARR_INIT_CAP);
+    x.data = calloc(elem_size, DYN_ARR_INIT_CAP);
     x.elem_size = elem_size;
     x.size = 0;
     x.cap = DYN_ARR_INIT_CAP;

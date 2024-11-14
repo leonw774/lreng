@@ -25,7 +25,8 @@ new_frame(const frame_t* parent, const object_t* init_obj, const int init_name) 
     f.objects = new_dynarr(sizeof(object_t));
     f.names = new_dynarr(sizeof(int));
     if (init_obj != NULL) {
-        append(&f.objects, init_obj);
+        object_t clone_init_obj = copy_object(init_obj);
+        append(&f.objects, &clone_init_obj);
         append(&f.names, &init_name);
         f.size = 1;
     }

@@ -180,7 +180,8 @@ bi_lt(bigint_t* a, bigint_t* b) {
                 return 1;
             }
             else if (a->size == b->size) {
-                return (a->digit[a->size-1] < b->digit[b->size-1]);
+                return a->size == 0
+                    || a->digit[a->size-1] < b->digit[b->size-1];
             }
             else {
                 return 0;
@@ -191,7 +192,8 @@ bi_lt(bigint_t* a, bigint_t* b) {
                 return 1;
             }
             else if (a->size == b->size) {
-                return (a->digit[a->size-1] > b->digit[b->size-1]);
+                return a->size == 0
+                    || a->digit[a->size-1] > b->digit[b->size-1];
             }
             else {
                 return 0;
