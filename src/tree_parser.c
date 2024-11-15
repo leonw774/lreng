@@ -20,7 +20,7 @@
 
 /* return expression tokens in postfix */
 dynarr_t
-shunting_yard(const dynarr_t tokens, const unsigned char is_debug) {
+shunting_yard(const dynarr_t tokens, const int is_debug) {
     enum EXPECT {
         PREFIXABLE, BINARY_OPERATOR
     };
@@ -209,7 +209,7 @@ shunting_yard(const dynarr_t tokens, const unsigned char is_debug) {
 #define GET_TOKEN_AT(tree, i) ((token_t*) (tree.tokens.data))[i]
 
 tree_t
-tree_parser(const dynarr_t tokens, const unsigned char is_debug) {
+tree_parser(const dynarr_t tokens, const int is_debug) {
     int i = 0;
     dynarr_t stack = new_dynarr(sizeof(int));
     tree_t tree = {

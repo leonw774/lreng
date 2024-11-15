@@ -15,7 +15,7 @@ main(int argc, char** argv) {
     long fsize = 0;
     char* src = NULL;
     int i;
-    unsigned char is_debug = 0;
+    int is_debug = 0;
 
     if (argc == 2) {
         filename = argv[1];
@@ -59,10 +59,10 @@ main(int argc, char** argv) {
     if (!is_good_semantic) {
         return SEMANTIC_ERR_CODE;
     }
-    frame_t top_frame = TOP_FRAME();
-    eval_tree(&syntax_tree, syntax_tree.root_index, &top_frame, is_debug);
+    frame_t* top_frame = TOP_FRAME();
+    eval_tree(&syntax_tree, syntax_tree.root_index, top_frame, is_debug);
 
-    pop_frame(&top_frame);
+    pop_frame(top_frame);
     free_tree(&syntax_tree);
     free_dynarr(&tokens);
     free(src);

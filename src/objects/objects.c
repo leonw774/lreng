@@ -29,7 +29,6 @@ const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM] = {
 object_t*
 alloc_empty_object(object_type_enum type) {
     object_t* o = calloc(1, sizeof(object_t));
-    printf("alloc_empty_object %p\n", o);
     fflush(stdout);
     if (o == NULL) {
         printf("alloc_empty_object: allocation failed\n");
@@ -107,9 +106,11 @@ print_object(object_t* obj) {
             );
         }
         return printf(
-            "[Func] arg_name=%d, entry_index=%d",
+            "[Func] arg_name=%d, entry_index=%d, frame=%p, tree=%p",
             obj->data.func.arg_name,
-            obj->data.func.entry_index
+            obj->data.func.entry_index,
+            obj->data.func.frame,
+            obj->data.func.tree
         );
     }
     printf("print_object: bad object type: %d\n", obj->type);

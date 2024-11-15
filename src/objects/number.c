@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "errormsg.h"
 #include "dynarr.h"
 #include "number.h"
 
@@ -166,7 +167,7 @@ number_lt(number_t* a, number_t* b) {
 number_t
 number_add(number_t* a, number_t* b) {
     number_t res = EMPTY_NUMBER();
-    bigint_t n, d, t1, t2;
+    bigint_t t1, t2;
     if (a->nan || b->nan) {
         return NAN_NUMBER();
     }
@@ -181,13 +182,11 @@ number_add(number_t* a, number_t* b) {
     t1 = bi_mul(&a->numer, &b->denom);
     t1.sign = a->sign;
     t2 = bi_mul(&b->numer, &a->denom);
-    t2.sign = b->sign;
-    n = bi_add(&t1, &t2);
-    d = bi_mul(&a->denom, &b->denom);
+    t2.sign = b->sign; 
+    res.numer = bi_add(&t1, &t2);
+    res.denom = bi_mul(&a->denom, &b->denom);
     free_bi(&t1);
     free_bi(&t2);
-    res.numer = n;
-    res.denom = d;
     number_normalize(&res);
     return res;
 }
@@ -421,7 +420,7 @@ print_number_dec(number_t* x, int precision) {
         // printf("r    "); print_number_struct(&r); puts("");
         if (q.numer.size != 1 || q.numer.digit[0] >= 10) {
             printf("print_number_dec: q's numer >= 10\n");
-            exit(1);
+            exit(OTHER_ERR_CODE);
         }
         append(&res_str, &(q.numer.digit[0]));
         i++;

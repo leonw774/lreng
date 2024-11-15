@@ -8,15 +8,14 @@
 #include "frame.h"
 
 int
-semantic_checker(const tree_t tree, const unsigned char is_debug) {
-    int is_passed = 1;
+semantic_checker(const tree_t tree, const int is_debug) {
+    int i, is_passed = 1;
     unsigned char* id_usage = calloc(tree.max_id_name, sizeof(unsigned char));
-    id_usage[RESERVED_ID_NAME_NULL] = 1;
-    id_usage[RESERVED_ID_NAME_INPUT] = 1;
-    id_usage[RESERVED_ID_NAME_OUTPUT] = 1;
+    for (i = 0; i < RESERVED_ID_NUM; i++) {
+        id_usage[i] = 1;
+    }
 
-    frame_t top_frame = TOP_FRAME();
-    frame_t* cur_frame_p = &top_frame;
+    frame_t* cur_frame = TOP_FRAME();
     dynarr_t frame_stack = new_dynarr(sizeof(frame_t));
     object_t objnull = RESERVED_OBJS[RESERVED_ID_NAME_NULL];
 
@@ -24,11 +23,11 @@ semantic_checker(const tree_t tree, const unsigned char is_debug) {
     token_t* cur_token_p = tree_iter_get(&tree_iter);
     int cur_depth = -1, cur_index = -1, cur_func_depth = -1;
     dynarr_t func_depth_stack = new_dynarr(sizeof(int));
-    append(&func_depth_stack, &cur_depth);
 
     if (is_debug) {
         printf("check semantic\n");
     }
+    append(&func_depth_stack, &cur_depth);
     while (cur_token_p != NULL) {
         cur_index = *((int*) back(&tree_iter.index_stack));
         cur_depth = *((int*) back(&tree_iter.depth_stack));
@@ -37,7 +36,7 @@ semantic_checker(const tree_t tree, const unsigned char is_debug) {
             if (cur_depth <= cur_func_depth) {
                 /* we left a function */
                 pop(&func_depth_stack);
-                pop_frame(cur_frame_p);
+                pop_frame(cur_frame);
             }
             /* check identifiers */
             if (cur_token_p->name == OP_ASSIGN || cur_token_p->name == OP_ARG) {
@@ -67,7 +66,7 @@ semantic_checker(const tree_t tree, const unsigned char is_debug) {
                         ERR_MSG_BUF
                     );
                 }
-                else if (frame_find(cur_frame_p, left_token->name)) {
+                else if (frame_get(cur_frame, left_token->name)) {
                     is_passed = 0;
                     sprintf(
                         ERR_MSG_BUF,
@@ -81,15 +80,15 @@ semantic_checker(const tree_t tree, const unsigned char is_debug) {
                     );
                 }
                 else {
-                    frame_set(cur_frame_p, left_token->name, &objnull);
+                    frame_set(cur_frame, left_token->name, &objnull);
                     id_usage[left_token->name] = 1;
                 }
             }
             /* update frame */
             else if (cur_token_p->name == OP_FDEF) {
-                frame_t tmp_frame = new_frame(cur_frame_p, NULL, -1);
-                append(&frame_stack, &tmp_frame);
-                cur_frame_p = (frame_t*) back(&frame_stack);
+                frame_t* tmp_frame = new_frame(cur_frame, NULL, -1);
+                append(&frame_stack, cur_frame);
+                cur_frame = tmp_frame;
                 append(&func_depth_stack, &cur_depth);
             }
         }
@@ -104,29 +103,16 @@ semantic_checker(const tree_t tree, const unsigned char is_debug) {
                 putchar('\n');
             }
             id_usage[cur_token_p->name] = 1;
-            /* check if this id is initialized in current frame */
-            if (!frame_find(cur_frame_p, cur_token_p->name)) {
-                is_passed = 0;
-                sprintf(
-                    ERR_MSG_BUF,
-                    "Identifier '%s' used without initialized in the scope",
-                    cur_token_p->str
-                );
-                print_semantic_error(
-                    cur_token_p->pos.line,
-                    cur_token_p->pos.col,
-                    ERR_MSG_BUF
-                );
-            }
         }
 
         tree_iter_next(&tree_iter);
         cur_token_p = tree_iter_get(&tree_iter);
     }
+
     free_tree_iter(&tree_iter);
     free_dynarr(&func_depth_stack);
     free_dynarr(&frame_stack);
-    pop_frame(&top_frame);
+    pop_frame(cur_frame);
     free(id_usage);
     return is_passed;
 }

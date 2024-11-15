@@ -1,7 +1,16 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "errormsg.h"
+#include "bigint.h"
 #include "objects.h"
 #include "builtin_funcs.h"
+
+/* correspond to reserved_id_name */
+const object_or_error_t (*BUILDTIN_FUNC_ARRAY[RESERVED_ID_NUM])(object_t*) = {
+    NULL,
+    &builtin_func_input,
+    &builtin_func_output
+}; 
 
 object_or_error_t
 builtin_func_input(object_t* obj) {
@@ -38,9 +47,23 @@ builtin_func_output(object_t* obj) {
         putchar(n.numer.digit[0]);
     }
     else {
-        print_runtime_error(0, 0,
-            "built-in function 'output': argument is not integer in [0, 255]");
-        print_number_frac(&obj->data.number); puts("");
+        dynarr_t numer_dynarr = bi_to_dec_str(&n.numer),
+            denom_dynarr = bi_to_dec_str(&n.denom);
+        char *numer_str = to_str(&numer_dynarr),
+            *denom_str = to_str(&denom_dynarr);
+        sprintf(
+            ERR_MSG_BUF,
+            "built-in function 'output': argument is not integer in [0, 255]"
+            ", but [Number] %s(%s, %s)",
+            n.sign ? "-" : "",
+            numer_str,
+            denom_str
+        );
+        print_runtime_error(0, 0, ERR_MSG_BUF);
+        free(numer_str);
+        free(denom_str);
+        free_dynarr(&numer_dynarr);
+        free_dynarr(&denom_dynarr);
         return ERR_OBJERR();
     }
     return OBJ_OBJERR(NULL_OBJECT);

@@ -11,9 +11,9 @@ typedef struct frame {
     int size; /* number of name-object pairs */
 } frame_t;
 
-extern const frame_t TOP_FRAME();
+extern frame_t* TOP_FRAME();
 
-extern frame_t new_frame(
+extern frame_t* new_frame(
     const frame_t* parent,
     const object_t* init_obj,
     const int init_name
@@ -21,7 +21,7 @@ extern frame_t new_frame(
 
 extern object_t* frame_get(const frame_t* f, const int name);
 
-extern object_t* frame_find(const frame_t* f, const int name);
+extern object_t* frame_get(const frame_t* f, const int name);
 
 extern object_t* frame_set(frame_t* f, const int name, const object_t* obj);
 

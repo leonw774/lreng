@@ -524,7 +524,6 @@ bi_add(bigint_t* a, bigint_t* b) {
         }
         else {
             bi_usub(&c, b, a);
-            c.sign = 1;
         }
     } else {
         if (b->sign) {
