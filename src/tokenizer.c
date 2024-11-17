@@ -567,7 +567,6 @@ op_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     else if (c == '\'') {
         type = get_op_tok_type(cur_cargo.str.data);
         harvest(&cur_cargo, type, pos);
-        append(&cur_cargo.str, &c);
         return (state_ret) {&ch_open_state, cur_cargo};
     }
     else if (IS_ID_BODY(c)) {
