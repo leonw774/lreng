@@ -451,6 +451,8 @@ print_number_dec(number_t* x, int precision) {
         res_cstr[i] += '0';
     }
     printed_bytes_count = printf("[Number] %s", res_cstr);
+    free_dynarr(&n_str);
+    free_dynarr(&d_str);
     free(res_cstr);
     return printed_bytes_count;
 }

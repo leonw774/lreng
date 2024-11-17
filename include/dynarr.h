@@ -18,6 +18,8 @@ extern void free_dynarr(dynarr_t* x);
 
 extern void reset_dynarr(dynarr_t* x);
 
+extern dynarr_t copy_dynarr(const dynarr_t* x);
+
 extern char* to_str(dynarr_t* x);
 
 extern void append(dynarr_t* x, const void* const elem);

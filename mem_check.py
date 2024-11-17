@@ -17,7 +17,7 @@ with open(filename, 'rb') as f:
                 del mems[addr]
             else:
                 print(linenum)
-                print('used free??')
+                print('double free??')
                 print(strip_line)
         elif func.endswith(b'alloc]'):
             if addr in mems:

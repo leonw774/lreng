@@ -41,6 +41,11 @@ extern void mem_check_reset_dynarr(
     const char* file, int line, const char* func
 );
 
+extern dynarr_t mem_check_copy_dynarr(
+    const dynarr_t* x,
+    const char* file, int line, const char* func
+);
+
 extern char* mem_check_to_str(
     dynarr_t* x,
     const char* file, int line, const char* func
@@ -57,6 +62,8 @@ extern void mem_check_append(
     mem_check_free_dynarr(x, __FILE__, __LINE__, __FUNCTION__)
 #define reset_dynarr(x) \
     mem_check_reset_dynarr(x, __FILE__, __LINE__, __FUNCTION__)
+#define copy_dynarr(x) \
+    mem_check_copy_dynarr(x, __FILE__, __LINE__, __FUNCTION__)
 #define to_str(x) \
     mem_check_to_str(x, __FILE__, __LINE__, __FUNCTION__)
 #define append(x, elem) \

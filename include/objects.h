@@ -28,11 +28,11 @@ typedef struct pair {
 typedef struct frame frame_t;
 
 typedef struct func {
-    int builtin_name; /* -1 if is not builtin function */
-    int arg_name;
+    const tree_t* tree; /* the reference to global tree, don't free it */
+    const frame_t* create_time_frame;
     int entry_index;
-    tree_t* tree;
-    const frame_t* frame;
+    int arg_name;
+    int builtin_name; /* -1 if is not builtin function */
 } func_t;
 
 #define NOT_BUILTIN_FUNC -1
@@ -69,6 +69,6 @@ extern object_t copy_object(const object_t* obj);
 extern void free_object(object_t* obj);
 extern int print_object(object_t* obj);
 
-extern int to_boolean(object_t* obj);
+extern int to_bool(object_t* obj);
 
 #endif

@@ -79,14 +79,14 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
             }
 
             /* pop stack until top is left braclet or precedence is higher */
-            token_t* stack_top = back(&op_stack);
-            while (stack_top != NULL && stack_top->type != TOK_LB
+            token_t* frame_top = back(&op_stack);
+            while (frame_top != NULL && frame_top->type != TOK_LB
                 && OP_PRECED_LT(
-                    stack_top->name, cur_token.name
+                    frame_top->name, cur_token.name
                 )) {
-                append(&output, stack_top);
+                append(&output, frame_top);
                 pop(&op_stack);
-                stack_top = back(&op_stack);
+                frame_top = back(&op_stack);
             }
             /* push */
             append(&op_stack, &cur_token);
@@ -110,19 +110,19 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
             expectation = BINARY_OPERATOR;
 
             /* pop stack until top is left braclet */
-            token_t* stack_top = back(&op_stack);
-            while (stack_top != NULL && stack_top->type != TOK_LB) {
-                append(&output, stack_top);
+            token_t* frame_top = back(&op_stack);
+            while (frame_top != NULL && frame_top->type != TOK_LB) {
+                append(&output, frame_top);
                 pop(&op_stack);
-                stack_top = back(&op_stack);
+                frame_top = back(&op_stack);
             }
 
             /* pop out the left bracket */
             pop(&op_stack);
 
-            op_name_enum top_op = stack_top->name,
+            op_name_enum top_op = frame_top->name,
                 cur_op = cur_token.name;
-            if (stack_top == NULL) {
+            if (frame_top == NULL) {
                 throw_syntax_error(
                     cur_token.pos.line,
                     cur_token.pos.col,
@@ -132,12 +132,12 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
             /* special operators */
             else if (top_op == OP_FCALL && cur_op == OP_RPAREN) {
                 /* create function call */
-                token_t fcall = {NULL, OP_FCALL, TOK_OP, stack_top->pos};
+                token_t fcall = {NULL, OP_FCALL, TOK_OP, frame_top->pos};
                 append(&output, &fcall);
             }
             else if (top_op == OP_LBLOCK && cur_op == OP_RBLOCK) {
                 /* function maker */
-                token_t fdef = {NULL, OP_FDEF, TOK_OP, stack_top->pos};
+                token_t fdef = {NULL, OP_FDEF, TOK_OP, frame_top->pos};
                 append(&output, &fdef);
             }
             else if (!(top_op == OP_LPAREN && cur_op == OP_RPAREN)) {

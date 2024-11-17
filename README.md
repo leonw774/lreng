@@ -113,7 +113,7 @@ Everything is expression. The code intepreted by lreng should be one big express
 
 ## Closure
 
-Functions hold a reference of the frame where it is called. It effects the currying if the deeper function use the variables outside of it. For example, in `tests/inputs/closure.txt` we have this code:
+Function objects hold *copy* of the frame at the time it is *created* and *called*. The create-time frame is lower then the call-time frame. It effects the currying if the deeper function use the variables outside of it. For example, in `tests/inputs/closure.txt` we have this code:
 
 ```
 foo = a => {
@@ -122,9 +122,10 @@ foo = a => {
   }
 };
 bar = foo(1);
+bar2 = foo(2);
 
-# this would cause repeated-init error if un-commented
-#a = 2;
+# you can initialize the same name identifier as a function's argument as long as you are outside of that function 
+a = 2;
 
 # you cannot access 'b' outside of the closure
 #output $ b + '0';
@@ -133,10 +134,12 @@ bar = foo(1);
 #b = 3;
 #output $ b + '0';
 
-# there would be use-without-init error if the initialization of 'c' is removed
+# there would be use-uninit error if the initialization of 'c' is removed
 c = 3;
 
-output $ bar(2) + '0';
+output $ bar(2) + '0'; # 6
+output $ '\n';
+output $ bar2(2) + '0'; # 7
 output $ '\n'
 ```
 

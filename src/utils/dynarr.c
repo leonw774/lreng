@@ -19,15 +19,24 @@ void
 free_dynarr(dynarr_t* x) {
     if (x->data != NULL) {
         free(x->data);
-        x->size = x->cap = 0;
         x->data = NULL;
     } 
+    x->size = x->cap = 0;
 };
 
 void
 reset_dynarr(dynarr_t* x) {
     free_dynarr(x);
     *x = new_dynarr(x->elem_size);
+}
+
+dynarr_t
+copy_dynarr(const dynarr_t* x) {
+    dynarr_t y;
+    y = *x;
+    y.data = calloc(y.cap, y.elem_size);
+    memcpy(y.data, x->data, x->elem_size * x->size);
+    return y;
 }
 
 /* copy the array as a C-string */

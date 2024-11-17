@@ -125,6 +125,17 @@ mem_check_reset_dynarr(
     );
 }
 
+dynarr_t
+mem_check_copy_dynarr(
+    const dynarr_t* x,
+    const char* file, int line, const char* func
+) {
+    dynarr_t y;
+    y = *x;
+    y.data = calloc(y.cap, y.elem_size);
+    memcpy(y.data, x->data, x->elem_size * x->size);
+    return y;
+}
 
 /* copy the array as a C-string */
 char*

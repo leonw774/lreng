@@ -4,9 +4,10 @@ foo = a => {
   }
 };
 bar = foo(1);
+bar2 = foo(2);
 
-# this would cause repeated-init error if un-commented
-#a = 2;
+# you can initialize the same name identifier as a function's argument as long as you are outside of that function 
+a = 2;
 
 # you cannot access 'b' outside of the closure
 #output $ b + '0';
@@ -15,8 +16,10 @@ bar = foo(1);
 #b = 3;
 #output $ b + '0';
 
-# there would be use-without-init error if the initialization of 'c' is removed
+# there would be use-uninit error if the initialization of 'c' is removed
 c = 3;
 
 output $ bar(2) + '0';
+output $ '\n';
+output $ bar2(2) + '0';
 output $ '\n'

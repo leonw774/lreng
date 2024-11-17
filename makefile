@@ -1,6 +1,6 @@
 CFLAGS = -I include/ -O2
 TEST_FLAGS = -I include/ -g
-MEM_CHECK_FLAG = -include include/debug/mem_check.h
+MEM_CHECK_FLAG = -include include/debug/mem_check.h -Wno-implicit-function-declaration
 
 TEST_C = src/**/*.c
 MAIN_C = src/*.c src/**/*.c
@@ -23,7 +23,7 @@ tests/programs/bigint.out: ${TEST_C} tests/programs/bigint.c
 tests/programs/number.out: ${TEST_C} tests/programs/number.c
 	gcc ${TEST_FLAGS} -o $@ ${TEST_C} tests/programs/number.c
 
-lreng: ${MAIN_C} ${DEPS}
+lreng: ${MAIN_C}
 	gcc ${CFLAGS} -o $@ $^
 
 clean:

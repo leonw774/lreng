@@ -11,7 +11,7 @@ int
 main(int argc, char** argv) {
     const char* usage = "Usage: lreng {filename} [-d]\n";
     char* filename = NULL;
-    FILE* fp = fopen(filename, "r");
+    FILE* fp = NULL;
     long fsize = 0;
     char* src = NULL;
     int i;
@@ -59,10 +59,11 @@ main(int argc, char** argv) {
     if (!is_good_semantic) {
         return SEMANTIC_ERR_CODE;
     }
-    frame_t* top_frame = TOP_FRAME();
-    eval_tree(&syntax_tree, syntax_tree.root_index, top_frame, is_debug);
+    frame_t* top_frame = new_frame(syntax_tree.root_index);
+    eval_tree(&syntax_tree, top_frame, syntax_tree.root_index, is_debug);
 
-    pop_frame(top_frame);
+    free_frame(top_frame, 1);
+    free(top_frame);
     free_tree(&syntax_tree);
     free_dynarr(&tokens);
     free(src);

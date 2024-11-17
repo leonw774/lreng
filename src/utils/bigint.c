@@ -889,6 +889,7 @@ print_bi_dec(bigint_t* x) {
     char* x_cstr = to_str(&x_str);
     printed_bytes_count = printf("[BigInt] %s", x_cstr);
     free(x_cstr);
+    free_dynarr(&x_str);
     return printed_bytes_count;
 }
 
