@@ -98,7 +98,7 @@ free_object(object_t* obj) {
         }
         frame_t* f = (frame_t*) obj->data.func.create_time_frame;
         if (f != NULL) {
-            free_frame(f, 1);
+            free_frame(f);
             free(f);
         }
        

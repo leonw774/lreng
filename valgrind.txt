@@ -1,243 +1,215 @@
-==213648== Memcheck, a memory error detector
-==213648== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
-==213648== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
-==213648== Command: ./lreng tests/inputs/closure.txt -d
-==213648== Parent PID: 1836
-==213648== 
-==213648== Invalid read of size 1
-==213648==    at 0x484ED24: strlen (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x48D6D30: __vfprintf_internal (vfprintf-internal.c:1517)
-==213648==    by 0x48C06C9: fprintf (fprintf.c:32)
-==213648==    by 0x111E83: mem_check_reset_dynarr (mem_check.c:114)
-==213648==    by 0x10DF1A: harvest (tokenizer.c:149)
-==213648==    by 0x10F94A: id_state (tokenizer.c:515)
-==213648==    by 0x11022E: tokenize (tokenizer.c:628)
-==213648==    by 0x10D3F4: main (lreng.c:56)
-==213648==  Address 0x4a8eb54 is 0 bytes after a block of size 4 alloc'd
-==213648==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111B0C: mem_check_malloc (mem_check.c:27)
-==213648==    by 0x111CE7: mem_check_new_dynarr (mem_check.c:77)
-==213648==    by 0x111ED3: mem_check_reset_dynarr (mem_check.c:120)
-==213648==    by 0x10DF1A: harvest (tokenizer.c:149)
-==213648==    by 0x10FC4F: op_state (tokenizer.c:553)
-==213648==    by 0x11022E: tokenize (tokenizer.c:628)
-==213648==    by 0x10D3F4: main (lreng.c:56)
-==213648== 
-==213648== Invalid read of size 1
-==213648==    at 0x110162: tokenize (tokenizer.c:615)
-==213648==    by 0x10D3F4: main (lreng.c:56)
-==213648==  Address 0x4a8c8eb is 0 bytes after a block of size 523 alloc'd
-==213648==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111B0C: mem_check_malloc (mem_check.c:27)
-==213648==    by 0x10D37A: main (lreng.c:48)
-==213648== 
-==213648== Invalid write of size 1
-==213648==    at 0x10D92E: semantic_checker (semantic_checker.c:84)
-==213648==    by 0x10D475: main (lreng.c:58)
-==213648==  Address 0x4a9ad63 is 0 bytes after a block of size 3 alloc'd
-==213648==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111BB8: mem_check_calloc (mem_check.c:46)
-==213648==    by 0x10D598: semantic_checker (semantic_checker.c:13)
-==213648==    by 0x10D475: main (lreng.c:58)
-==213648== 
-==213648== Invalid write of size 1
-==213648==    at 0x10DA06: semantic_checker (semantic_checker.c:103)
-==213648==    by 0x10D475: main (lreng.c:58)
-==213648==  Address 0x4a9ad63 is 0 bytes after a block of size 3 alloc'd
-==213648==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111BB8: mem_check_calloc (mem_check.c:46)
-==213648==    by 0x10D598: semantic_checker (semantic_checker.c:13)
-==213648==    by 0x10D475: main (lreng.c:58)
-==213648== 
-==213648== 
-==213648== HEAP SUMMARY:
-==213648==     in use at exit: 13,440 bytes in 60 blocks
-==213648==   total heap usage: 1,437 allocs, 1,377 frees, 53,168 bytes allocated
-==213648== 
-==213648== 224 bytes in 1 blocks are definitely lost in loss record 1 of 14
-==213648==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111B0C: mem_check_malloc (mem_check.c:27)
-==213648==    by 0x111CE7: mem_check_new_dynarr (mem_check.c:77)
-==213648==    by 0x118EF3: push_stack (frame.c:48)
-==213648==    by 0x11907F: copy_frame (frame.c:75)
-==213648==    by 0x10C1F6: eval_tree (evaluator.c:426)
-==213648==    by 0x10D4BD: main (lreng.c:63)
-==213648== 
-==213648== 224 bytes in 1 blocks are definitely lost in loss record 2 of 14
-==213648==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111B0C: mem_check_malloc (mem_check.c:27)
-==213648==    by 0x111CE7: mem_check_new_dynarr (mem_check.c:77)
-==213648==    by 0x118EF3: push_stack (frame.c:48)
-==213648==    by 0x11907F: copy_frame (frame.c:75)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x119168: copy_frame (frame.c:83)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x119168: copy_frame (frame.c:83)
-==213648==    by 0x10C1F6: eval_tree (evaluator.c:426)
-==213648==    by 0x10A806: exec_call (evaluator.c:121)
-==213648==    by 0x10A971: exec_op (evaluator.c:147)
-==213648== 
-==213648== 224 bytes in 1 blocks are definitely lost in loss record 3 of 14
-==213648==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111B0C: mem_check_malloc (mem_check.c:27)
-==213648==    by 0x111CE7: mem_check_new_dynarr (mem_check.c:77)
-==213648==    by 0x118EF3: push_stack (frame.c:48)
-==213648==    by 0x11907F: copy_frame (frame.c:75)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x119168: copy_frame (frame.c:83)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x119168: copy_frame (frame.c:83)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x10CF31: eval_tree (evaluator.c:659)
-==213648==    by 0x10A806: exec_call (evaluator.c:121)
-==213648== 
-==213648== 224 bytes in 1 blocks are definitely lost in loss record 4 of 14
-==213648==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111B0C: mem_check_malloc (mem_check.c:27)
-==213648==    by 0x111CE7: mem_check_new_dynarr (mem_check.c:77)
-==213648==    by 0x118EF3: push_stack (frame.c:48)
-==213648==    by 0x11907F: copy_frame (frame.c:75)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x119168: copy_frame (frame.c:83)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x119168: copy_frame (frame.c:83)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x119611: frame_set (frame.c:154)
-==213648==    by 0x10C480: eval_tree (evaluator.c:480)
-==213648== 
-==213648== 448 bytes in 2 blocks are definitely lost in loss record 5 of 14
-==213648==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111B0C: mem_check_malloc (mem_check.c:27)
-==213648==    by 0x111CE7: mem_check_new_dynarr (mem_check.c:77)
-==213648==    by 0x118EF3: push_stack (frame.c:48)
-==213648==    by 0x11907F: copy_frame (frame.c:75)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x119168: copy_frame (frame.c:83)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x119168: copy_frame (frame.c:83)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x10A6D8: exec_call (evaluator.c:102)
-==213648==    by 0x10A971: exec_op (evaluator.c:147)
-==213648== 
-==213648== 896 bytes in 4 blocks are definitely lost in loss record 6 of 14
-==213648==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111B0C: mem_check_malloc (mem_check.c:27)
-==213648==    by 0x111CE7: mem_check_new_dynarr (mem_check.c:77)
-==213648==    by 0x118EF3: push_stack (frame.c:48)
-==213648==    by 0x11907F: copy_frame (frame.c:75)
-==213648==    by 0x10C1F6: eval_tree (evaluator.c:426)
-==213648==    by 0x10A806: exec_call (evaluator.c:121)
-==213648==    by 0x10A971: exec_op (evaluator.c:147)
-==213648==    by 0x10C9E7: eval_tree (evaluator.c:568)
-==213648==    by 0x10D4BD: main (lreng.c:63)
-==213648== 
-==213648== 896 bytes in 4 blocks are definitely lost in loss record 7 of 14
-==213648==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111B0C: mem_check_malloc (mem_check.c:27)
-==213648==    by 0x111CE7: mem_check_new_dynarr (mem_check.c:77)
-==213648==    by 0x118EF3: push_stack (frame.c:48)
-==213648==    by 0x11907F: copy_frame (frame.c:75)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x119168: copy_frame (frame.c:83)
-==213648==    by 0x10C1F6: eval_tree (evaluator.c:426)
-==213648==    by 0x10A806: exec_call (evaluator.c:121)
-==213648==    by 0x10A971: exec_op (evaluator.c:147)
-==213648==    by 0x10C9E7: eval_tree (evaluator.c:568)
-==213648==    by 0x10D4BD: main (lreng.c:63)
-==213648== 
-==213648== 896 bytes in 4 blocks are definitely lost in loss record 8 of 14
-==213648==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111B0C: mem_check_malloc (mem_check.c:27)
-==213648==    by 0x111CE7: mem_check_new_dynarr (mem_check.c:77)
-==213648==    by 0x118EF3: push_stack (frame.c:48)
-==213648==    by 0x11907F: copy_frame (frame.c:75)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x10CF31: eval_tree (evaluator.c:659)
-==213648==    by 0x10A806: exec_call (evaluator.c:121)
-==213648==    by 0x10A971: exec_op (evaluator.c:147)
-==213648==    by 0x10C9E7: eval_tree (evaluator.c:568)
-==213648==    by 0x10D4BD: main (lreng.c:63)
-==213648== 
-==213648== 896 bytes in 4 blocks are definitely lost in loss record 9 of 14
-==213648==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111B0C: mem_check_malloc (mem_check.c:27)
-==213648==    by 0x111CE7: mem_check_new_dynarr (mem_check.c:77)
-==213648==    by 0x118EF3: push_stack (frame.c:48)
-==213648==    by 0x11907F: copy_frame (frame.c:75)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x119168: copy_frame (frame.c:83)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x10CF31: eval_tree (evaluator.c:659)
-==213648==    by 0x10A806: exec_call (evaluator.c:121)
-==213648==    by 0x10A971: exec_op (evaluator.c:147)
-==213648==    by 0x10C9E7: eval_tree (evaluator.c:568)
-==213648== 
-==213648== 896 bytes in 4 blocks are definitely lost in loss record 10 of 14
-==213648==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111B0C: mem_check_malloc (mem_check.c:27)
-==213648==    by 0x111CE7: mem_check_new_dynarr (mem_check.c:77)
-==213648==    by 0x118EF3: push_stack (frame.c:48)
-==213648==    by 0x11907F: copy_frame (frame.c:75)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x119168: copy_frame (frame.c:83)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x119611: frame_set (frame.c:154)
-==213648==    by 0x10C480: eval_tree (evaluator.c:480)
-==213648==    by 0x10D4BD: main (lreng.c:63)
-==213648== 
-==213648== 1,120 bytes in 5 blocks are definitely lost in loss record 11 of 14
-==213648==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111B0C: mem_check_malloc (mem_check.c:27)
-==213648==    by 0x111CE7: mem_check_new_dynarr (mem_check.c:77)
-==213648==    by 0x118EF3: push_stack (frame.c:48)
-==213648==    by 0x11907F: copy_frame (frame.c:75)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x119611: frame_set (frame.c:154)
-==213648==    by 0x10C480: eval_tree (evaluator.c:480)
-==213648==    by 0x10D4BD: main (lreng.c:63)
-==213648== 
-==213648== 1,344 bytes in 6 blocks are definitely lost in loss record 12 of 14
-==213648==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111B0C: mem_check_malloc (mem_check.c:27)
-==213648==    by 0x111CE7: mem_check_new_dynarr (mem_check.c:77)
-==213648==    by 0x118EF3: push_stack (frame.c:48)
-==213648==    by 0x10A5AD: exec_call (evaluator.c:87)
-==213648==    by 0x10A971: exec_op (evaluator.c:147)
-==213648==    by 0x10C9E7: eval_tree (evaluator.c:568)
-==213648==    by 0x10D4BD: main (lreng.c:63)
-==213648== 
-==213648== 2,016 bytes in 9 blocks are definitely lost in loss record 13 of 14
-==213648==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111B0C: mem_check_malloc (mem_check.c:27)
-==213648==    by 0x111CE7: mem_check_new_dynarr (mem_check.c:77)
-==213648==    by 0x118EF3: push_stack (frame.c:48)
-==213648==    by 0x11907F: copy_frame (frame.c:75)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x119168: copy_frame (frame.c:83)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x10A6D8: exec_call (evaluator.c:102)
-==213648==    by 0x10A971: exec_op (evaluator.c:147)
-==213648==    by 0x10C9E7: eval_tree (evaluator.c:568)
-==213648==    by 0x10D4BD: main (lreng.c:63)
-==213648== 
-==213648== 3,136 bytes in 14 blocks are definitely lost in loss record 14 of 14
-==213648==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
-==213648==    by 0x111B0C: mem_check_malloc (mem_check.c:27)
-==213648==    by 0x111CE7: mem_check_new_dynarr (mem_check.c:77)
-==213648==    by 0x118EF3: push_stack (frame.c:48)
-==213648==    by 0x11907F: copy_frame (frame.c:75)
-==213648==    by 0x115161: copy_object (objects.c:76)
-==213648==    by 0x10A6D8: exec_call (evaluator.c:102)
-==213648==    by 0x10A971: exec_op (evaluator.c:147)
-==213648==    by 0x10C9E7: eval_tree (evaluator.c:568)
-==213648==    by 0x10D4BD: main (lreng.c:63)
-==213648== 
-==213648== LEAK SUMMARY:
-==213648==    definitely lost: 13,440 bytes in 60 blocks
-==213648==    indirectly lost: 0 bytes in 0 blocks
-==213648==      possibly lost: 0 bytes in 0 blocks
-==213648==    still reachable: 0 bytes in 0 blocks
-==213648==         suppressed: 0 bytes in 0 blocks
-==213648== 
-==213648== For lists of detected and suppressed errors, rerun with: -s
-==213648== ERROR SUMMARY: 36 errors from 18 contexts (suppressed: 0 from 0)
+==214522== Memcheck, a memory error detector
+==214522== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==214522== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==214522== Command: ./lreng tests/inputs/closure.txt -d
+==214522== Parent PID: 1836
+==214522== 
+==214522== Invalid read of size 1
+==214522==    at 0x10FCAF: tokenize (tokenizer.c:615)
+==214522==    by 0x10D2A3: main (lreng.c:56)
+==214522==  Address 0x4a8c6ab is 0 bytes after a block of size 523 alloc'd
+==214522==    at 0x4848899: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x10D229: main (lreng.c:48)
+==214522== 
+==214522== Invalid write of size 1
+==214522==    at 0x10D753: semantic_checker (semantic_checker.c:84)
+==214522==    by 0x10D324: main (lreng.c:58)
+==214522==  Address 0x4a9ad63 is 0 bytes after a block of size 3 alloc'd
+==214522==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x10D3E0: semantic_checker (semantic_checker.c:13)
+==214522==    by 0x10D324: main (lreng.c:58)
+==214522== 
+==214522== Invalid write of size 1
+==214522==    at 0x10D81B: semantic_checker (semantic_checker.c:103)
+==214522==    by 0x10D324: main (lreng.c:58)
+==214522==  Address 0x4a9ad63 is 0 bytes after a block of size 3 alloc'd
+==214522==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x10D3E0: semantic_checker (semantic_checker.c:13)
+==214522==    by 0x10D324: main (lreng.c:58)
+==214522== 
+==214522== Invalid read of size 2
+==214522==    at 0x484FF60: memcpy@GLIBC_2.2.5 (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x114CF1: copy_bi (bigint.c:79)
+==214522==    by 0x111EFF: copy_number (number.c:22)
+==214522==    by 0x11459E: copy_object (objects.c:51)
+==214522==    by 0x10A719: exec_call (evaluator.c:118)
+==214522==    by 0x10A9A2: exec_op (evaluator.c:166)
+==214522==    by 0x10C936: eval_tree (evaluator.c:587)
+==214522==    by 0x10D369: main (lreng.c:63)
+==214522==  Address 0x4a9d1e0 is 0 bytes inside a block of size 4 free'd
+==214522==    at 0x484B27F: free (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x114D1C: free_bi (bigint.c:85)
+==214522==    by 0x111F85: free_number (number.c:30)
+==214522==    by 0x114866: free_object (objects.c:88)
+==214522==    by 0x1185DE: pop_stack (frame.c:61)
+==214522==    by 0x10A869: exec_call (evaluator.c:145)
+==214522==    by 0x10A9A2: exec_op (evaluator.c:166)
+==214522==    by 0x10C936: eval_tree (evaluator.c:587)
+==214522==    by 0x10D369: main (lreng.c:63)
+==214522==  Block was alloc'd at
+==214522==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x114CB6: copy_bi (bigint.c:78)
+==214522==    by 0x111EFF: copy_number (number.c:22)
+==214522==    by 0x11459E: copy_object (objects.c:51)
+==214522==    by 0x1188D3: frame_set (frame.c:144)
+==214522==    by 0x10A7E2: exec_call (evaluator.c:126)
+==214522==    by 0x10A9A2: exec_op (evaluator.c:166)
+==214522==    by 0x10C936: eval_tree (evaluator.c:587)
+==214522==    by 0x10D369: main (lreng.c:63)
+==214522== 
+==214522== Invalid read of size 2
+==214522==    at 0x484FF60: memcpy@GLIBC_2.2.5 (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x114CF1: copy_bi (bigint.c:79)
+==214522==    by 0x111F1A: copy_number (number.c:23)
+==214522==    by 0x11459E: copy_object (objects.c:51)
+==214522==    by 0x10A719: exec_call (evaluator.c:118)
+==214522==    by 0x10A9A2: exec_op (evaluator.c:166)
+==214522==    by 0x10C936: eval_tree (evaluator.c:587)
+==214522==    by 0x10D369: main (lreng.c:63)
+==214522==  Address 0x4a9d230 is 0 bytes inside a block of size 4 free'd
+==214522==    at 0x484B27F: free (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x114D1C: free_bi (bigint.c:85)
+==214522==    by 0x111F95: free_number (number.c:31)
+==214522==    by 0x114866: free_object (objects.c:88)
+==214522==    by 0x1185DE: pop_stack (frame.c:61)
+==214522==    by 0x10A869: exec_call (evaluator.c:145)
+==214522==    by 0x10A9A2: exec_op (evaluator.c:166)
+==214522==    by 0x10C936: eval_tree (evaluator.c:587)
+==214522==    by 0x10D369: main (lreng.c:63)
+==214522==  Block was alloc'd at
+==214522==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x114CB6: copy_bi (bigint.c:78)
+==214522==    by 0x111F1A: copy_number (number.c:23)
+==214522==    by 0x11459E: copy_object (objects.c:51)
+==214522==    by 0x1188D3: frame_set (frame.c:144)
+==214522==    by 0x10A7E2: exec_call (evaluator.c:126)
+==214522==    by 0x10A9A2: exec_op (evaluator.c:166)
+==214522==    by 0x10C936: eval_tree (evaluator.c:587)
+==214522==    by 0x10D369: main (lreng.c:63)
+==214522== 
+==214522== 
+==214522== HEAP SUMMARY:
+==214522==     in use at exit: 11,568 bytes in 85 blocks
+==214522==   total heap usage: 1,196 allocs, 1,111 frees, 36,424 bytes allocated
+==214522== 
+==214522== 16 bytes in 1 blocks are definitely lost in loss record 1 of 16
+==214522==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x117D91: new_dynarr (dynarr.c:11)
+==214522==    by 0x1184A5: empty_frame (frame.c:36)
+==214522==    by 0x118389: new_frame (frame.c:11)
+==214522==    by 0x10D411: semantic_checker (semantic_checker.c:19)
+==214522==    by 0x10D324: main (lreng.c:58)
+==214522== 
+==214522== 16 bytes in 1 blocks are definitely lost in loss record 2 of 16
+==214522==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x117D91: new_dynarr (dynarr.c:11)
+==214522==    by 0x1184A5: empty_frame (frame.c:36)
+==214522==    by 0x118389: new_frame (frame.c:11)
+==214522==    by 0x10D342: main (lreng.c:62)
+==214522== 
+==214522== 24 bytes in 6 blocks are definitely lost in loss record 3 of 16
+==214522==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x114CB6: copy_bi (bigint.c:78)
+==214522==    by 0x111EFF: copy_number (number.c:22)
+==214522==    by 0x11459E: copy_object (objects.c:51)
+==214522==    by 0x10A719: exec_call (evaluator.c:118)
+==214522==    by 0x10A9A2: exec_op (evaluator.c:166)
+==214522==    by 0x10C936: eval_tree (evaluator.c:587)
+==214522==    by 0x10D369: main (lreng.c:63)
+==214522== 
+==214522== 24 bytes in 6 blocks are definitely lost in loss record 4 of 16
+==214522==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x114CB6: copy_bi (bigint.c:78)
+==214522==    by 0x111F1A: copy_number (number.c:23)
+==214522==    by 0x11459E: copy_object (objects.c:51)
+==214522==    by 0x10A719: exec_call (evaluator.c:118)
+==214522==    by 0x10A9A2: exec_op (evaluator.c:166)
+==214522==    by 0x10C936: eval_tree (evaluator.c:587)
+==214522==    by 0x10D369: main (lreng.c:63)
+==214522== 
+==214522== 96 bytes in 1 blocks are definitely lost in loss record 5 of 16
+==214522==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x117D91: new_dynarr (dynarr.c:11)
+==214522==    by 0x1184D1: empty_frame (frame.c:38)
+==214522==    by 0x118389: new_frame (frame.c:11)
+==214522==    by 0x10D411: semantic_checker (semantic_checker.c:19)
+==214522==    by 0x10D324: main (lreng.c:58)
+==214522== 
+==214522== 96 bytes in 1 blocks are definitely lost in loss record 6 of 16
+==214522==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x117D91: new_dynarr (dynarr.c:11)
+==214522==    by 0x1184D1: empty_frame (frame.c:38)
+==214522==    by 0x118389: new_frame (frame.c:11)
+==214522==    by 0x10D342: main (lreng.c:62)
+==214522== 
+==214522== 224 bytes in 1 blocks are definitely lost in loss record 9 of 16
+==214522==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x117D91: new_dynarr (dynarr.c:11)
+==214522==    by 0x118526: push_stack (frame.c:47)
+==214522==    by 0x11866A: copy_frame (frame.c:75)
+==214522==    by 0x10C1F1: eval_tree (evaluator.c:445)
+==214522==    by 0x10D369: main (lreng.c:63)
+==214522== 
+==214522== 896 bytes in 4 blocks are definitely lost in loss record 11 of 16
+==214522==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x117D91: new_dynarr (dynarr.c:11)
+==214522==    by 0x118526: push_stack (frame.c:47)
+==214522==    by 0x11866A: copy_frame (frame.c:75)
+==214522==    by 0x10C1F1: eval_tree (evaluator.c:445)
+==214522==    by 0x10A85D: exec_call (evaluator.c:138)
+==214522==    by 0x10A9A2: exec_op (evaluator.c:166)
+==214522==    by 0x10C936: eval_tree (evaluator.c:587)
+==214522==    by 0x10D369: main (lreng.c:63)
+==214522== 
+==214522== 896 bytes in 4 blocks are definitely lost in loss record 12 of 16
+==214522==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x117D91: new_dynarr (dynarr.c:11)
+==214522==    by 0x118526: push_stack (frame.c:47)
+==214522==    by 0x11866A: copy_frame (frame.c:75)
+==214522==    by 0x114796: copy_object (objects.c:76)
+==214522==    by 0x10CE42: eval_tree (evaluator.c:678)
+==214522==    by 0x10A85D: exec_call (evaluator.c:138)
+==214522==    by 0x10A9A2: exec_op (evaluator.c:166)
+==214522==    by 0x10C936: eval_tree (evaluator.c:587)
+==214522==    by 0x10D369: main (lreng.c:63)
+==214522== 
+==214522== 1,120 bytes in 5 blocks are definitely lost in loss record 13 of 16
+==214522==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x117D91: new_dynarr (dynarr.c:11)
+==214522==    by 0x118526: push_stack (frame.c:47)
+==214522==    by 0x11866A: copy_frame (frame.c:75)
+==214522==    by 0x114796: copy_object (objects.c:76)
+==214522==    by 0x1188D3: frame_set (frame.c:144)
+==214522==    by 0x10C45A: eval_tree (evaluator.c:499)
+==214522==    by 0x10D369: main (lreng.c:63)
+==214522== 
+==214522== 3,136 bytes in 14 blocks are definitely lost in loss record 14 of 16
+==214522==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x117D91: new_dynarr (dynarr.c:11)
+==214522==    by 0x118526: push_stack (frame.c:47)
+==214522==    by 0x11866A: copy_frame (frame.c:75)
+==214522==    by 0x114796: copy_object (objects.c:76)
+==214522==    by 0x10A719: exec_call (evaluator.c:118)
+==214522==    by 0x10A9A2: exec_op (evaluator.c:166)
+==214522==    by 0x10C936: eval_tree (evaluator.c:587)
+==214522==    by 0x10D369: main (lreng.c:63)
+==214522== 
+==214522== 5,024 (288 direct, 4,736 indirect) bytes in 6 blocks are definitely lost in loss record 16 of 16
+==214522==    at 0x484DA83: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==214522==    by 0x11848C: empty_frame (frame.c:34)
+==214522==    by 0x118636: copy_frame (frame.c:72)
+==214522==    by 0x114796: copy_object (objects.c:76)
+==214522==    by 0x10A719: exec_call (evaluator.c:118)
+==214522==    by 0x10A9A2: exec_op (evaluator.c:166)
+==214522==    by 0x10C936: eval_tree (evaluator.c:587)
+==214522==    by 0x10D369: main (lreng.c:63)
+==214522== 
+==214522== LEAK SUMMARY:
+==214522==    definitely lost: 6,832 bytes in 50 blocks
+==214522==    indirectly lost: 4,736 bytes in 35 blocks
+==214522==      possibly lost: 0 bytes in 0 blocks
+==214522==    still reachable: 0 bytes in 0 blocks
+==214522==         suppressed: 0 bytes in 0 blocks
+==214522== 
+==214522== For lists of detected and suppressed errors, rerun with: -s
+==214522== ERROR SUMMARY: 40 errors from 17 contexts (suppressed: 0 from 0)

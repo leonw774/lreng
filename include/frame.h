@@ -24,7 +24,7 @@ extern void pop_stack(frame_t* f);
 
 extern frame_t* copy_frame(const frame_t* f);
 
-extern void free_frame(frame_t* f, const int is_deep_free);
+extern void free_frame(frame_t* f);
 
 extern object_t* frame_get(const frame_t* f, const int name);
 

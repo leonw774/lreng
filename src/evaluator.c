@@ -68,6 +68,10 @@ exec_call(
         return func_ptr(arg_obj);
     }
 
+    if (is_debug) {
+        printf("exec_call: prepare call frame\n");
+    }
+
     int i, j, is_forked = 0;
     const frame_t* create_time_frame = func_obj->data.func.create_time_frame;
     frame_t* call_frame = empty_frame();
@@ -84,23 +88,31 @@ exec_call(
         else {
             cur_index = -1;
         }
-        push_stack(call_frame, create_index);
+
+        /* push the entry_index */
+        append(&call_frame->entry_indices, &create_index);
+
         dynarr_t* src_pairs = NULL;
-        dynarr_t* dst_pairs = back(&call_frame->stack);
         if (!is_forked && cur_index == create_index) {
             src_pairs = &((dynarr_t*) cur_frame->stack.data)[i];
+            if (is_debug) {
+                printf("exec_call: stack[%d] use current\n", i);
+            }
         }
         else {
             is_forked = 1;
             src_pairs = &((dynarr_t*) create_time_frame->stack.data)[i];
+            if (is_debug) {
+                printf("exec_call: stack[%d] use creat-time\n", i);
+            }
         }
-        /* copy the stack */
-        *dst_pairs = copy_dynarr(src_pairs);
-        /* deep copy the objects in dst */
-        for (j = 0; j < dst_pairs->size; j++) {
-            object_t* o = &((name_object_pair_t*) dst_pairs->data)[j].object;
-            ((name_object_pair_t*) dst_pairs->data)[j].object = copy_object(o);
+
+        if (is_debug) {
+            printf("exec_call: stack[%d] begin copy\n", i);
         }
+        /* push the shallow copy of source stack */
+        dynarr_t new_pairs = copy_dynarr(src_pairs);
+        append(&call_frame->stack, &new_pairs);
     }
 
     /* push new stack to call_frame and set argument */
@@ -124,8 +136,10 @@ exec_call(
         func_obj->data.func.entry_index,
         is_debug
     );
+    /* free the object own by this call */
     pop_stack(call_frame);
-    free_frame(call_frame, 1);
+    /* free the frame but not and bollowed object */
+    free_frame(call_frame);
     free(call_frame);
     return res;
 }
@@ -316,8 +330,9 @@ exec_op(
                 right_obj->data.pair.left, right_obj->data.pair.right);
         }
         return exec_call(
-            to_bool(left_obj) ? right_obj->data.pair.left : right_obj->data.pair.right,
-            NULL,
+            to_bool(left_obj)
+                ? right_obj->data.pair.left : right_obj->data.pair.right,
+            (object_t*) &RESERVED_OBJS[RESERVED_ID_NAME_NULL],
             cur_frame,
             is_debug
         );

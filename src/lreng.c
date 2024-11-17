@@ -62,7 +62,7 @@ main(int argc, char** argv) {
     frame_t* top_frame = new_frame(syntax_tree.root_index);
     eval_tree(&syntax_tree, top_frame, syntax_tree.root_index, is_debug);
 
-    free_frame(top_frame, 1);
+    pop_stack(top_frame);
     free(top_frame);
     free_tree(&syntax_tree);
     free_dynarr(&tokens);
