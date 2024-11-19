@@ -107,9 +107,6 @@ exec_call(
             }
         }
 
-        if (is_debug) {
-            printf("exec_call: stack[%d] begin copy\n", i);
-        }
         /* push the shallow copy of source stack */
         dynarr_t new_pairs = copy_dynarr(src_pairs);
         append(&call_frame->stack, &new_pairs);
@@ -122,10 +119,9 @@ exec_call(
     }
 
     if (is_debug) {
-        printf(
-            "exec_call: call_frame=%p, arg_name=%d arg_obj=",
-            call_frame, &func_obj->data.func.arg_name
-        );
+        printf("exec_call: call_frame=%p\nfunc_obj=", call_frame);
+        print_object(func_obj); puts("");
+        printf("arg_obj=");
         print_object(arg_obj); puts("");
     }
 
@@ -139,7 +135,7 @@ exec_call(
     /* free the object own by this call */
     pop_stack(call_frame);
     /* free the frame but not and bollowed object */
-    free_frame(call_frame);
+    free_frame(call_frame, 0);
     free(call_frame);
     return res;
 }
@@ -273,7 +269,7 @@ exec_op(
             .type = TYPE_NUMBER,
             .data = {.number = number_from_i32(tmp_bool)}
         }));
-    case OP_EQ:
+    case OP_EQ: /* TODO: make it able to compare all types */
         check_type(op_token, TYPE_NUMBER, TYPE_NUMBER, left_obj, right_obj);
         tmp_bool = number_eq(&left_obj->data.number, &right_obj->data.number);
         return OBJ_OBJERR(((object_t) {
@@ -438,7 +434,8 @@ eval_tree(
                     .arg_name = -1,
                     .entry_index = left_index,
                     .tree = tree,
-                    .create_time_frame = copy_frame(cur_frame)
+                    /* owns a deep copy of the frame it created under */
+                    .create_time_frame = copy_frame(cur_frame, 1)
                 };
                 if (is_debug) {
                     printf(" defined function:");
@@ -579,7 +576,7 @@ eval_tree(
                     append(&token_index_stack, &left_index);
                     continue;
                 }
-                /* execop will NOT alloc new object */
+                /* exec_op will NOT alloc new object */
                 tmp_obj_err = exec_op(
                     cur_token, left_obj, right_obj, cur_frame, is_debug
                 );
@@ -671,9 +668,7 @@ eval_tree(
         tmp_obj_err = ERR_OBJERR();
     }
     else {
-        tmp_obj_err = OBJ_OBJERR(copy_object(
-            _OBJ_TABLE(entry_index)
-        ));
+        tmp_obj_err = OBJ_OBJERR(copy_object(_OBJ_TABLE(entry_index)));
     }
 
     /* free things */

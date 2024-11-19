@@ -73,7 +73,7 @@ copy_object(const object_t* obj) {
             return clone;
         }
         clone.data.func.create_time_frame =
-            copy_frame(obj->data.func.create_time_frame);
+            copy_frame(obj->data.func.create_time_frame, 1);
         return clone;
     }
     else {
@@ -98,7 +98,9 @@ free_object(object_t* obj) {
         }
         frame_t* f = (frame_t*) obj->data.func.create_time_frame;
         if (f != NULL) {
-            free_frame(f);
+            /* the objects in create-time frame in function are own by the
+               function so can free them */
+            free_frame(f, 1);
             free(f);
         }
        

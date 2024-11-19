@@ -433,14 +433,23 @@ ch_esc_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     if (c == '\'' || c == '\"' || c == '\\') {
         /* c = c; */
     }
+    else if (c == 'a') {
+        c = '\a';
+    }
+    else if (c == 'b') {
+        c = '\b';
+    }
     else if (c == 'n') {
         c = '\n';
+    }
+    else if (c == 'r') {
+        c = '\r';
     }
     else if (c == 't') {
         c = '\t';
     }
-    else if (c == 'r') {
-        c = '\r';
+    else if (c == 'v') {
+        c = '\v';
     }
     else {
         sprintf(ERR_MSG_BUF, "Invalid escape character: %c", c);

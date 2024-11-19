@@ -14,16 +14,16 @@ new_frame(const int entry_index) {
     /* add reserved ids */
     dynarr_t* first_pairs = &((dynarr_t*) f->stack.data)[0];
     for (i = 0; i < RESERVED_ID_NUM; i++) {
-        name_object_pair_t pair = {
+        name_obj_pair_t pair = {
             .name = i,
             .object = RESERVED_OBJS[i]
         };
         append(first_pairs, &pair);
         // printf(
         //     " init pair: name=%d object=",
-        //     ((name_object_pair_t*) first_pairs->data)[i].name
+        //     ((name_obj_pair_t*) first_pairs->data)[i].name
         // );
-        // print_object(&((name_object_pair_t*) first_pairs->data)[i].object);
+        // print_object(&((name_obj_pair_t*) first_pairs->data)[i].object);
         // puts("");
     }
     return f;
@@ -44,51 +44,62 @@ void
 push_stack(frame_t* f, const int entry_index) {
     // printf("push_stack: f=%p, entry_index=%d\n", f, entry_index);
     append(&f->entry_indices, &entry_index);
-    dynarr_t new_pairs = new_dynarr(sizeof(name_object_pair_t));
+    dynarr_t new_pairs = new_dynarr(sizeof(name_obj_pair_t));
     append(&f->stack, &new_pairs);
 }
 
-/* free objects in last stack and pop the stack */
+/* free objects in last pairs and pop the stack */
 void
 pop_stack(frame_t* f) {
     int i;
     if (f->entry_indices.size == 0) {
         return;
     }
-    dynarr_t* last_stack = back(&f->stack);
-    for (i = 0; i < last_stack->size; i++) {
-        name_object_pair_t pair = ((name_object_pair_t*) last_stack->data)[i];
-        free_object(&pair.object);
+    dynarr_t* last_pairs = back(&f->stack);
+    for (i = 0; i < last_pairs->size; i++) {
+        free_object(&((name_obj_pair_t*) last_pairs->data)[i].object);
     }
-    free_dynarr(last_stack);
+    free_dynarr(last_pairs);
     pop(&f->stack);
     pop(&f->entry_indices);
 }
 
 /* shallow copy of frame */
 frame_t* 
-copy_frame(const frame_t* f) {
+copy_frame(const frame_t* f, const int is_deep_copy) {
     int i, j;
     frame_t* clone_frame = empty_frame();
     // printf("copy_frame: from=%p, to=%p\n", f, clone_frame);
     for (i = 0; i < f->stack.size; i++) {
         push_stack(clone_frame, ((int*) f->entry_indices.data)[i]);
-        /* make shallow copy of i-th stack */
         dynarr_t* src_pairs = &((dynarr_t*) f->stack.data)[i];
         dynarr_t* dst_pairs = &((dynarr_t*) clone_frame->stack.data)[i];
         *dst_pairs = copy_dynarr(src_pairs);
+        if (is_deep_copy) {
+            for (j = 0; j < dst_pairs->size; j++) {
+                ((name_obj_pair_t*) dst_pairs->data)[j].object = copy_object(
+                    &((name_obj_pair_t*) dst_pairs->data)[j].object
+                );
+            }
+        }
     }
     return clone_frame;
 }
 
 /* this does not free the objects in frame */
-void free_frame(frame_t* f) {
+void free_frame(frame_t* f, const int is_deep_free) {
     int i, j;
     // printf("free_frame: f=%p\n", f);
     free_dynarr(&f->entry_indices);
     for (i = 0; i < f->stack.size; i++) {
         // printf("free_frame: free pairs %d\n", i);
-        free_dynarr(&((dynarr_t*) f->stack.data)[i]);
+        dynarr_t* pairs = &((dynarr_t*) f->stack.data)[i];
+        if (is_deep_free) {
+            for (j = 0; j < pairs->size; j++) {
+                free_object(&((name_obj_pair_t*) pairs->data)[j].object);
+            }
+        }
+        free_dynarr(pairs);
     }
     // printf("free_frame: free stack\n", f);
     free_dynarr(&f->stack);
@@ -104,12 +115,12 @@ frame_get(const frame_t* f, const int name) {
         for (j = 0; j < pairs->size; j++) {
             // printf(
             //     " comparing with name=%d object=",
-            //     ((name_object_pair_t*) pairs->data)[j].name
+            //     ((name_obj_pair_t*) pairs->data)[j].name
             // );
-            // print_object(&((name_object_pair_t*) pairs->data)[j].object);
+            // print_object(&((name_obj_pair_t*) pairs->data)[j].object);
             // puts("");
-            if (name == ((name_object_pair_t*) pairs->data)[j].name) {
-                return &((name_object_pair_t*) pairs->data)[j].object;
+            if (name == ((name_obj_pair_t*) pairs->data)[j].name) {
+                return &((name_obj_pair_t*) pairs->data)[j].object;
             }
         }
     }
@@ -129,22 +140,22 @@ frame_set(frame_t* f, const int name, const object_t* obj) {
     for (i = 0; i < last_pairs->size; i++) {
         // printf(
         //     " comparing with name=%d object=",
-        //     ((name_object_pair_t*) last_pairs->data)[i].name
+        //     ((name_obj_pair_t*) last_pairs->data)[i].name
         // );
-        // print_object(&((name_object_pair_t*) last_pairs->data)[i].object);
+        // print_object(&((name_obj_pair_t*) last_pairs->data)[i].object);
         // puts("");
-        if (name == ((name_object_pair_t*) last_pairs->data)[i].name) {
-            found_object = &((name_object_pair_t*) last_pairs->data)[i].object;
+        if (name == ((name_obj_pair_t*) last_pairs->data)[i].name) {
+            found_object = &((name_obj_pair_t*) last_pairs->data)[i].object;
             break;
         }
     }
     if (found_object == NULL) {
-        name_object_pair_t new_pair = {
+        name_obj_pair_t new_pair = {
             .name = name,
             .object = copy_object(obj)
         };
         append(last_pairs, &new_pair);
-        return &((name_object_pair_t*) back(last_pairs))->object;
+        return &((name_obj_pair_t*) back(last_pairs))->object;
     }
     else {
         free_object(found_object);

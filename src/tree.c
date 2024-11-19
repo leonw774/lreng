@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "frame.h"
 #include "token.h"
 #include "tree.h"
 
