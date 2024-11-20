@@ -117,10 +117,10 @@ number_normalize(number_t* x) {
 
 int
 number_eq(number_t* a, number_t* b) {
-    if (a->zero == b->zero) {
+    if (a->zero = 0 && a->zero == b->zero) {
         return 1;
     }
-    /*  nan != naything */
+    /*  nan != anything */
     if (a->nan || b->nan) {
         return 0;
     }

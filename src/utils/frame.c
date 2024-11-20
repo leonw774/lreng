@@ -36,6 +36,7 @@ empty_frame() {
     f->entry_indices = new_dynarr(sizeof(int));
     // printf("empty_frame: new stack\n");
     f->stack = new_dynarr(sizeof(dynarr_t));
+    f->refer_count = 1;
     return f;
 }
 
@@ -66,7 +67,7 @@ pop_stack(frame_t* f) {
 
 /* shallow copy of frame */
 frame_t* 
-copy_frame(const frame_t* f, const int is_deep_copy) {
+copy_frame(const frame_t* f) {
     int i, j;
     frame_t* clone_frame = empty_frame();
     // printf("copy_frame: from=%p, to=%p\n", f, clone_frame);
@@ -75,18 +76,15 @@ copy_frame(const frame_t* f, const int is_deep_copy) {
         dynarr_t* src_pairs = &((dynarr_t*) f->stack.data)[i];
         dynarr_t* dst_pairs = &((dynarr_t*) clone_frame->stack.data)[i];
         *dst_pairs = copy_dynarr(src_pairs);
-        if (is_deep_copy) {
-            for (j = 0; j < dst_pairs->size; j++) {
-                ((name_obj_pair_t*) dst_pairs->data)[j].object = copy_object(
-                    &((name_obj_pair_t*) dst_pairs->data)[j].object
-                );
-            }
+        for (j = 0; j < dst_pairs->size; j++) {
+            ((name_obj_pair_t*) dst_pairs->data)[j].object = copy_object(
+                &((name_obj_pair_t*) dst_pairs->data)[j].object
+            );
         }
     }
     return clone_frame;
 }
 
-/* this does not free the objects in frame */
 void free_frame(frame_t* f, const int is_deep_free) {
     int i, j;
     // printf("free_frame: f=%p\n", f);

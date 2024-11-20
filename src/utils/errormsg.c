@@ -8,10 +8,10 @@ char ERR_MSG_BUF[256];
 void
 throw_syntax_error(int line, int col, const char* msg) {
     if (line == 0 && col == 0) {
-        fprintf(stderr, "[SyntaxError]: %s\n", msg);
+        fprintf(stdout, "[SyntaxError]: %s\n", msg);
     }
     else {
-        fprintf(stderr, "[SyntaxError]: Line %d col %d: %s\n", line, col, msg);
+        fprintf(stdout, "[SyntaxError]: Line %d col %d: %s\n", line, col, msg);
     }
     exit(SYNTAX_ERR_CODE);
 }
@@ -20,10 +20,10 @@ throw_syntax_error(int line, int col, const char* msg) {
 void
 print_semantic_error(int line, int col, const char* msg) {
     if (line == 0 && col == 0) {
-        fprintf(stderr, "[SyntaxError]: %s\n", msg);
+        fprintf(stdout, "[SyntaxError]: %s\n", msg);
     }
     else {
-        fprintf(stderr, "[SyntaxError]: Line %d col %d: %s\n", line, col, msg);
+        fprintf(stdout, "[SyntaxError]: Line %d col %d: %s\n", line, col, msg);
     }
 }
 
@@ -31,9 +31,9 @@ print_semantic_error(int line, int col, const char* msg) {
 void
 print_runtime_error(int line, int col, const char* msg) {
     if (line == 0 && col == 0) {
-        fprintf(stderr, "[RuntimError]: %s\n", msg);
+        fprintf(stdout, "[RuntimError]: %s\n", msg);
     }
     else {
-        fprintf(stderr, "[RuntimeError]: Line %d col %d: %s\n", line, col, msg);
+        fprintf(stdout, "[RuntimeError]: Line %d col %d: %s\n", line, col, msg);
     }
 }

@@ -24,7 +24,7 @@ builtin_func_input(object_t* obj) {
     c = getchar();
     return OBJ_OBJERR(
         ((object_t) {
-            .type = TYPE_NUMBER,
+            .type = TYPE_NUM,
             .data = {.number = number_from_i32(c)}
         })
     );
@@ -33,7 +33,7 @@ builtin_func_input(object_t* obj) {
 object_or_error_t
 builtin_func_output(object_t* obj) {
     /* check if obj is number */
-    if (obj->type != TYPE_NUMBER) {
+    if (obj->type != TYPE_NUM) {
         print_runtime_error(0, 0,
             "built-in function 'output': argument type should be number");
     }

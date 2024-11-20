@@ -25,8 +25,9 @@ const object_t const RESERVED_OBJS[RESERVED_ID_NUM] = {
     }}}
 };
 
-const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM] = {
-    "Null", "Number", "Pair", "Function", "Built-in Function"
+const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM + 1] = {
+    "Null", "Number", "Pair", "Function", "Built-in Function",
+    "Any"
 };
 
 object_t*
@@ -43,9 +44,9 @@ alloc_empty_object(object_type_enum type) {
 
 object_t
 copy_object(const object_t* obj) {
-    if (obj->type == TYPE_NUMBER) {
+    if (obj->type == TYPE_NUM) {
         object_t clone = {
-            .type = TYPE_NUMBER,
+            .type = TYPE_NUM,
             .data = {.number = EMPTY_NUMBER()}
         };
         copy_number(&clone.data.number, &obj->data.number);
@@ -72,8 +73,9 @@ copy_object(const object_t* obj) {
         if (obj->data.func.builtin_name != NOT_BUILTIN_FUNC) {
             return clone;
         }
-        clone.data.func.create_time_frame =
-            copy_frame(obj->data.func.create_time_frame, 1);
+        /* only copy reference of frame */
+        clone.data.func.create_time_frame = obj->data.func.create_time_frame;
+        clone.data.func.create_time_frame->refer_count++;
         return clone;
     }
     else {
@@ -84,7 +86,7 @@ copy_object(const object_t* obj) {
 
 void
 free_object(object_t* obj) {
-    if (obj->type == TYPE_NUMBER) {
+    if (obj->type == TYPE_NUM) {
         free_number(&obj->data.number);
     }
     else if (obj->type == TYPE_PAIR) {
@@ -98,12 +100,15 @@ free_object(object_t* obj) {
         }
         frame_t* f = (frame_t*) obj->data.func.create_time_frame;
         if (f != NULL) {
-            /* the objects in create-time frame in function are own by the
-               function so can free them */
-            free_frame(f, 1);
-            free(f);
+            printf("free_object: frame %p refer_count=%d\n", f, f->refer_count);
+            if (f->refer_count == 1) {
+                free_frame(f, 1);
+                free(f);
+            }
+            else {
+                f->refer_count--;
+            }
         }
-       
     }
 }
 
@@ -113,7 +118,7 @@ print_object(object_t* obj) {
     if (obj->type == TYPE_NULL) {
         return printf("[Null]");
     }
-    else if (obj->type == TYPE_NUMBER) {
+    else if (obj->type == TYPE_NUM) {
         return print_number_frac(&obj->data.number);
     }
     else if (obj->type == TYPE_PAIR) {
@@ -143,8 +148,38 @@ print_object(object_t* obj) {
 }
 
 int
+object_eq(object_t* a, object_t* b) {
+    if (a->type != b->type) {
+        return 0;
+    }
+    else if (a->type == TYPE_FUNC) {
+        func_t *a_func = &a->data.func, *b_func = &b->data.func;
+        return (
+            a_func->arg_name == b_func->arg_name
+            && a_func->builtin_name == b_func->builtin_name
+            && a_func->create_time_frame == b_func->create_time_frame
+            && a_func->entry_index == b_func->entry_index
+        );
+    }
+    else if (a->type == TYPE_NULL) {
+        return 1;
+    }
+    else if (a->type == TYPE_NUM) {
+        return number_eq(&a->data.number, &b->data.number);
+    }
+    else if (a->type == TYPE_PAIR) {
+        return object_eq(a->data.pair.left, b->data.pair.left)
+            && object_eq(a->data.pair.right, b->data.pair.right);
+    }
+    else {
+        printf("object_eq: bad type\n");
+        exit(1);
+    }
+}
+
+int
 to_bool(object_t* obj) {
-    if (obj->type == TYPE_NUMBER) {
+    if (obj->type == TYPE_NUM) {
         return !(obj->data.number.zero);
     }
     return (obj->type == TYPE_NULL);

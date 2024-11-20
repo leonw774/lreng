@@ -36,8 +36,8 @@ const unsigned char OP_PRECEDENCES[] = {
     12,
     13,
     14,
-    15, 16,
-    17
+    15, 15,
+    16
 };
 
 const char OP_CHARS[] = "{}()!`~^*/%+-<>=&|,$=?;";
