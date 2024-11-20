@@ -29,7 +29,7 @@ typedef struct frame frame_t;
 
 typedef struct func {
     const tree_t* tree; /* the reference to global tree, don't free it */
-    frame_t* create_time_frame;
+    const frame_t* create_time_frame;
     int entry_index;
     int arg_name;
     int builtin_name; /* -1 if is not builtin function */

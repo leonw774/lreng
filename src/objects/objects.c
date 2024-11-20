@@ -75,7 +75,7 @@ copy_object(const object_t* obj) {
         }
         /* only copy reference of frame */
         clone.data.func.create_time_frame = obj->data.func.create_time_frame;
-        clone.data.func.create_time_frame->refer_count++;
+        ((frame_t*) clone.data.func.create_time_frame)->refer_count++;
         return clone;
     }
     else {
@@ -100,8 +100,8 @@ free_object(object_t* obj) {
         }
         frame_t* f = (frame_t*) obj->data.func.create_time_frame;
         if (f != NULL) {
-            printf("free_object: frame %p refer_count=%d\n", f, f->refer_count);
-            if (f->refer_count == 1) {
+            // printf("free_object: frame %p refer_count=%d\n", f, f->refer_count);
+            if (f->refer_count <= 1) {
                 free_frame(f, 1);
                 free(f);
             }
@@ -135,6 +135,11 @@ print_object(object_t* obj) {
                 "[Func] builtin_name=%d", obj->data.func.builtin_name
             );
         }
+        int i;
+        // for (i = 0; i < obj->data.func.create_time_frame->stack.size; i++) {
+        //     printf("frame pairs[%d].data=%p\n", i,
+        //         ((dynarr_t*) obj->data.func.create_time_frame->stack.data)[i].data);
+        // }
         return printf(
             "[Func] arg_name=%d, entry_index=%d, frame=%p, tree=%p",
             obj->data.func.arg_name,

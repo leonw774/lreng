@@ -9,7 +9,7 @@ typedef struct tree {
     int* lefts;/* index of left child, -1 of none */
     int* rights; /* index of right child, -1 of none */
     int root_index; /* index of the root node */
-    unsigned int max_id_name; /* number of ids in tree */
+    int max_id_name; /* number of ids in tree */
 } tree_t;
 
 extern void free_tree(tree_t*);

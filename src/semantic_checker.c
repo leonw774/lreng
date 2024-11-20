@@ -111,6 +111,7 @@ semantic_checker(const tree_t tree, const const int is_debug) {
     free_tree_iter(&tree_iter);
     free_dynarr(&func_depth_stack);
     pop_stack(cur_frame);
+    free_frame(cur_frame, 1);
     free(cur_frame);
     free(id_usage);
     return is_passed;

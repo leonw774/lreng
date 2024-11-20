@@ -19,12 +19,6 @@ new_frame(const int entry_index) {
             .object = RESERVED_OBJS[i]
         };
         append(first_pairs, &pair);
-        // printf(
-        //     " init pair: name=%d object=",
-        //     ((name_obj_pair_t*) first_pairs->data)[i].name
-        // );
-        // print_object(&((name_obj_pair_t*) first_pairs->data)[i].object);
-        // puts("");
     }
     return f;
 }
@@ -32,10 +26,10 @@ new_frame(const int entry_index) {
 frame_t*
 empty_frame() {
     frame_t* f = calloc(1, sizeof(frame_t));
-    // printf("empty_frame: new entry_indices\n");
     f->entry_indices = new_dynarr(sizeof(int));
-    // printf("empty_frame: new stack\n");
+    // printf("empty_frame: new entry_indices %p\n", f->entry_indices.data);
     f->stack = new_dynarr(sizeof(dynarr_t));
+    // printf("empty_frame: new stack %p\n", f->stack.data);
     f->refer_count = 1;
     return f;
 }
@@ -43,20 +37,23 @@ empty_frame() {
 /* push new stack_start_index with optional name-object pair */
 void
 push_stack(frame_t* f, const int entry_index) {
-    // printf("push_stack: f=%p, entry_index=%d\n", f, entry_index);
+    // printf("push_stack: f=%p, entry_index=%d, depth=%d\n", f, entry_index, f->stack.size);
     append(&f->entry_indices, &entry_index);
     dynarr_t new_pairs = new_dynarr(sizeof(name_obj_pair_t));
+    // printf("push_stack: new pairs %p\n", new_pairs.data);
     append(&f->stack, &new_pairs);
 }
 
 /* free objects in last pairs and pop the stack */
 void
 pop_stack(frame_t* f) {
+    // printf("pop_stack: f=%p depth=%d\n", f, f->stack.size);
     int i;
     if (f->entry_indices.size == 0) {
         return;
     }
     dynarr_t* last_pairs = back(&f->stack);
+    // printf("pop_stack: remove pairs %p\n", last_pairs->data);
     for (i = 0; i < last_pairs->size; i++) {
         free_object(&((name_obj_pair_t*) last_pairs->data)[i].object);
     }
@@ -75,11 +72,13 @@ copy_frame(const frame_t* f) {
         push_stack(clone_frame, ((int*) f->entry_indices.data)[i]);
         dynarr_t* src_pairs = &((dynarr_t*) f->stack.data)[i];
         dynarr_t* dst_pairs = &((dynarr_t*) clone_frame->stack.data)[i];
-        *dst_pairs = copy_dynarr(src_pairs);
-        for (j = 0; j < dst_pairs->size; j++) {
-            ((name_obj_pair_t*) dst_pairs->data)[j].object = copy_object(
-                &((name_obj_pair_t*) dst_pairs->data)[j].object
-            );
+        for (j = 0; j < src_pairs->size; j++) {
+            name_obj_pair_t src_pair = ((name_obj_pair_t*) src_pairs->data)[j];
+            name_obj_pair_t dst_pair = {
+                .name = src_pair.name,
+                .object = copy_object(&src_pair.object)
+            };
+            append(dst_pairs, &dst_pair);
         }
     }
     return clone_frame;
@@ -99,7 +98,7 @@ void free_frame(frame_t* f, const int is_deep_free) {
         }
         free_dynarr(pairs);
     }
-    // printf("free_frame: free stack\n", f);
+    // printf("free_frame: f=%p free stack\n", f);
     free_dynarr(&f->stack);
 }
 
