@@ -8,7 +8,11 @@ inline void
 free_tree(tree_t* tree) {
     int i;
     for (i = 0; i < tree->tokens.size; i++) {
-        free_token_str(&((token_t*) tree->tokens.data)[i]);
+        token_t* token = &((token_t*) tree->tokens.data)[i];
+        if (token->type == TOK_ID && token->name < RESERVED_ID_NUM) {
+            continue;
+        }
+        free_token_str(token);
     }
     free_dynarr(&tree->tokens);
     free(tree->lefts);

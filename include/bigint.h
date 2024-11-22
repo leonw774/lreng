@@ -9,6 +9,7 @@
 #define CARRY_MASK ((u32) 1 << BASE_SHIFT)
 #define DIGIT_MASK ((u32) 1 << BASE_SHIFT) - 1
 
+typedef uint8_t u8;
 typedef int32_t i32;
 typedef int64_t i64;
 typedef uint32_t u32;
@@ -20,6 +21,8 @@ typedef struct bigint {
     u32 sign : 1;
     u32* digit;
 } bigint_t;
+
+#define bigint_struct_size sizeof(bigint_t)
 
 #define ZERO_BIGINT() ((bigint_t) {.nan = 0, .sign = 0, .size = 0, .digit = 0})
 #define NAN_BIGINT() ((bigint_t) {.nan = 1, .sign = 0, .size = 0, .digit = 0})

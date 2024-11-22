@@ -24,13 +24,15 @@
     - numer, demon: nan
 */
 typedef struct number {
-    unsigned char sign : 1;
-    unsigned char zero : 1;
-    unsigned char nan : 1;
-    unsigned char other_flag : 5;
+    u8 sign;
+    u8 zero;
+    u8 nan;
+    u8 other_flag;
     bigint_t numer;
     bigint_t denom;
 } number_t;
+
+#define number_struct_size sizeof(number_t)
 
 #define EMPTY_NUMBER() ((number_t) { \
     .sign = 0, .zero = 0, .nan = 0, \

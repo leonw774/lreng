@@ -528,8 +528,11 @@ number_from_i32(i32 i) {
     n.denom = ONE_BIGINT();
     if (i < 0) {
         n.sign = 1;
-        /* cast to 64 bit to prevent overflow at -2^31 */
+        /* cast to 64-bit first to prevent overflow at -2^31 */
         j = -((i64) i);
+    }
+    else {
+        j = i;
     }
     if (j >= DIGIT_BASE) {
         new_bi(&n.numer, 2);

@@ -28,7 +28,6 @@ typedef struct pair {
 typedef struct frame frame_t;
 
 typedef struct func {
-    const tree_t* tree; /* the reference to global tree, don't free it */
     const frame_t* create_time_frame;
     int entry_index;
     int arg_name;
@@ -52,6 +51,9 @@ typedef struct object_or_error {
     unsigned char is_error;
     object_t obj;
 } object_or_error_t;
+
+#define object_struct_size sizeof(object_t)
+#define object_or_error_struct_size sizeof(object_or_error_t)
 
 #define OBJECT_STRUCT_SIZE sizeof(object_t)
 #define OBJECT_OR_ERROR_STRUCT_SIZE sizeof(object_or_error_t)

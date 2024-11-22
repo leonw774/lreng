@@ -56,9 +56,10 @@ is_bad_type(
 
 object_or_error_t
 exec_call(
+    const tree_t* tree,
+    const frame_t* cur_frame,
     object_t* func_obj,
     object_t* arg_obj,
-    const frame_t* cur_frame,
     const int is_debug
 ) {
     /* if is builtin */
@@ -130,7 +131,7 @@ exec_call(
 
     /* eval from function's entry index */
     object_or_error_t res = eval_tree(
-        func_obj->data.func.tree,
+        tree,
         call_frame,
         func_obj->data.func.entry_index,
         is_debug
@@ -145,10 +146,11 @@ exec_call(
 
 object_or_error_t
 exec_op(
+    const tree_t* tree,
+    const frame_t* cur_frame,
     token_t op_token,
     object_t* left_obj,
     object_t* right_obj,
-    const frame_t* cur_frame,
     const int is_debug
 ) {
     object_t tmp_obj;
@@ -159,7 +161,7 @@ exec_op(
         if (is_bad_type(op_token, TYPE_FUNC, TYPE_ANY, left_obj, right_obj)) {
             return ERR_OBJERR();
         };
-        return exec_call(left_obj, right_obj, cur_frame, is_debug);
+        return exec_call(tree, cur_frame, left_obj, right_obj, is_debug);
     /* case OP_POS: */
         /* OP_POS would be discarded in tree parser */
     case OP_NEG:
@@ -350,7 +352,7 @@ exec_op(
         if (is_bad_type(op_token, TYPE_FUNC, TYPE_ANY, left_obj, right_obj)) {
             return ERR_OBJERR();
         }
-        return exec_call(left_obj, right_obj, cur_frame, is_debug);
+        return exec_call(tree, cur_frame, left_obj, right_obj, is_debug);
     case OP_CONDFCALL:
         if (is_bad_type(op_token, TYPE_ANY, TYPE_PAIR, left_obj, right_obj)) {
             return ERR_OBJERR();
@@ -372,10 +374,11 @@ exec_op(
 
         }
         return exec_call(
+            tree,
+            cur_frame,
             (to_bool(left_obj)
                 ? right_obj->data.pair.left : right_obj->data.pair.right),
             (object_t*) &RESERVED_OBJS[RESERVED_ID_NAME_NULL],
-            cur_frame,
             is_debug
         );
     default:
@@ -398,14 +401,14 @@ eval_tree(
 ) {
     const token_t* global_tokens = tree->tokens.data;
     
-    /* init as entry_index because in postfix,
+    /* init obj_table_offset as entry_index because in postfix,
        parent's index is greater children's */
     int obj_table_offset = entry_index;
     unsigned long tree_size = 0;
     tree_preorder_iterator_t tree_iter;
     dynarr_t token_index_stack; /* type: int */
     object_t** obj_table;
-    #define _OBJ_TABLE(index) (obj_table[index - obj_table_offset])
+    unsigned char* is_from_frame;
 
     token_t cur_token;
     int cur_index, cur_local_index, left_index, right_index;
@@ -444,8 +447,13 @@ eval_tree(
         printf("tree_size = %d\n", tree_size);
     }
  
-    /* init object table */
+    /* obj_table store intermidiate result */
     obj_table = calloc(tree_size, sizeof(object_t*));
+    /* is_on_frame_table store if intermidiate result is bollowed from frame */
+    is_from_frame = calloc(tree_size, sizeof(unsigned char*));
+
+    #define _OBJ_TABLE(index) (obj_table[index - obj_table_offset])
+    #define _IS_FROM_FRAME(index) (is_from_frame[index - obj_table_offset])
 
     /* begin evaluation */
     token_index_stack = new_dynarr(sizeof(int));
@@ -471,6 +479,8 @@ eval_tree(
         right_obj = (right_index == -1) ? NULL : _OBJ_TABLE(right_index);
 
         if (cur_token.type == TOK_OP) {
+            token_t left_token = global_tokens[left_index];
+            token_t right_token = global_tokens[right_index];
             /* function definer */
             if (cur_token.name == OP_FDEF) {
                 _OBJ_TABLE(cur_index) = alloc_empty_object(TYPE_FUNC);
@@ -479,7 +489,6 @@ eval_tree(
                     .builtin_name = NOT_BUILTIN_FUNC,
                     .arg_name = -1,
                     .entry_index = left_index,
-                    .tree = tree,
                     /* owns a deep copy of the frame it created under */
                     .create_time_frame = copy_frame(cur_frame)
                 };
@@ -509,11 +518,11 @@ eval_tree(
                 /* move the right object to current and modify arg_name */
                 _OBJ_TABLE(cur_index) = right_obj;
                 _OBJ_TABLE(right_index) = NULL;
-                right_obj->data.func.arg_name = global_tokens[left_index].name;
+                _IS_FROM_FRAME(cur_index) = _IS_FROM_FRAME(right_index);
+                right_obj->data.func.arg_name = left_token.name;
             }
             /* assignment */
             else if (cur_token.name == OP_ASSIGN) {
-                token_t left_token = global_tokens[left_index];
                 if (right_obj == NULL) {
                     append(&token_index_stack, &right_index);
                     continue;
@@ -533,27 +542,19 @@ eval_tree(
                     break;
                 }
 
-                /* set frame for the identifier */
+                /* set frame */
                 object_t* obj_on_frame =
                     frame_set(cur_frame, left_token.name, right_obj);
                 if (is_debug) {
                     printf("initialized identifier '%s' to ", left_token.str);
                     print_object(obj_on_frame); puts("");
                 }
-
-                /* if right is identifier then copy */
-                if (global_tokens[right_index].type == TOK_ID) {
-                    if (is_debug) {
-                        printf(" copy right child: ");
-                        print_object(right_obj); puts("");
-                    }
-                    object_t* o = alloc_empty_object(right_obj->type);
-                    *o = copy_object(right_obj);
-                    _OBJ_TABLE(cur_index) = o;
-                }
-                /* otherwise just move the pointer to current node */
-                else {
-                    _OBJ_TABLE(cur_index) = right_obj;
+                _OBJ_TABLE(cur_index) = obj_on_frame;
+                _IS_FROM_FRAME(cur_index) = 1;
+                /* free right if not from frame */
+                if (!_IS_FROM_FRAME(right_index)) {
+                    free_object(_OBJ_TABLE(right_index));
+                    free(_OBJ_TABLE(right_index));
                     _OBJ_TABLE(right_index) = NULL;
                 }
             }
@@ -562,7 +563,6 @@ eval_tree(
                 cur_token.name == OP_CONDAND || cur_token.name == OP_CONDOR
             ) {
                 int is_condor = cur_token.name == OP_CONDOR;
-                token_t left_token = global_tokens[left_index];
                 /* eval left first and eval right conditionally */
                 if (left_obj == NULL) {
                     append(&token_index_stack, &left_index);
@@ -578,14 +578,22 @@ eval_tree(
                         append(&token_index_stack, &right_index);
                         continue;
                     }
+                    /* free left if not from frame */
+                    if (!_IS_FROM_FRAME(left_index)) {
+                        free_object(_OBJ_TABLE(left_index));
+                        free(_OBJ_TABLE(left_index));
+                        _OBJ_TABLE(left_index) = NULL;
+                    }
                     /* move right to current */
                     _OBJ_TABLE(cur_index) = right_obj;
                     _OBJ_TABLE(right_index) = NULL;
+                    _IS_FROM_FRAME(cur_index) = _IS_FROM_FRAME(right_index);
                 }
                 else {
                     /* move left to current */
                     _OBJ_TABLE(cur_index) = left_obj;
                     _OBJ_TABLE(left_index) = NULL;
+                    _IS_FROM_FRAME(cur_index) = _IS_FROM_FRAME(left_index);
                 }
             }
             else if (cur_token.name == OP_EXPRSEP) {
@@ -594,21 +602,20 @@ eval_tree(
                     append(&token_index_stack, &left_index);
                     continue;
                 }
-                /* free left, move right to current */
                 if (is_debug) {
                     printf(" free left child: ");
                     print_object(left_obj); puts("");
                 }
-                if (
-                    global_tokens[left_index].type != TOK_ID
-                    && left_obj != NULL && !IS_RESERVED(left_obj)
-                ) {
+                /* free left if not from frame */
+                if (!_IS_FROM_FRAME(left_index)) {
                     free_object(left_obj);
                     free(left_obj);
+                    _OBJ_TABLE(left_index) = NULL;
                 }
-                _OBJ_TABLE(left_index) = NULL;
+                /* move right to current */
                 _OBJ_TABLE(cur_index) = right_obj;
                 _OBJ_TABLE(right_index) = NULL;
+                _IS_FROM_FRAME(cur_index) = _IS_FROM_FRAME(right_index);
             }
             /* other operator */
             else {
@@ -621,9 +628,8 @@ eval_tree(
                     append(&token_index_stack, &left_index);
                     continue;
                 }
-                /* exec_op will NOT alloc new object */
                 tmp_obj_err = exec_op(
-                    cur_token, left_obj, right_obj, cur_frame, is_debug
+                    tree, cur_frame, cur_token, left_obj, right_obj, is_debug
                 );
                 if (tmp_obj_err.is_error) {
                     sprintf(
@@ -645,11 +651,8 @@ eval_tree(
                     print_token(cur_token);
                     printf(" safely returned\n");
                 }
-                /* free the children if they are not identifier */
-                if (
-                    global_tokens[left_index].type != TOK_ID
-                    && left_obj != NULL && !IS_RESERVED(left_obj)
-                ) {
+                /* free children if they are not from frame */
+                if (left_obj != NULL && !_IS_FROM_FRAME(left_index)) {
                     if (is_debug) {
                         printf(" free left child: ");
                         print_object(left_obj); puts("");
@@ -659,10 +662,7 @@ eval_tree(
                     free(left_obj);
                     _OBJ_TABLE(left_index) = NULL;
                 }
-                if (
-                    global_tokens[right_index].type != TOK_ID
-                    && right_obj != NULL && !IS_RESERVED(right_obj)
-                ) {
+                if (right_obj != NULL && !_IS_FROM_FRAME(right_index)) {
                     if (is_debug) {
                         printf(" free right child: ");
                         print_object(right_obj); puts("");
@@ -698,6 +698,7 @@ eval_tree(
             }
             /* bollow object in frame, they wont be free before function end */
             _OBJ_TABLE(cur_index) = o;
+            _IS_FROM_FRAME(cur_index) = 1;
             if (is_debug) {
                 printf(
                     " get identifiter '%s' (name=%d) from frame (addr=%p): ",
@@ -744,9 +745,7 @@ eval_tree(
     }
     for (i = 0; i < tree_size; i++) {
         token_type_enum token_type = global_tokens[i + obj_table_offset].type;
-        if (token_type != TOK_ID && obj_table[i]
-            && !IS_RESERVED(obj_table[i])
-        ) {
+        if (obj_table[i] && !is_from_frame[i] && !IS_RESERVED(obj_table[i])) {
             if (is_debug) {
                 printf("free [%d] %p\n", i, obj_table[i]);
                 fflush(stdout);
@@ -759,6 +758,7 @@ eval_tree(
     if (is_debug) {
         printf("eval_tree returned ");
         print_object(&tmp_obj_err.obj); puts("");
+        fflush(stdout);
     }
     return tmp_obj_err;
 }

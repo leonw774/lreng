@@ -10,14 +10,12 @@
 const object_t const RESERVED_OBJS[RESERVED_ID_NUM] = {
     NULL_OBJECT,
     (object_t) {.type = TYPE_FUNC, .data = { .func = {
-        .tree = NULL,
         .create_time_frame = NULL,
         .entry_index = -1,
         .arg_name = -1,
         .builtin_name = RESERVED_ID_NAME_INPUT
     }}},
     (object_t) { .type = TYPE_FUNC, .data = { .func = {
-        .tree = NULL,
         .create_time_frame = NULL,
         .entry_index = -1,
         .arg_name = -1,
@@ -141,11 +139,10 @@ print_object(object_t* obj) {
         //         ((dynarr_t*) obj->data.func.create_time_frame->stack.data)[i].data);
         // }
         return printf(
-            "[Func] arg_name=%d, entry_index=%d, frame=%p, tree=%p",
+            "[Func] arg_name=%d, entry_index=%d, frame=%p",
             obj->data.func.arg_name,
             obj->data.func.entry_index,
-            obj->data.func.create_time_frame,
-            obj->data.func.tree
+            obj->data.func.create_time_frame
         );
     }
     printf("print_object: bad object type: %d\n", obj->type);
