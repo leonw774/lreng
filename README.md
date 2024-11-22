@@ -1,6 +1,6 @@
 # ɭeŋ
 
-The interpreter of lreng/ɭeŋ, a simple programming language, written in C.
+A simple functional interpreter programming language called ɭeŋ (lreng).
 
 ## Usage
 
@@ -31,8 +31,8 @@ Variable identifiers should match regex `[_A-Za-z][_A-Za-z0-9]+`. All variables 
 
 The `+`, `-`, `*`, `/`, `%` (modulo), `^` (exponent) only accept numbers.
 
-- The division is real number division so there is *no* rounding happening.
-- The module of `a` and `b` returns a smallest real number `r` such that `a / (b - r)` is a integer.
+- The division is operated on rational number so there is *no* rounding happening.
+- The module of `a` and `b` returns a smallest rational number `r` such that `a / (b - r)` is a integer.
 - The exponent only allow *integer* power, since otherwise the result will not be rational.
 
 ### Comparison
