@@ -35,19 +35,19 @@ main(int argc, char** argv) {
 
     fp = fopen(filename, "r");
     if (fp == NULL) {
-        printf("Cannot open file: %s", filename);
+        printf("Cannot open file: %s\n", filename);
         return OS_ERR_CODE;
     }
     fseek(fp, 0L, SEEK_END);
     fsize = ftell(fp);
     if (fsize == 0) {
-        fputs("file empty", stderr);
+        fputs("file empty\n", stderr);
         return 0;
     }
     rewind(fp);
     src = (char*) malloc(fsize);
     if (src == NULL) {
-        fputs("memory error", stderr);
+        fputs("memory error\n", stderr);
         return OS_ERR_CODE;
     }
     fread(src, 1, fsize, fp);

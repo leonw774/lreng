@@ -5,7 +5,7 @@
 #include "objects.h"
 #include "frame.h"
 
-frame_t*
+inline frame_t*
 new_frame(const int entry_index) {
     int i;
     frame_t* f = empty_frame();
@@ -23,7 +23,7 @@ new_frame(const int entry_index) {
     return f;
 }
 
-frame_t*
+inline frame_t*
 empty_frame() {
     frame_t* f = calloc(1, sizeof(frame_t));
     f->entry_indices = new_dynarr(sizeof(int));
@@ -35,7 +35,7 @@ empty_frame() {
 }
 
 /* push new stack_start_index with optional name-object pair */
-void
+inline void
 push_stack(frame_t* f, const int entry_index) {
     // printf("push_stack: f=%p, entry_index=%d, depth=%d\n", f, entry_index, f->stack.size);
     append(&f->entry_indices, &entry_index);
@@ -45,7 +45,7 @@ push_stack(frame_t* f, const int entry_index) {
 }
 
 /* free objects in last pairs and pop the stack */
-void
+inline void
 pop_stack(frame_t* f) {
     // printf("pop_stack: f=%p depth=%d\n", f, f->stack.size);
     int i;

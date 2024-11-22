@@ -21,8 +21,7 @@ format_int = i => {
     }
 };
 print = string => {
-    string != null && ( output $ `string; print(~string) );
-    null
+    string != null && ( output(`string); print(~string) )
 };
 print_ints_with_space = int_list => {
     int_list != null && (

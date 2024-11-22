@@ -454,7 +454,7 @@ eval_tree(
         cur_index = *(int*) back(&token_index_stack);
         cur_token = global_tokens[cur_index];
         if (is_debug) {
-            printf("node %d ", cur_index);
+            printf("(node %d) ", cur_index);
             print_token(cur_token);
             fflush(stdout);
         }
@@ -612,7 +612,6 @@ eval_tree(
             }
             /* other operator */
             else {
-                /* if is unary */
                 if (strchr(UNARY_OPS, cur_token.name) && left_obj == NULL) {
                     append(&token_index_stack, &left_index);
                     continue;
@@ -629,7 +628,7 @@ eval_tree(
                 if (tmp_obj_err.is_error) {
                     sprintf(
                         ERR_MSG_BUF,
-                        "exec_op %s returns with error",
+                        "operator \"%s\" returns with error",
                         OP_STRS[cur_token.name]
                     );
                     print_runtime_error(
@@ -640,9 +639,11 @@ eval_tree(
                 }
                 if (is_debug) {
                     printf(
-                        "exec_op %s safely returned\n",
-                        OP_STRS[cur_token.name]
+                        " (node %d) exec_op ",
+                        cur_index, OP_STRS[cur_token.name]
                     );
+                    print_token(cur_token);
+                    printf(" safely returned\n");
                 }
                 /* free the children if they are not identifier */
                 if (
@@ -652,6 +653,7 @@ eval_tree(
                     if (is_debug) {
                         printf(" free left child: ");
                         print_object(left_obj); puts("");
+                        fflush(stdout);
                     }
                     free_object(left_obj);
                     free(left_obj);
@@ -664,6 +666,7 @@ eval_tree(
                     if (is_debug) {
                         printf(" free right child: ");
                         print_object(right_obj); puts("");
+                        fflush(stdout);
                     }
                     free_object(right_obj);
                     free(right_obj);
@@ -713,7 +716,7 @@ eval_tree(
             exit(RUNTIME_ERR_CODE);
         }
         if (is_debug) {
-            printf("node %d: eval result: ", cur_index);
+            printf("(node %d) eval result: ", cur_index);
             print_object(_OBJ_TABLE(cur_index));
             puts("");
         }

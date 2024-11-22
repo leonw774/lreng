@@ -5,7 +5,7 @@
 #include "dynarr.h"
 #include "number.h"
 
-void
+inline void
 copy_number(number_t* dst, const number_t* src) {
     dst->sign = src->sign;
     dst->zero = src->zero;
@@ -24,7 +24,7 @@ copy_number(number_t* dst, const number_t* src) {
     }
 }
 
-void
+inline void
 free_number(number_t* x) {
     x->sign = x->zero = x->nan = 0;
     free_bi(&x->numer);
@@ -115,9 +115,10 @@ number_normalize(number_t* x) {
     free_bi(&one);
 }
 
-int
+inline int
 number_eq(number_t* a, number_t* b) {
-    if (a->zero = 0 && a->zero == b->zero) {
+    /* a == b == 0 */
+    if (a->zero == 1 && a->zero == b->zero) {
         return 1;
     }
     /*  nan != anything */
@@ -328,11 +329,11 @@ number_exp(number_t* a, number_t* b) {
 }
 
 
-int print_number_struct(number_t* x) {
+void
+print_number_struct(number_t* x) {
     printf("[Number] sign=%u zero=%u nan=%u\n", x->sign, x->zero, x->nan);
     printf("\tnumer="); print_bi(&x->numer); puts("");
     printf("\tdenom="); print_bi(&x->denom); puts("");
-    return 0;
 }
 
 int
@@ -541,4 +542,3 @@ number_from_i32(i32 i) {
     }
     return n;
 }
-

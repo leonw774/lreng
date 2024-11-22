@@ -5,7 +5,7 @@
 #ifndef MEM_CHECK_H
 
 /* create a new empty dynamic array */
-dynarr_t
+inline dynarr_t
 new_dynarr(int elem_size) {
     dynarr_t x;
     x.data = calloc(elem_size, DYN_ARR_INIT_CAP);
@@ -15,7 +15,7 @@ new_dynarr(int elem_size) {
     return x;
 };
 
-void
+inline void
 free_dynarr(dynarr_t* x) {
     if (x->data != NULL) {
         free(x->data);
@@ -24,13 +24,13 @@ free_dynarr(dynarr_t* x) {
     x->size = x->cap = 0;
 };
 
-void
+inline void
 reset_dynarr(dynarr_t* x) {
     free_dynarr(x);
     *x = new_dynarr(x->elem_size);
 }
 
-dynarr_t
+inline dynarr_t
 copy_dynarr(const dynarr_t* x) {
     dynarr_t y;
     y = *x;
@@ -40,7 +40,7 @@ copy_dynarr(const dynarr_t* x) {
 }
 
 /* copy the array as a C-string */
-char*
+inline char*
 to_str(dynarr_t* x) {
     if (x->data == NULL) return NULL;
     char* arr;
@@ -51,7 +51,7 @@ to_str(dynarr_t* x) {
     return arr;
 }
 
-void
+inline void
 append(dynarr_t* x, const void* const elem) {
     if (x->data == NULL) return;
     if (x->size == x->cap) {
@@ -68,7 +68,7 @@ append(dynarr_t* x, const void* const elem) {
 
 #endif
 
-void
+inline void
 pop(dynarr_t* x) {
     x->size--;
 }
@@ -84,7 +84,7 @@ back(dynarr_t* x) {
 /* concat y onto x
    x and y's elem size must be the same
    return 1 if concat seccess, otherwise 0 */
-int
+inline int
 concat(dynarr_t* x, dynarr_t* y) {
     if (x->data == NULL || y->data == NULL) {
         return 0;

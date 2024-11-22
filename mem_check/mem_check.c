@@ -130,10 +130,21 @@ mem_check_copy_dynarr(
     const dynarr_t* x,
     const char* file, int line, const char* func
 ) {
+    init_mem_check_out_file();
+    fprintf(
+        MEM_CHECK_OUTFILE,
+        "\n[mem_check][copy_dynarr] %s:%i::%s %p %s\n",
+        file, line, func, x->data, x->data
+    );
     dynarr_t y;
     y = *x;
-    y.data = calloc(y.cap, y.elem_size);
+    y.data = mem_check_calloc(y.cap, y.elem_size, file, line, func);
     memcpy(y.data, x->data, x->elem_size * x->size);
+    fprintf(
+        MEM_CHECK_OUTFILE,
+        "\n[mem_check][copy_dynarr] %s:%i::%s %p 0\n",
+        file, line, func, x->data
+    );
     return y;
 }
 

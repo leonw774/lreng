@@ -212,27 +212,34 @@ tree_t
 tree_parser(const dynarr_t tokens, const int is_debug) {
     int i = 0;
     dynarr_t stack = new_dynarr(sizeof(int));
+    /* make empty tree */
     tree_t tree = {
-        .tokens = shunting_yard(tokens, is_debug),
+        .tokens = {.data = NULL, .cap = 0, .size = 0, .elem_size = 0},
         .lefts = NULL,
         .rights = NULL,
         .root_index = -1,
         .max_id_name = -1
     };
-    tree.lefts = malloc(tree.tokens.size * sizeof(int));
-    tree.rights = malloc(tree.tokens.size * sizeof(int));
-    memset(tree.lefts, -1, tree.tokens.size * sizeof(int));
-    memset(tree.rights, -1, tree.tokens.size * sizeof(int));
-    for (i = tokens.size - 1; i >=0; i--) {
+
+    /* tokens */
+    tree.tokens = shunting_yard(tokens, is_debug);
+
+    /* max_id_name */
+    for (i = tokens.size - 1; i >= 0; i--) {
         token_t t = ((token_t*) tokens.data)[i];
         if (t.type != TOK_ID) {
             continue;
         }
-        if (tree.max_id_name > t.name) {
+        if (tree.max_id_name < t.name) {
             tree.max_id_name = t.name;
         }
     }
 
+    /* lefts and rights */
+    tree.lefts = malloc(tree.tokens.size * sizeof(int));
+    tree.rights = malloc(tree.tokens.size * sizeof(int));
+    memset(tree.lefts, -1, tree.tokens.size * sizeof(int));
+    memset(tree.rights, -1, tree.tokens.size * sizeof(int));
     for (i = 0; i < tree.tokens.size; i++) {
         token_t cur_token = GET_TOKEN_AT(tree, i);
         if (is_debug) {
@@ -272,7 +279,7 @@ tree_parser(const dynarr_t tokens, const int is_debug) {
             puts("");
         }
     }
-
+    /* check result */
     if (stack.size != 1) {
         if (is_debug) {
             int n;
@@ -291,7 +298,11 @@ tree_parser(const dynarr_t tokens, const int is_debug) {
         );
         throw_syntax_error(0, 0, ERR_MSG_BUF);
     }
+
+    /* root_index */
     tree.root_index = ((int*) stack.data)[0];
+
+    /* free things */
     free_dynarr(&stack);
     if (is_debug) {
         printf("final_tree=\n");

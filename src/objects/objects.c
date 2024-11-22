@@ -182,10 +182,10 @@ object_eq(object_t* a, object_t* b) {
     }
 }
 
-int
+inline int
 to_bool(object_t* obj) {
     if (obj->type == TYPE_NUM) {
         return !(obj->data.number.zero);
     }
-    return (obj->type == TYPE_NULL);
+    return obj->type != TYPE_NULL;
 }

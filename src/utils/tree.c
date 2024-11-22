@@ -4,7 +4,7 @@
 #include "token.h"
 #include "tree.h"
 
-void
+inline void
 free_tree(tree_t* tree) {
     int i;
     for (i = 0; i < tree->tokens.size; i++) {
@@ -65,7 +65,7 @@ tree_iter_next(tree_preorder_iterator_t* iter) {
     }
 }
 
-void
+inline void
 free_tree_iter(tree_preorder_iterator_t* tree_iter) {
     free_dynarr(&tree_iter->index_stack);
     free_dynarr(&tree_iter->depth_stack);
@@ -87,7 +87,7 @@ print_tree(const tree_t* tree) {
                 ((token_t*) (iter.tree->tokens.data))[cur_index];
             printf("%*c", next_depth - 1, ' ');
             print_token(cur_token);
-            printf("(%d) \n", cur_index);
+            printf(" (%d)\n", cur_index);
             fflush(stdout);
             
             /* update */

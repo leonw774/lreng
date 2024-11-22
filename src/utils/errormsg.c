@@ -5,7 +5,7 @@
 /* use this buffer to store error message */
 char ERR_MSG_BUF[256];
 
-void
+inline void
 throw_syntax_error(int line, int col, const char* msg) {
     if (line == 0 && col == 0) {
         fprintf(stdout, "[SyntaxError]: %s\n", msg);
@@ -17,7 +17,7 @@ throw_syntax_error(int line, int col, const char* msg) {
 }
 
 /* set line col to zero if not availible */
-void
+inline void
 print_semantic_error(int line, int col, const char* msg) {
     if (line == 0 && col == 0) {
         fprintf(stdout, "[SyntaxError]: %s\n", msg);
@@ -28,7 +28,7 @@ print_semantic_error(int line, int col, const char* msg) {
 }
 
 /* set line col to zero if not availible */
-void
+inline void
 print_runtime_error(int line, int col, const char* msg) {
     if (line == 0 && col == 0) {
         fprintf(stdout, "[RuntimError]: %s\n", msg);

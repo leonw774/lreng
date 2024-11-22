@@ -13,8 +13,7 @@ concat_list = list_pair => {
 };
 
 print = string => {
-    string != null && ( output $ `string; print(~string) );
-    null
+    string != null && ( output(`string); print(~string) )
 };
 
 format_int = i => {
@@ -27,16 +26,16 @@ format_int = i => {
     }
 };
 
-filtered_concat = filters_lists_pair => {
-    filters = `filters_lists_pair;
-    lists = ~filters_lists_pair;
-    (filters == null) | (lists == null) ? {
+filtered_concat = filter_lists_pair => {
+    filter = `filter_lists_pair;
+    lists = ~filter_lists_pair;
+    (filter == null) | (lists == null) ? {
         null
     }, {
-        `filters && (
-            concat_list(`lists, filtered_concat(~filters, ~lists))
+        `filter && (
+            concat_list(`lists, filtered_concat(~filter, ~lists))
         ) || (
-            filtered_concat(~filters, ~lists)
+            filtered_concat(~filter, ~lists)
         )
     }
 };
@@ -46,11 +45,11 @@ buzz = 'B', 'U', 'Z', 'Z', null;
 
 fizzbuzz = n => {
     n != 1 && fizzbuzz(n-1);
-    fizzbuzz_filters = (n % 3 == 0), (n % 5 == 0), null;
+    concat_filter = (n % 3 == 0), (n % 5 == 0), null;
     strings = fizz, buzz, null;
-    concated_string = filtered_concat(fizzbuzz_filters, strings);
+    concated_string = filtered_concat(concat_filter, strings);
     print((concated_string == null) && format_int(n) || concated_string);
-    output $ '\n'
+    output('\n')
 };
 
 fizzbuzz(15)
