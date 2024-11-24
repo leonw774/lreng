@@ -3,9 +3,9 @@
 #include <string.h>
 #include "dynarr.h"
 
-#define malloc malloc
-#define calloc calloc
-#define free free
+#undef malloc
+#undef calloc
+#undef free
 
 static FILE* MEM_CHECK_OUTFILE = NULL;
 

@@ -773,10 +773,13 @@ bi_mod(bigint_t* a, bigint_t* b) {
     if (a->sign) {
         if (b->sign) {
             r.sign = 1;
+            free_bi(&q);
             return r;
         }
         else {
             bi_usub(&_r, &r, b);
+            free_bi(&q);
+            free_bi(&r);
             return _r;
         }
     }
@@ -784,10 +787,13 @@ bi_mod(bigint_t* a, bigint_t* b) {
         if (b->sign) {
             bi_usub(&_r, &r, b);
             _r.sign = 1;
+            free_bi(&q);
+            free_bi(&r);
             return _r;
         }
         else {
             bi_udivmod(a, b, &q, &r);
+            free_bi(&q);
             return r;
         }
     }

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "token.h"
 
-const char* const RESERVED_IDS[RESERVED_ID_NUM] = {"null", "input", "output"};
+const char* RESERVED_IDS[RESERVED_ID_NUM] = {"null", "input", "output"};
 
 void
 free_token_str(token_t* token) {

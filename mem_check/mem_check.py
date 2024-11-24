@@ -1,5 +1,6 @@
-# filename = 'mem_check_out.txt'
-filename = 'debug.txt'
+import sys
+
+filename = sys.argv[1]
 mems = dict()
 funcs = dict()
 with open(filename, 'rb') as f:
@@ -28,6 +29,7 @@ with open(filename, 'rb') as f:
                 mems[addr] = (linenum+1, func, code_pos, info)
 
 print('\n'.join([
-    f'{linenum}\n{func.decode()} {code_pos.decode()} {addr.decode()} {info}'
+    f'{linenum}\n{func.decode()} {code_pos.decode()} '
+    f'{addr.decode()} {", ".join(info_elem.decode() for info_elem in info)}'
     for addr, (linenum, func, code_pos, info) in mems.items()
 ]))

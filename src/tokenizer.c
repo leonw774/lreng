@@ -121,10 +121,10 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos) {
         if (((token_t*) back(&cur_cargo->tokens))->name == OP_FCALL
             && type == TOK_RB) {
             token_t null_tok = {
-                RESERVED_IDS[RESERVED_ID_NAME_NULL],
-                RESERVED_ID_NAME_NULL,
-                TOK_ID,
-                pos
+                .str = RESERVED_IDS[RESERVED_ID_NAME_NULL],
+                .name = RESERVED_ID_NAME_NULL,
+                .type = TOK_ID,
+                .pos = pos
             };
             append(&cur_cargo->tokens, &null_tok);
         }
@@ -138,12 +138,23 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos) {
                 "token length cannot exceed 127"
             );
         }
-        char* tok_str = (char*) to_str(&cur_cargo->str);
+        int i, is_in_reserved_ids = 0;
+        for (i = 0; i < RESERVED_ID_NUM; i++) {
+            if (strcmp(RESERVED_IDS[i], cur_cargo->str.data) == 0) {
+                is_in_reserved_ids = 1;
+                break;
+            }
+        }
+        char* tok_str =
+            is_in_reserved_ids
+            ? (char*) RESERVED_IDS[i] : (char*) to_str(&cur_cargo->str);
         if (!tok_str) {
             printf("harvest: empty cargo.str\n");
             return;
         }
-        token_t new_token = {tok_str, -1, type, pos};
+        token_t new_token = {
+            .str = tok_str, .name = -1, .type = type, .pos = pos
+        };
         append(&cur_cargo->tokens, &new_token);
     }
     reset_dynarr(&cur_cargo->str);

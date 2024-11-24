@@ -90,6 +90,8 @@ free_object(object_t* obj) {
     else if (obj->type == TYPE_PAIR) {
         free_object(obj->data.pair.left);
         free_object(obj->data.pair.right);
+        free(obj->data.pair.left);
+        free(obj->data.pair.right);
     }
     else if (obj->type = TYPE_FUNC) {
         /* if is builtin function, it doesn't have frame */

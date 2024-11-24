@@ -479,8 +479,10 @@ eval_tree(
         right_obj = (right_index == -1) ? NULL : _OBJ_TABLE(right_index);
 
         if (cur_token.type == TOK_OP) {
-            token_t left_token = global_tokens[left_index];
-            token_t right_token = global_tokens[right_index];
+            const token_t* left_token =
+                (left_index == -1) ? NULL : &global_tokens[left_index];
+            const token_t* right_token =
+                (right_index == -1) ? NULL : &global_tokens[right_index];
             /* function definer */
             if (cur_token.name == OP_FDEF) {
                 _OBJ_TABLE(cur_index) = alloc_empty_object(TYPE_FUNC);
@@ -519,7 +521,7 @@ eval_tree(
                 _OBJ_TABLE(cur_index) = right_obj;
                 _OBJ_TABLE(right_index) = NULL;
                 _IS_FROM_FRAME(cur_index) = _IS_FROM_FRAME(right_index);
-                right_obj->data.func.arg_name = left_token.name;
+                right_obj->data.func.arg_name = left_token->name;
             }
             /* assignment */
             else if (cur_token.name == OP_ASSIGN) {
@@ -527,15 +529,15 @@ eval_tree(
                     append(&token_index_stack, &right_index);
                     continue;
                 }
-                if (frame_get(cur_frame, left_token.name) != NULL) {
+                if (frame_get(cur_frame, left_token->name) != NULL) {
                     sprintf(
                         ERR_MSG_BUF,
                         "Repeated initialization of identifier '%s'",
-                        left_token.str
+                        left_token->str
                     );
                     print_runtime_error(
-                        left_token.pos.line,
-                        left_token.pos.col,
+                        left_token->pos.line,
+                        left_token->pos.col,
                         ERR_MSG_BUF
                     );
                     is_error = 1;
@@ -544,9 +546,9 @@ eval_tree(
 
                 /* set frame */
                 object_t* obj_on_frame =
-                    frame_set(cur_frame, left_token.name, right_obj);
+                    frame_set(cur_frame, left_token->name, right_obj);
                 if (is_debug) {
-                    printf("initialized identifier '%s' to ", left_token.str);
+                    printf("initialized identifier '%s' to ", left_token->str);
                     print_object(obj_on_frame); puts("");
                 }
                 _OBJ_TABLE(cur_index) = obj_on_frame;
@@ -745,16 +747,19 @@ eval_tree(
     }
     for (i = 0; i < tree_size; i++) {
         token_type_enum token_type = global_tokens[i + obj_table_offset].type;
-        if (obj_table[i] && !is_from_frame[i] && !IS_RESERVED(obj_table[i])) {
+        if (obj_table[i] && !is_from_frame[i]) {
             if (is_debug) {
                 printf("free [%d] %p\n", i, obj_table[i]);
                 fflush(stdout);
             }
-            free_object(obj_table[i]);
+            if (!IS_RESERVED(obj_table[i])) {
+                free_object(obj_table[i]);
+            }
             free(obj_table[i]);
         }
     }
     free(obj_table);
+    free(is_from_frame);
     if (is_debug) {
         printf("eval_tree returned ");
         print_object(&tmp_obj_err.obj); puts("");
