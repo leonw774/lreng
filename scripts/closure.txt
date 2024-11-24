@@ -1,25 +1,29 @@
 foo = a => {
+  # initializing 'a' here is not allowed as the argument identifier is implicitly initialized as you enter the function
+  #a = 3
   b => {
+    # initializing 'a' here is allowed since it is not in the same function
+    #a = 3
     a + b + c
   }
 };
 bar = foo(1);
 bar2 = foo(2);
 
-# you can initialize the same name identifier as a function's argument as long as you are outside of that function 
+# you can initialize the same name identifier as a function's argument as long as it is not initialized in the same scope
 a = 2;
 
 # you cannot access 'b' outside of the closure
 #output $ b + '0';
 
-# however, you can initialize a new identifier 'b' outside of the closure
+# you can initialize a new identifier 'b' outside of the closure
 #b = 3;
 #output $ b + '0';
 
 # there would be use-uninit error if the initialization of 'c' is removed
 c = 3;
 
-output $ bar(2) + '0';
+output $ bar(2) + '0'; # 6
 output $ '\n';
-output $ bar2(2) + '0';
+output $ bar2(2) + '0'; # 7
 output $ '\n'
