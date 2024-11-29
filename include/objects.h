@@ -28,10 +28,10 @@ typedef struct pair {
 typedef struct frame frame_t;
 
 typedef struct func {
-    const frame_t* create_time_frame;
     int entry_index;
     int arg_name;
     int builtin_name; /* -1 if is not builtin function */
+    const frame_t* create_time_frame;
 } func_t;
 
 #define NOT_BUILTIN_FUNC -1
@@ -52,13 +52,11 @@ typedef struct object_or_error {
     object_t obj;
 } object_or_error_t;
 
+#define object_union_size sizeof(union object_union)
 #define object_struct_size sizeof(object_t)
 #define object_or_error_struct_size sizeof(object_or_error_t)
 
-#define OBJECT_STRUCT_SIZE sizeof(object_t)
-#define OBJECT_OR_ERROR_STRUCT_SIZE sizeof(object_or_error_t)
 #define NULL_OBJECT ((object_t) {.type = TYPE_NULL})
-
 #define ERR_OBJERR() ((object_or_error_t) {.is_error = 1, .obj = NULL_OBJECT})
 #define OBJ_OBJERR(o) ((object_or_error_t) {.is_error = 0, .obj = o})
 

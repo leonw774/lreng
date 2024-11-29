@@ -7,45 +7,40 @@
 
 inline void
 copy_number(number_t* dst, const number_t* src) {
-    dst->sign = src->sign;
-    dst->zero = src->zero;
-    dst->nan = src->nan;
-    if (src->nan) {
+    if (src->numer.nan) {
         dst->numer = NAN_BIGINT();
         dst->denom = NAN_BIGINT();
     }
-    else if (src->zero) {
+    else if (src->numer.size == 0) {
         dst->numer = ZERO_BIGINT();
-        dst->denom = ZERO_BIGINT();
+        dst->denom = ONE_BIGINT();
     }
-    else {
-        copy_bi(&dst->numer, &src->numer);
-        copy_bi(&dst->denom, &src->denom);
-    }
+    copy_bi(&dst->numer, &src->numer);
+    copy_bi(&dst->denom, &src->denom);
 }
 
 inline void
 free_number(number_t* x) {
-    x->sign = x->zero = x->nan = 0;
     free_bi(&x->numer);
     free_bi(&x->denom);
 }
 
 void
 number_normalize(number_t* x) {
+    int sign = 0;
     bigint_t a, b, t1 = ZERO_BIGINT(), t2 = ZERO_BIGINT(), one = ONE_BIGINT();
+
     /* flags */
-    if (x->nan || x->numer.nan || x->denom.nan) {
+    if (x->numer.nan || x->denom.nan) {
         free_bi(&x->numer);
         free_bi(&x->denom);
         x->numer = NAN_BIGINT();
         x->denom = NAN_BIGINT();
-        x->sign = x->zero = 0;
     }
 
     /* normalize the sign */
     if (x->numer.sign != x->denom.sign) {
-        x->sign = !x->sign;
+        sign = 1;
     }
     x->numer.sign = x->denom.sign = 0;
 
@@ -98,6 +93,7 @@ number_normalize(number_t* x) {
         t1 = bi_div(&x->numer, &a);
         free_bi(&x->numer);
         x->numer = t1;
+        x->numer.sign = sign;
         free_bi(&t2);
         t2 = bi_div(&x->denom, &a);
         free_bi(&x->denom);
@@ -113,43 +109,32 @@ number_normalize(number_t* x) {
 inline int
 number_eq(number_t* a, number_t* b) {
     /* a == b == 0 */
-    if (a->zero == 1 && a->zero == b->zero) {
+    if (a->numer.size == 0 && b->numer.size == 0) {
         return 1;
     }
     /*  nan != anything */
-    if (a->nan || b->nan) {
+    if (a->numer.nan || b->numer.nan) {
         return 0;
     }
-    return (a->sign == b->sign
-        && bi_eq(&a->numer, &b->numer) && bi_eq(&a->denom, &b->denom));
+    return bi_eq(&a->numer, &b->numer) && bi_eq(&a->denom, &b->denom);
 }
 
 int
 number_lt(number_t* a, number_t* b) {
     /* obvious cases */
-    if ((a->sign != b->sign)) {
-        return a->sign;
+    if ((a->numer.sign != b->numer.sign)) {
+        return a->numer.sign;
     }
     /* if one of them is nan: always false */
-    if (a->nan || b->nan) {
+    if (a->numer.nan || b->numer.nan) {
         return 0;
     }
 
     if (bi_eq(&a->denom, &b->denom)) {
-        if (a->sign) {
-            return bi_lt(&b->numer, &a->numer);
-        }
-        else {
-            return bi_lt(&a->numer, &b->numer);
-        }
+        return bi_lt(&a->numer, &b->numer);
     }
     if (bi_eq(&a->numer, &b->numer)) {
-        if (a->sign) {
-            return bi_lt(&a->denom, &b->denom);
-        }
-        else {
-            return bi_lt(&b->denom, &a->denom);
-        }
+        return bi_lt(&b->denom, &a->denom);
     }
     bigint_t l = bi_mul(&a->numer, &b->denom),
         r = bi_mul(&b->numer, &a->denom);
@@ -164,24 +149,22 @@ number_t
 number_add(number_t* a, number_t* b) {
     number_t res = EMPTY_NUMBER();
     bigint_t t1, t2;
-    if (a->nan || b->nan) {
+    if (a->numer.nan || b->numer.nan) {
         return NAN_NUMBER();
     }
-    if (a->zero && b->zero) {
+    if (a->numer.size == 0 && b->numer.size == 0) {
         return ZERO_NUMBER();
     }
-    if (a->zero) {
+    if (a->numer.size == 0) {
         copy_number(&res, b);
         return res;
     }
-    if (b->zero) {
+    if (b->numer.size == 0) {
         copy_number(&res, a);
         return res;
     }
     t1 = bi_mul(&a->numer, &b->denom);
-    t1.sign = a->sign;
     t2 = bi_mul(&b->numer, &a->denom);
-    t2.sign = b->sign; 
     res.numer = bi_add(&t1, &t2);
     res.denom = bi_mul(&a->denom, &b->denom);
     free_bi(&t1);
@@ -194,25 +177,23 @@ number_t
 number_sub(number_t* a, number_t* b) {
     number_t res = EMPTY_NUMBER();
     bigint_t t1, t2;
-    if (a->nan || b->nan) {
+    if (a->numer.nan || b->numer.nan) {
         return NAN_NUMBER();
     }
-    if (a->zero && b->zero) {
+    if (a->numer.size == 0 && b->numer.size == 0) {
         return ZERO_NUMBER();
     }
-    if (a->zero) {
+    if (a->numer.size == 0) {
         copy_number(&res, b);
-        res.sign = !res.sign;
+        res.numer.sign = !res.numer.sign;
         return res;
     }
-    if (b->zero) {
+    if (b->numer.size == 0) {
         copy_number(&res, a);
         return res;
     }
     t1 = bi_mul(&a->numer, &b->denom);
-    t1.sign = a->sign;
     t2 = bi_mul(&b->numer, &a->denom);
-    t2.sign = b->sign;
     res.numer = bi_sub(&t1, &t2);
     res.denom = bi_mul(&a->denom, &b->denom);
     free_bi(&t1);
@@ -224,15 +205,14 @@ number_sub(number_t* a, number_t* b) {
 number_t
 number_mul(number_t* a, number_t* b) {
     number_t res = EMPTY_NUMBER();
-    if (a->nan || b->nan) {
+    if (a->numer.nan || b->numer.nan) {
         return NAN_NUMBER();
     }
-    if (a->zero || b->zero) {
+    if (a->numer.size == 0 || b->numer.size == 0) {
         return ZERO_NUMBER();
     }
     res.numer = bi_mul(&a->numer, &b->numer);
     res.denom = bi_mul(&a->denom, &b->denom);
-    res.sign = a->sign != b->sign;
     number_normalize(&res);
     return res;
 }
@@ -240,18 +220,17 @@ number_mul(number_t* a, number_t* b) {
 number_t
 number_div(number_t* a, number_t* b) {
     number_t res = EMPTY_NUMBER();
-    if (a->nan || b->nan) {
+    if (a->numer.nan || b->numer.nan) {
         return NAN_NUMBER();
     }
-    if (a->zero) {
+    if (a->numer.size == 0) {
         return ZERO_NUMBER();
     }
-    if (a->zero) {
+    if (a->numer.size == 0) {
         return NAN_NUMBER();
     }
     res.numer = bi_mul(&a->numer, &b->denom);
     res.denom = bi_mul(&a->denom, &b->numer);
-    res.sign = a->sign != b->sign;
     number_normalize(&res);
     return res;
 }
@@ -261,9 +240,7 @@ number_mod(number_t* a, number_t* b) {
     number_t res = EMPTY_NUMBER();
     bigint_t n, d, t1, t2;
     t1 = bi_mul(&a->numer, &b->denom);
-    t1.sign = a->sign;
     t2 = bi_mul(&b->numer, &a->denom);
-    t2.sign = b->sign;
     res.numer = bi_mod(&t1, &t2);
     res.denom = bi_mul(&a->denom, &b->denom);
     free_bi(&t1);
@@ -310,7 +287,7 @@ number_exp(number_t* a, number_t* b) {
     }
     free_number(&cur);
     free_bi(&two);
-    if (b->sign) {
+    if (b->numer.sign) {
         bigint_t tmp = res.numer;
         res.numer = res.denom;
         res.denom = tmp;
@@ -321,7 +298,7 @@ number_exp(number_t* a, number_t* b) {
 
 void
 print_number_struct(number_t* x) {
-    printf("[Number] sign=%u zero=%u nan=%u\n", x->sign, x->zero, x->nan);
+    printf("[Number]");
     printf("\tnumer="); print_bi(&x->numer); puts("");
     printf("\tdenom="); print_bi(&x->denom); puts("");
 }
@@ -330,19 +307,15 @@ int
 print_number_frac(number_t* x) {
     int i, printed_bytes_count = 0;
     printed_bytes_count += printf("[Number] ");
-    if (x->nan) {
+    if (x->numer.nan) {
         printed_bytes_count += printf("NaN");
         return printed_bytes_count;
     }
-    if (x->zero) {
+    if (x->numer.size == 0) {
         printed_bytes_count += printf("0");
         return printed_bytes_count;
     }
     putchar('(');
-    if (x->sign) {
-        putchar('-');
-        printed_bytes_count++;
-    }
     printed_bytes_count += print_bi_dec(&x->numer);
     printf(", ");
     printed_bytes_count += print_bi_dec(&x->denom);
@@ -361,10 +334,10 @@ print_number_dec(number_t* x, int precision) {
     number_t _x, ten = number_from_str("10"), ten_to_m = EMPTY_NUMBER(),
         t = EMPTY_NUMBER(), q = EMPTY_NUMBER(), r = EMPTY_NUMBER();
 
-    if (x->nan) {
+    if (x->numer.nan) {
         return printf("[Number] NaN");
     }
-    if (x->zero) {
+    if (x->numer.size == 0) {
         return printf("[Number] 0");
     }
 
@@ -452,14 +425,8 @@ number_t
 number_from_str(const char* str) {
     number_t n = EMPTY_NUMBER();
     size_t str_length = strlen(str);
-    u32 i, j, dot_pos = str_length, is_neg = 0, is_less_one = 0;
-    
-    if (str[0] == '-') {
-        str_length--;
-        dot_pos--;
-        str++;
-        is_neg = 1;
-    }
+    u32 i, j, dot_pos = str_length, is_less_one = 0;
+
     if (str[0] == '0') {
         if (str_length == 1) {
             return ZERO_NUMBER();
@@ -467,7 +434,6 @@ number_from_str(const char* str) {
         if (str[1] == 'b' || str[1] == 'x') {
             n.numer = bi_from_str(str);
             n.denom = ONE_BIGINT();
-            n.sign = is_neg;
             return n;
         }
         else if (str[1] == '.') {
@@ -495,7 +461,6 @@ number_from_str(const char* str) {
     }
     str_no_dot[j] = '\0';
     // printf("%s %d %d\n", str_no_dot, dot_pos, str_length - dot_pos);
-    n.sign = is_neg;
     n.numer = bi_from_str(str_no_dot);
     n.denom = bi_from_tens_power(str_length - dot_pos);
     // print_bi_dec(&n.numer); puts("");
@@ -508,7 +473,7 @@ number_from_str(const char* str) {
 number_t
 number_from_i32(i32 i) {
     number_t n = EMPTY_NUMBER();
-    u32 j;
+    u32 j, sign = 0;
     if (i == 0) {
         return ZERO_NUMBER();
     }
@@ -517,7 +482,7 @@ number_from_i32(i32 i) {
     }
     n.denom = ONE_BIGINT();
     if (i < 0) {
-        n.sign = 1;
+        sign = 1;
         /* cast to 64-bit first to prevent overflow at -2^31 */
         j = -((i64) i);
     }
@@ -533,5 +498,6 @@ number_from_i32(i32 i) {
         new_bi(&n.numer, 1);
         n.numer.digit[0] = j;
     }
+    n.numer.sign = sign;
     return n;
 }

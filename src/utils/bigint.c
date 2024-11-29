@@ -238,6 +238,7 @@ bi_uadd(bigint_t* res, bigint_t* a, bigint_t* b) {
             new_bi(res, 1);
             res->digit[0] = carry;
         }
+        bi_normalize(res);
         return;
     }
     /* ensure a's size is larger */
@@ -269,13 +270,14 @@ bi_usub(bigint_t* res, bigint_t* a, bigint_t* b) {
     /* handle one digit */
     if (a->size == 1 && b->size == 1) {
         new_bi(res, 1);
-        if (a->digit[0] > b->digit[0]) {
+        if (a->digit[0] >= b->digit[0]) {
             res->digit[0] = a->digit[0] - b->digit[0];
         }
         else {
             res->digit[0] = b->digit[0] - a->digit[0];
             res->sign = 1;
         }
+        bi_normalize(res);
         return;
     }
     /* ensure that a > b */
@@ -858,7 +860,7 @@ bi_to_dec_str(bigint_t* x) {
         append(&string, "-");
     }
     if (BIPTR_IS_ZERO(x)) {
-        append(&string, "0");
+        append(&string, "ZERO");
     }
     else {
         if (x->size == 1) {
@@ -922,12 +924,12 @@ bigint_t
 bi_from_str(const char* str) {
     bigint_t x, t1, t2;
     size_t str_length = strlen(str), base = 10;
-    u32 i, carry = 0, j = 0, d, safe_size, is_neg = 0;
+    u32 i, carry = 0, j = 0, d, safe_size, sign = 0;
 
     if (str[0] == '-') {
         str++;
         str_length--;
-        is_neg = 1;
+        sign = 1;
     }
     if (str[0] == '0') {
         if (str_length == 1) {
@@ -1011,9 +1013,7 @@ bi_from_str(const char* str) {
         }
         bi_normalize(&x);
     }
-    if (is_neg) {
-        x.sign = 1;
-    }
+    x.sign = sign;
     return x;
 }
 

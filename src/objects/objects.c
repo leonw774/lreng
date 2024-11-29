@@ -184,7 +184,7 @@ object_eq(object_t* a, object_t* b) {
 inline int
 to_bool(object_t* obj) {
     if (obj->type == TYPE_NUM) {
-        return !(obj->data.number.zero);
+        return obj->data.number.numer.size != 0;
     }
     return obj->type != TYPE_NULL;
 }

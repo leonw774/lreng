@@ -168,7 +168,7 @@ exec_op(
             return ERR_OBJERR();
         }
         tmp_obj = copy_object(left_obj);
-        tmp_obj.data.number.sign = !tmp_obj.data.number.sign;
+        tmp_obj.data.number.numer.sign = !tmp_obj.data.number.numer.sign;
         return OBJ_OBJERR(tmp_obj);
     case OP_NOT:
         if (is_bad_type(op_token, TYPE_ANY, NO_OPRAND, left_obj, right_obj)) {
@@ -223,7 +223,7 @@ exec_op(
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
             return ERR_OBJERR();
         }
-        if (right_obj->data.number.zero) {
+        if (right_obj->data.number.numer.size == 0) {
             print_runtime_error(
                 op_token.pos.line,
                 op_token.pos.col,

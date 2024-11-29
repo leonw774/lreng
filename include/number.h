@@ -24,10 +24,6 @@
     - numer, demon: nan
 */
 typedef struct number {
-    u8 sign;
-    u8 zero;
-    u8 nan;
-    u8 other_flag;
     bigint_t numer;
     bigint_t denom;
 } number_t;
@@ -35,16 +31,12 @@ typedef struct number {
 #define number_struct_size sizeof(number_t)
 
 #define EMPTY_NUMBER() ((number_t) { \
-    .sign = 0, .zero = 0, .nan = 0, \
     .numer = ZERO_BIGINT(), .denom = ZERO_BIGINT()})
 #define ZERO_NUMBER() ((number_t) { \
-    .sign = 0, .zero = 1, .nan = 0, \
     .numer = ZERO_BIGINT(), .denom = ZERO_BIGINT()})
 #define ONE_NUMBER() ((number_t) { \
-    .sign = 0, .zero = 0, .nan = 0, \
     .numer = ONE_BIGINT(), .denom = ONE_BIGINT()})
 #define NAN_NUMBER() ((number_t) { \
-    .sign = 0, .zero = 0, .nan = 1, \
     .numer = NAN_BIGINT(), .denom = NAN_BIGINT()})
 
 extern void copy_number(number_t* dst, const number_t* src);

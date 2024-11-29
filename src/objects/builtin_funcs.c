@@ -39,10 +39,10 @@ builtin_func_output(object_t* obj) {
     }
     number_t n = obj->data.number;
     unsigned char c;
-    if (n.zero) {
+    if (n.numer.size == 0) {
         putchar(0);
     }
-    else if ((n.sign == 0 && n.denom.size == 1 && n.denom.digit[0] == 1
+    else if ((n.numer.sign == 0 && n.denom.size == 1 && n.denom.digit[0] == 1
         && n.numer.size == 1 && n.numer.digit[0] < 256)) {
         putchar(n.numer.digit[0]);
     }
@@ -55,7 +55,7 @@ builtin_func_output(object_t* obj) {
             ERR_MSG_BUF,
             "built-in function 'output': argument is not integer in [0, 255]"
             ", but [Number] %s(%s, %s)",
-            n.sign ? "-" : "",
+            n.numer.sign ? "-" : "",
             numer_str,
             denom_str
         );

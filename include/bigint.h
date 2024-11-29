@@ -16,10 +16,10 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 
 typedef struct bigint {
-    u32 size : 29; /* size is zero if the value is zero */
-    u32 nan : 1;
-    u32 sign : 1;
-    u32 one : 1;
+    u8 one;
+    u8 nan;
+    u8 sign;
+    u8 size; /* size is zero if the value is zero */
     u32* digit;
 } bigint_t;
 
