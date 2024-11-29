@@ -84,19 +84,19 @@ copy_frame(const frame_t* f) {
     return clone_frame;
 }
 
-void free_frame(frame_t* f, const int is_deep_free) {
+void free_frame(frame_t* f, const int can_free_pairs) {
     int i, j;
     // printf("free_frame: f=%p\n", f);
     free_dynarr(&f->entry_indices);
-    for (i = 0; i < f->stack.size; i++) {
-        // printf("free_frame: free pairs %d\n", i);
-        dynarr_t* pairs = &((dynarr_t*) f->stack.data)[i];
-        if (is_deep_free) {
+    if (can_free_pairs) {
+        for (i = 0; i < f->stack.size; i++) {
+            // printf("free_frame: free pairs %d\n", i);
+            dynarr_t* pairs = &((dynarr_t*) f->stack.data)[i];
             for (j = 0; j < pairs->size; j++) {
                 free_object(&((name_obj_pair_t*) pairs->data)[j].object);
             }
+            free_dynarr(pairs);
         }
-        free_dynarr(pairs);
     }
     // printf("free_frame: f=%p free stack\n", f);
     free_dynarr(&f->stack);

@@ -112,8 +112,7 @@ exec_call(
         }
 
         /* push the shallow copy of source stack */
-        dynarr_t new_pairs = copy_dynarr(src_pairs);
-        append(&call_frame->stack, &new_pairs);
+        append(&call_frame->stack, src_pairs);
     }
 
     /* push new stack to call_frame and set argument */
@@ -138,7 +137,7 @@ exec_call(
     );
     /* free the object own by this call */
     pop_stack(call_frame);
-    /* free the frame but not and bollowed object */
+    /* free the frame but not free bollowed pairs */
     free_frame(call_frame, 0);
     free(call_frame);
     return res;
