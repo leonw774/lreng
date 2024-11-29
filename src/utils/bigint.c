@@ -811,7 +811,6 @@ bi_mod(bigint_t* a, bigint_t* b) {
             return _r;
         }
         else {
-            bi_udivmod(a, b, &q, &r);
             free_bi(&q);
             return r;
         }
