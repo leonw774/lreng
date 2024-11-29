@@ -55,12 +55,10 @@ number_normalize(number_t* x) {
         free_bi(&x->numer);
         free_bi(&x->denom);
         *x = ZERO_NUMBER();
-        free_bi(&one);
         return;
     }
     /* n == 1 or d = 1 */ 
     if (bi_eq(&x->numer, &one) || bi_eq(&x->denom, &one)) {
-        free_bi(&one);
         return;
     }
     /* d == 0 */
@@ -68,7 +66,6 @@ number_normalize(number_t* x) {
         free_bi(&x->numer);
         free_bi(&x->denom);
         *x = NAN_NUMBER();
-        free_bi(&one);
         return;
     }
     /* n == d */
@@ -77,7 +74,6 @@ number_normalize(number_t* x) {
         free_bi(&x->denom);
         x->numer = ONE_BIGINT();
         x->denom = ONE_BIGINT();
-        free_bi(&one);
         return;
     }
     
@@ -112,7 +108,6 @@ number_normalize(number_t* x) {
         free_bi(&t1);
         free_bi(&t2);
     }
-    free_bi(&one);
 }
 
 inline int
@@ -172,6 +167,9 @@ number_add(number_t* a, number_t* b) {
     if (a->nan || b->nan) {
         return NAN_NUMBER();
     }
+    if (a->zero && b->zero) {
+        return ZERO_NUMBER();
+    }
     if (a->zero) {
         copy_number(&res, b);
         return res;
@@ -195,9 +193,12 @@ number_add(number_t* a, number_t* b) {
 number_t
 number_sub(number_t* a, number_t* b) {
     number_t res = EMPTY_NUMBER();
-    bigint_t n, d, t1, t2;
+    bigint_t t1, t2;
     if (a->nan || b->nan) {
         return NAN_NUMBER();
+    }
+    if (a->zero && b->zero) {
+        return ZERO_NUMBER();
     }
     if (a->zero) {
         copy_number(&res, b);
@@ -212,12 +213,10 @@ number_sub(number_t* a, number_t* b) {
     t1.sign = a->sign;
     t2 = bi_mul(&b->numer, &a->denom);
     t2.sign = b->sign;
-    n = bi_sub(&t1, &t2);
-    d = bi_mul(&a->denom, &b->denom);
+    res.numer = bi_sub(&t1, &t2);
+    res.denom = bi_mul(&a->denom, &b->denom);
     free_bi(&t1);
     free_bi(&t2);
-    copy_bi(&res.numer, &n);
-    copy_bi(&res.denom, &d);
     number_normalize(&res);
     return res;
 }
@@ -225,18 +224,15 @@ number_sub(number_t* a, number_t* b) {
 number_t
 number_mul(number_t* a, number_t* b) {
     number_t res = EMPTY_NUMBER();
-    bigint_t n, d;
     if (a->nan || b->nan) {
         return NAN_NUMBER();
     }
     if (a->zero || b->zero) {
         return ZERO_NUMBER();
     }
-    n = bi_mul(&a->numer, &b->numer);
-    d = bi_mul(&a->denom, &b->denom);
+    res.numer = bi_mul(&a->numer, &b->numer);
+    res.denom = bi_mul(&a->denom, &b->denom);
     res.sign = a->sign != b->sign;
-    res.numer = n;
-    res.denom = d;
     number_normalize(&res);
     return res;
 }
@@ -244,7 +240,6 @@ number_mul(number_t* a, number_t* b) {
 number_t
 number_div(number_t* a, number_t* b) {
     number_t res = EMPTY_NUMBER();
-    bigint_t n, d;
     if (a->nan || b->nan) {
         return NAN_NUMBER();
     }
@@ -254,11 +249,9 @@ number_div(number_t* a, number_t* b) {
     if (a->zero) {
         return NAN_NUMBER();
     }
-    n = bi_mul(&a->numer, &b->denom);
-    d = bi_mul(&a->denom, &b->numer);
+    res.numer = bi_mul(&a->numer, &b->denom);
+    res.denom = bi_mul(&a->denom, &b->numer);
     res.sign = a->sign != b->sign;
-    res.numer = n;
-    res.denom = d;
     number_normalize(&res);
     return res;
 }
@@ -271,12 +264,10 @@ number_mod(number_t* a, number_t* b) {
     t1.sign = a->sign;
     t2 = bi_mul(&b->numer, &a->denom);
     t2.sign = b->sign;
-    n = bi_mod(&t1, &t2);
-    d = bi_mul(&a->denom, &b->denom);
+    res.numer = bi_mod(&t1, &t2);
+    res.denom = bi_mul(&a->denom, &b->denom);
     free_bi(&t1);
     free_bi(&t2);
-    res.numer = n;
-    res.denom = d;
     number_normalize(&res);
     return res;
 }
@@ -286,8 +277,7 @@ number_mod(number_t* a, number_t* b) {
 number_t
 number_exp(number_t* a, number_t* b) {
     number_t res, cur, t1, t2;
-    bigint_t e, q = ZERO_BIGINT(), r = ZERO_BIGINT(), two = ONE_BIGINT();
-    two.digit[0] = 2;
+    bigint_t e, q = ZERO_BIGINT(), r = ZERO_BIGINT(), two = bi_from_str("2");
     if (b->denom.size != 1 || b->denom.digit[0] != 1) {
         free_bi(&two);
         return NAN_NUMBER();

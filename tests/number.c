@@ -17,6 +17,7 @@ main() {
     print_number_frac(&mone_hundred); puts("");
     print_number_frac(&one_quarter); puts("");
     number_t two_power_two_hundred = number_from_str("1606938044258990275541962092341162602522202993782792835301376");
+    print_number_frac(&two_power_two_hundred); puts("");
 
     number_t a = number_from_str("1.1");
     number_t b = number_from_str("2.2");

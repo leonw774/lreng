@@ -2,7 +2,7 @@ CFLAGS = -I include/ -O2
 TEST_FLAGS = -I include/ -g
 MEM_CHECK_FLAG = -include mem_check/mem_check.h -Wno-implicit-function-declaration
 
-TEST_C = src/**/*.c
+TEST_C = src/**/*.c mem_check/*.c
 MAIN_C = src/*.c src/**/*.c mem_check/*.c
 
 debug: CFLAGS = ${TEST_FLAGS}
@@ -14,16 +14,14 @@ mem_check: all
 
 all: lreng tests/bigint.out tests/number.out
 
-test: ${TEST_TARGET}
-
 tests/bigint.out: ${TEST_C} tests/bigint.c
-	gcc ${TEST_FLAGS} -o $@ ${TEST_C} tests/bigint.c
+	gcc ${CFLAGS} -o $@ ${TEST_C} tests/bigint.c
 
 tests/number.out: ${TEST_C} tests/number.c
-	gcc ${TEST_FLAGS} -o $@ ${TEST_C} tests/number.c
+	gcc ${CFLAGS} -o $@ ${TEST_C} tests/number.c
 
 lreng: ${MAIN_C}
 	gcc ${CFLAGS} -o $@ $^
 
 clean:
-	rm lreng ${TEST_TARGET}
+	rm lreng tests/bigint.out tests/number.out

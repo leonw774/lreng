@@ -132,22 +132,24 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos) {
         append(&cur_cargo->tokens, &new_token);
     }
     else {
+        int i, is_in_reserved_ids = 0;
+        char* tok_str = (char*) to_str(&cur_cargo->str);
         if (cur_cargo->str.size >= 128) {
             throw_syntax_error(
                 pos.line, pos.col,
                 "token length cannot exceed 127"
             );
         }
-        int i, is_in_reserved_ids = 0;
         for (i = 0; i < RESERVED_ID_NUM; i++) {
-            if (strcmp(RESERVED_IDS[i], cur_cargo->str.data) == 0) {
+            if (strcmp(RESERVED_IDS[i], tok_str) == 0) {
                 is_in_reserved_ids = 1;
                 break;
             }
         }
-        char* tok_str =
-            is_in_reserved_ids
-            ? (char*) RESERVED_IDS[i] : (char*) to_str(&cur_cargo->str);
+        if (is_in_reserved_ids) {
+            free(tok_str);
+            tok_str = (char*) RESERVED_IDS[i];
+        }
         if (!tok_str) {
             printf("harvest: empty cargo.str\n");
             return;

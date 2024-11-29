@@ -7,7 +7,7 @@
 #define BASE_SHIFT 31
 #define DIGIT_BASE ((u32) 1 << BASE_SHIFT)
 #define CARRY_MASK ((u32) 1 << BASE_SHIFT)
-#define DIGIT_MASK ((u32) 1 << BASE_SHIFT) - 1
+#define DIGIT_MASK (((u32) 1 << BASE_SHIFT) - 1)
 
 typedef uint8_t u8;
 typedef int32_t i32;
@@ -16,9 +16,10 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 
 typedef struct bigint {
-    u32 size : 30; /* size is zero if the value is zero */
+    u32 size : 29; /* size is zero if the value is zero */
     u32 nan : 1;
     u32 sign : 1;
+    u32 one : 1;
     u32* digit;
 } bigint_t;
 
@@ -26,7 +27,7 @@ typedef struct bigint {
 
 #define ZERO_BIGINT() ((bigint_t) {.nan = 0, .sign = 0, .size = 0, .digit = 0})
 #define NAN_BIGINT() ((bigint_t) {.nan = 1, .sign = 0, .size = 0, .digit = 0})
-extern bigint_t ONE_BIGINT();
+extern const bigint_t ONE_BIGINT();
 
 extern void new_bi(bigint_t* x, u32 size);
 extern void copy_bi(bigint_t* dst, const bigint_t* src);
