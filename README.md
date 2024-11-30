@@ -12,18 +12,20 @@ The optional `-d` flag outputs debug information.
 
 ## Data types
 
-Everything is object. There are 4 types of objects:
+There are 4 types:
 - Number: Numbers in lreng are all rational numbers 
   - You can represent numbers in decimal with point: `3.14159`
   - You can represent integers in binary and heximal: `0b110011`, `0xc0de`
   - You can represent the code of printable and escapable ASCII characters. For example, `'A'` evaluates to `65`, `'\\'` is `92`, and `'\n'` is `10`
-- Pair: Store the references to two objects, tagged `left` and `right`;
+- Pair: Store the reference to two data, tagged `left` and `right`;
 - Function: Store executable code and an optional argument identifier
 - Null: The unit type. Has key word `null`.
 
-## Variables
+## Variable
 
-Variable identifiers should match regex `[_A-Za-z][_A-Za-z0-9]+`. All variables are immutable after initialization by the assignment operator.
+Variable identifiers should match regex `[_A-Za-z][_A-Za-z0-9]+`.
+
+All variables are immutable.
 
 ## Operators
 
@@ -32,8 +34,12 @@ Variable identifiers should match regex `[_A-Za-z][_A-Za-z0-9]+`. All variables 
 The `+`, `-`, `*`, `/`, `%` (modulo), `^` (exponent) only accept numbers.
 
 - The division is operated on rational number so there is *no* rounding happening.
-- The module of `a` and `b` returns a smallest rational number `r` such that `a / (b - r)` is a integer.
+- The modulo of `a` and `b` returns the smallest rational number `r` such that `a / (b - r)` is a integer.
 - The exponent only allow *integer* power, since otherwise the result will not be rational.
+
+### Assignment
+
+The assignment operator `x = expr` requires the left hand side `x` to be an uninitialized variable identifier. It initializes left hand side variable to the evaluated value of right hand side expression and the whole assignment expression evaluates to the assigned value.
 
 ### Comparison
 
@@ -48,15 +54,15 @@ The comparison operators return number `1` if the result is true, otherwise `0`.
 The logic operators `!` (NOT), `&` (AND) and `|` (OR) return `0` and `1` like comparison operators.
 
 They will implicitly cast its operands into boolean number `0` and `1`.
-- Number object becomes `1` if it is not 0.
-- Null object becomes `0`.
-- Pair and function objects become `1`.
+- Number becomes `1` if it is not 0.
+- Null becomes `0`.
+- Pair and function become `1`.
 
-These operator do *not* short-circuit. If you want something that do, use operators `&&` and `||`.
+These operator do *not* short-circuit.
 
 ### Short-circuit logic
 
-The `&&` (IF-AND) and  `||` (IF-OR) are the logical operations that short-circuit. Kinda like how they do in Bash. The `&&` has higher precedence than the `||`.
+The `&&` (IF-AND) and  `||` (IF-OR) are the logical operations that short-circuit. The `&&` has higher precedence than the `||`.
 
  `x`'s boolean  | `x && y` evaluates to | is `y` evaluated  |
 ----------------|-----------------------|----------------------
@@ -68,11 +74,7 @@ The `&&` (IF-AND) and  `||` (IF-OR) are the logical operations that short-circui
  1              | `x`                   | no
  0              | `y`                   | yes
 
-For example, `x == 1 && 3` evaluates to `3` if `x` is `1` and otherwise evaluates to `0`. Notice that `x == 1 && 0 || -1` always evaluates to `-1` because `x == 1 && 0` evaluated to `0` no matter `x` equals `0` or not. So the idiom `cond && t || f` does not work extactly the same as `if cond then t else f` since `t` could be `0` or `null`. The equivalent is `cond && t; !cond || f` or you can use conditional function pair caller `cond ? { t }, { f }`.
-
-### Assignment
-
-The assignment operator `x = expr` requires the left hand side `x` to be an uninitialized variable identifier. It initializes left hand side variable to the evaluated value of right hand side expression and the whole assignment expression evaluates to the assigned value.
+For example, `x == 1 && 3` evaluates to `3` if `x` is `1` and otherwise evaluates to `0`. Notice that `x == 1 && 0 || -1` always evaluates to `-1` because `x == 1 && 0` evaluated to `0` no matter `x` equals `0` or not. So the idiom `cond && t || f` does not work extactly the same as `if cond then t else f` since `t` could be `0` or `null`. The equivalent of "if-then-else" is `cond && t; !cond || f` or with conditional function pair caller `cond ? { t }, { f }`.
 
 ### Pair maker, left getter and right getter
 
@@ -90,13 +92,15 @@ The `` `string `` is used to get data and `~string` is to get next.
 
 ### Function maker and argument binder
 
-The function maker `{}` turns the wrapped codes into a function (no argument by default).
+The function maker `{` and `}` turns the wrapped codes into a function (no argument by default). Function must evaluate to a value. Empty funcyion is not allowed.
 
-The argument binder `x => {}` binds *one* argument identifier to a function. Like assignment operator, it also requires `x` to be an uninitialized variable identifier.
+The argument binder `x => func` binds *one* argument identifier to a function.
 
 ### Function caller
 
-The function caller are `()` and `$`. The syntax is `func_name(expr)` and `func_name $ expr`. They assigns the evaluated result of the expression to the argument variable of the function (if any) and evaluates the function code. Note that `$` is right-associative, just like in Haskell, designed to apply multiple functions on a value without too much parenthese. The following codes are equivalent: `func3 $ func2 $ func1 $ val` and `func3(func2(func1(val)))`.
+The function caller are `()` and `$`. The syntax is `func(expr)` and `func $ expr`. They assigns the evaluated result of the expression to the argument variable of the function (if any) and evaluates the function code.
+
+Note that `$` is right-associative, just like in Haskell, designed to apply multiple functions on a value without too much parenthese. The following codes are equivalent: `func3 $ func2 $ func1 $ val` and `func3(func2(func1(val)))`.
 
 The syntax `func_name()` is valid and will be parsed as `func_name(null)`.
 
@@ -114,7 +118,9 @@ Everything is expression. The code intepreted by lreng should be one big express
 
 ## Closure
 
-Codes in function can access the identifier that is initialized in the same function where the function is define at the time it is called. It enables the currying since the deeper function can use the identifiers outside of it. For example, in `scripts/closure.txt` we have this code:
+Codes in a function can access the identifiers initialized or accessable in the scope where the function is defined at the time it is called.
+
+It enables the currying since the deeper function can use the identifiers outside of it. For example, in `scripts/closure.txt` we have this code:
 
 ```
 foo = a => {
@@ -129,7 +135,7 @@ foo = a => {
 bar = foo(1);
 bar2 = foo(2);
 
-# you can initialize the same name identifier as a function's argument as long as it is not initialized in the same scope
+# you can initialize identifier with the same name as a function's argument as long as they would be initialized in the same scope
 a = 2;
 
 # you cannot access 'b' outside of the closure
