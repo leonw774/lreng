@@ -1,6 +1,6 @@
 # ɭeŋ
 
-A simple functional interpreter programming language called ɭeŋ (lreng).
+A simple minimal functional interpreted programming language.
 
 ## Usage
 
