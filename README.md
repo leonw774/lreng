@@ -1,6 +1,6 @@
 # ɭeŋ
 
-A simple minimal functional interpreted programming language.
+A simple minimal interpreted programming language.
 
 ## Usage
 
