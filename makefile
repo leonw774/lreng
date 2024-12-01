@@ -1,27 +1,31 @@
 CFLAGS = -I include/ -O2
 TEST_FLAGS = -I include/ -g
-MEM_CHECK_FLAG = -include mem_check/mem_check.h -Wno-implicit-function-declaration
+MEM_CHECK_FLAGS = -include mem_check/mem_check.h -Wno-implicit-function-declaration
 
-TEST_C = src/**/*.c mem_check/*.c
-MAIN_C = src/*.c src/**/*.c mem_check/*.c
+TEST_C = src/**/*.c 
+MAIN_C = src/*.c src/**/*.c
+MEM_CHECK_C = mem_check/*.c
 
-debug: CFLAGS = ${TEST_FLAGS}
-debug: all
-
-mem_check: CFLAGS = ${TEST_FLAGS} ${MEM_CHECK_FLAG}
-mem_check: MAIN_C =  ${MAIN_C}
-mem_check: all
-
+.PHONY: all debug mem_check
 all: lreng tests/bigint.out tests/number.out
 
-tests/bigint.out: ${TEST_C} tests/bigint.c
-	gcc ${CFLAGS} -o $@ ${TEST_C} tests/bigint.c
+debug:
+	$(MAKE) all FLAGS="$(TEST_FLAGS)"
 
-tests/number.out: ${TEST_C} tests/number.c
-	gcc ${CFLAGS} -o $@ ${TEST_C} tests/number.c
+mem_check:
+	$(MAKE) all \
+		MAIN_C="$(MAIN_C) $(MEM_CHECK_C)" \
+		TEST_C="$(TEST_C) $(MEM_CHECK_C)" \
+		CFLAGS="$(TEST_FLAGS) $(MEM_CHECK_FLAGS)"
 
-lreng: ${MAIN_C}
-	gcc ${CFLAGS} -o $@ $^
+tests/bigint.out: $(TEST_C) tests/bigint.c
+	gcc $(CFLAGS) -o $@ $^
+
+tests/number.out: $(TEST_C) tests/number.c
+	gcc $(CFLAGS) -o $@ $^
+
+lreng: $(MAIN_C)
+	gcc $(CFLAGS) -o $@ $^
 
 clean:
-	rm lreng tests/bigint.out tests/number.out
+	rm lreng tests/bigint.out tests/number.out || true
