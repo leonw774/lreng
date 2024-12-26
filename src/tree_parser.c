@@ -78,7 +78,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
                 continue;
             }
 
-            /* pop stack until top is left braclet or precedence is higher */
+            /* pop stack until top is left bracket or precedence is not lower */
             token_t* frame_top = back(&op_stack);
             while (frame_top != NULL && frame_top->type != TOK_LB
                 && OP_PRECED_LT(
@@ -206,8 +206,6 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
     return output;
 }
 
-#define GET_TOKEN_AT(tree, i) ((token_t*) (tree.tokens.data))[i]
-
 tree_t
 tree_parser(const dynarr_t tokens, const int is_debug) {
     int i = 0;
@@ -241,21 +239,21 @@ tree_parser(const dynarr_t tokens, const int is_debug) {
     memset(tree.lefts, -1, tree.tokens.size * sizeof(int));
     memset(tree.rights, -1, tree.tokens.size * sizeof(int));
     for (i = 0; i < tree.tokens.size; i++) {
-        token_t cur_token = GET_TOKEN_AT(tree, i);
+        token_t* cur_token = at(&tree.tokens, i);
         if (is_debug) {
-            print_token(cur_token);
+            print_token(*cur_token);
         }
-        if (cur_token.type == TOK_OP) {
+        if (cur_token->type == TOK_OP) {
             int r_index = -1;
-            if (!IS_UNARY(cur_token.name)) {
+            if (!IS_UNARY(cur_token->name)) {
                 r_index = *(int*) back(&stack);
                 pop(&stack);
                 tree.rights[i] = r_index;
             }
             if (stack.size == 0) {
                 throw_syntax_error(
-                    cur_token.pos.line,
-                    cur_token.pos.col,
+                    cur_token->pos.line,
+                    cur_token->pos.col,
                     "Operator has too few operands"
                 );
             }
@@ -265,10 +263,10 @@ tree_parser(const dynarr_t tokens, const int is_debug) {
             append(&stack, &i);
             if (is_debug) {
                 printf(" L=");
-                print_token(GET_TOKEN_AT(tree, l_index));
+                print_token(*(token_t*) at(&tree.tokens, l_index));
                 printf(" R=");
                 if (r_index != -1) {
-                    print_token(GET_TOKEN_AT(tree, r_index));
+                    print_token(*(token_t*) at(&tree.tokens, r_index));
                 }
             }
         }

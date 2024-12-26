@@ -8,7 +8,7 @@ inline void
 free_tree(tree_t* tree) {
     int i;
     for (i = 0; i < tree->tokens.size; i++) {
-        token_t* token = &((token_t*) tree->tokens.data)[i];
+        token_t* token = at(&tree->tokens, i);
         if (token->type == TOK_ID && token->name < RESERVED_ID_NUM) {
             continue;
         }
@@ -43,7 +43,7 @@ tree_iter_get(tree_preorder_iterator_t* iter) {
         return NULL;
     }
     int cur_index = *(int*) back(&iter->index_stack);
-    return &((token_t*) (iter->tree->tokens.data))[cur_index];
+    return at(&iter->tree->tokens, cur_index);
 }
 
 void
@@ -87,10 +87,8 @@ print_tree(const tree_t* tree) {
 
         if (cur_index != -1) {
             /* print */
-            token_t cur_token =
-                ((token_t*) (iter.tree->tokens.data))[cur_index];
             printf("%*c", next_depth - 1, ' ');
-            print_token(cur_token);
+            print_token(*(token_t*) at(&tree->tokens, cur_index));
             printf(" (%d)\n", cur_index);
             fflush(stdout);
             

@@ -136,10 +136,6 @@ print_object(object_t* obj) {
             );
         }
         int i;
-        // for (i = 0; i < obj->data.func.create_time_frame->stack.size; i++) {
-        //     printf("frame pairs[%d].data=%p\n", i,
-        //         ((dynarr_t*) obj->data.func.create_time_frame->stack.data)[i].data);
-        // }
         return printf(
             "[Func] arg_name=%d, entry_index=%d, frame=%p",
             obj->data.func.arg_name,

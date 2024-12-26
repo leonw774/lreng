@@ -842,7 +842,7 @@ print_bi(bigint_t* x) {
     return printed_bytes_count;
 }
 
-/* returned dynarr contains does not always contains terminating NULL */
+/* returned dynarr of char does not contains terminating character NULL */
 dynarr_t
 bi_to_dec_str(bigint_t* x) {
     dynarr_t string;
@@ -874,7 +874,7 @@ bi_to_dec_str(bigint_t* x) {
             figure_num = sprintf(
                 buf,
                 "%lld",
-                (((u64) x->digit[1]) << BASE_SHIFT) | (u64) x->digit[0]
+                (((u64) x->digit[1]) << BASE_SHIFT) | x->digit[0]
             );
             for (i = 0; i < figure_num; i++) {
                 append(&string, &buf[i]);
@@ -897,7 +897,7 @@ bi_to_dec_str(bigint_t* x) {
             free_bi(&q);
         }
         for (i = reversed_digits.size - 1; i >= 0; i--) {
-            append(&string, &((char*) (reversed_digits.data))[i]);
+            append(&string, at(&reversed_digits, i));
         }
         free_bi(&y);
         free_bi(&ten);
@@ -970,8 +970,7 @@ bi_from_str(const char* str) {
                     bi_shl(&t2, 1);
                     free_bi(&x);
                     free_bi(&t1);
-                    copy_bi(&x, &t2);
-                    free_bi(&t2);
+                    x = t2;
                 }
                 else {
                     /* base == 16 */
@@ -1007,9 +1006,9 @@ bi_from_str(const char* str) {
                 x.digit[j] = carry;
             }
 
-            /* printf("%d\n", d); */
-            /* print_bi(&x); puts(""); */
-            /* print_bigint_dec(&x); puts(""); */
+            /* printf("%d\n", d);
+            print_bi(&x); puts("");
+            print_bigint_dec(&x); puts(""); */
         }
         bi_normalize(&x);
     }
