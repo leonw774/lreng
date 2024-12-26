@@ -56,5 +56,7 @@ main() {
 
     number_t pi = number_from_str("3.14159265");
     print_number_dec(&pi, 3); puts("");
+    
+    printf("all passed");
     return 0;
 }

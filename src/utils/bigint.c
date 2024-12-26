@@ -740,7 +740,7 @@ bi_div(bigint_t* a, bigint_t* b) {
     if (BIPTR_IS_ZERO(a)) {
         return ZERO_BIGINT();
     }
-    /* if b == 1, return a */
+    /* if |b| == 1, return a */
     if (b->size == 1 && b->digit[0] == 1) {
         return *a;
     }
@@ -748,21 +748,18 @@ bi_div(bigint_t* a, bigint_t* b) {
     if (bi_eq(a, b)) {
         return ONE_BIGINT();
     }
-    /* if a < b, return 0 */
+    /* if |a| < |b|, return 0 */
     if (a->size == b->size && a->digit[a->size -1] < b->digit[b->size -1]
         || a->size < b->size) {
         return ZERO_BIGINT();
     }
     bigint_t q = ZERO_BIGINT(), r = ZERO_BIGINT();
     bi_udivmod(a, b, &q, &r);
-    if (a->sign == b->sign) {
-        free_bi(&r);
-        return q;
+    free_bi(&r);
+    if (a->sign != b->sign) {
+        q.sign = 1;
     }
-    else {
-        free_bi(&q);
-        return r;
-    }
+    return q;
 }
 
 bigint_t
@@ -775,7 +772,7 @@ bi_mod(bigint_t* a, bigint_t* b) {
     if (BIPTR_IS_ZERO(a)) {
         return ZERO_BIGINT();
     }
-    /* if b == 1, return 0 */
+    /* if |b| == 1, return 0 */
     if (b->size == 1 && b->digit[0] == 1) {
         return ZERO_BIGINT();
     }
@@ -783,7 +780,7 @@ bi_mod(bigint_t* a, bigint_t* b) {
     if (bi_eq(a, b)) {
         return ZERO_BIGINT();
     }
-    /* if a < b, return a */
+    /* if |a| < |b|, return a */
     if (a->size == b->size && a->digit[a->size -1] < b->digit[b->size -1]
         || a->size < b->size) {
         copy_bi(&r, a);
@@ -791,32 +788,19 @@ bi_mod(bigint_t* a, bigint_t* b) {
     }
 
     bi_udivmod(a, b, &q, &r);
-    if (a->sign) {
-        if (b->sign) {
-            r.sign = 1;
-            free_bi(&q);
-            return r;
-        }
-        else {
-            bi_usub(&_r, &r, b);
-            free_bi(&q);
-            free_bi(&r);
-            return _r;
-        }
+    free_bi(&q);
+    if (BIPTR_IS_ZERO((&r)) == 0) {
+        return ZERO_BIGINT();
     }
-    else {
-        if (b->sign) {
-            bi_usub(&_r, &r, b);
-            _r.sign = 1;
-            free_bi(&q);
-            free_bi(&r);
-            return _r;
-        }
-        else {
-            free_bi(&q);
-            return r;
-        }
+    if (a->sign != b->sign) {
+        bi_usub(&_r, &r, b);
+        free_bi(&r);
+        r = _r;
     }
+    if (b->sign) {
+        r.sign = 1;
+    }
+    return r;
 }
 
 

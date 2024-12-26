@@ -38,12 +38,6 @@ number_normalize(number_t* x) {
         x->denom = NAN_BIGINT();
     }
 
-    /* normalize the sign */
-    if (x->numer.sign != x->denom.sign) {
-        sign = 1;
-    }
-    x->numer.sign = x->denom.sign = 0;
-
     /* special cases */
     /* n = 0 */
     if (x->numer.size == 0) {
@@ -72,6 +66,12 @@ number_normalize(number_t* x) {
         return;
     }
     
+    /* normalize the sign */
+    if (x->numer.sign != x->denom.sign) {
+        sign = 1;
+    }
+    x->numer.sign = x->denom.sign = 0;
+    
     /* euclidian algorithm */
     copy_bi(&a, &x->numer);
     copy_bi(&b, &x->denom);
@@ -93,7 +93,6 @@ number_normalize(number_t* x) {
         t1 = bi_div(&x->numer, &a);
         free_bi(&x->numer);
         x->numer = t1;
-        x->numer.sign = sign;
         free_bi(&t2);
         t2 = bi_div(&x->denom, &a);
         free_bi(&x->denom);
@@ -104,6 +103,7 @@ number_normalize(number_t* x) {
         free_bi(&t1);
         free_bi(&t2);
     }
+    x->numer.sign = sign;
 }
 
 inline int
@@ -226,7 +226,7 @@ number_div(number_t* a, number_t* b) {
     if (a->numer.size == 0) {
         return ZERO_NUMBER();
     }
-    if (a->numer.size == 0) {
+    if (b->numer.size == 0) {
         return NAN_NUMBER();
     }
     res.numer = bi_mul(&a->numer, &b->denom);
@@ -268,8 +268,11 @@ number_exp(number_t* a, number_t* b) {
     copy_number(&cur, a); /* cur = a */
     copy_bi(&e, &b->numer); /* e = b */
     while (e.size != 0) {
-        r = bi_mod(&e, &two); /* r = e % 2 */
-        q = bi_div(&e, &two); /* e = e / 2 */
+        /* r = e % 2 */
+        r = bi_mod(&e, &two);
+        /* e = e / 2 */
+        q = bi_div(&e, &two);
+        free_bi(&e);
         copy_bi(&e, &q);
         /* if r == 1:
              res = res * cur */

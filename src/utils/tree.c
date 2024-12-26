@@ -93,12 +93,12 @@ print_tree(const tree_t* tree) {
             fflush(stdout);
             
             /* update */
-            if (iter.tree->rights[cur_index] != -1) {
-                append(&iter.index_stack, &iter.tree->rights[cur_index]);
+            if (tree->rights[cur_index] != -1) {
+                append(&iter.index_stack, &tree->rights[cur_index]);
                 append(&iter.depth_stack, &next_depth);
             }
-            if (iter.tree->lefts[cur_index] != -1) {
-                append(&iter.index_stack, &iter.tree->lefts[cur_index]);
+            if (tree->lefts[cur_index] != -1) {
+                append(&iter.index_stack, &tree->lefts[cur_index]);
                 append(&iter.depth_stack, &next_depth);
             }
         }
