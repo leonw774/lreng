@@ -10,7 +10,7 @@ MEM_CHECK_C = mem_check/*.c
 all: lreng tests/bigint.out tests/number.out
 
 debug:
-	$(MAKE) all FLAGS="$(TEST_FLAGS)"
+	$(MAKE) all CFLAGS="$(TEST_FLAGS)"
 
 mem_check:
 	$(MAKE) all \

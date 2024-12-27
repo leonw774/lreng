@@ -4,7 +4,7 @@
 #include "errormsg.h"
 #include "lreng.h"
 
-#define IS_PREFIXABLE(op) \
+#define IS_PREFIXER(op) \
     (op == OP_FDEF || op == OP_LPAREN || op == OP_LBLOCK\
     || op == OP_POS || op == OP_NEG || op == OP_NOT\
     || op == OP_GETL || op == OP_GETR)
@@ -22,9 +22,10 @@
 dynarr_t
 shunting_yard(const dynarr_t tokens, const int is_debug) {
     enum EXPECT {
-        PREFIXABLE, BINARY_OPERATOR
+        PREFIXER, INFIXER
+        /* infixer include infix (binary ops) and postfix (closing bracket) */
     };
-    int expectation = PREFIXABLE;
+    int expectation = PREFIXER;
     dynarr_t output = new_dynarr(sizeof(token_t));
     dynarr_t op_stack = new_dynarr(sizeof(token_t));
 
@@ -35,15 +36,15 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
     for (i = 0; i < tokens.size; i++) {
         token_t cur_token = ((token_t*) tokens.data)[i];
         if (is_debug) {
-            printf("expect=%s token=", (expectation ? "BIN_OP" : "PREFIX"));
+            printf("expect=%s token=", (expectation ? "INFIX" : "PREFIX"));
             print_token(cur_token);
             puts("");
         }
         /* is an operator or left bracket */
         if (cur_token.type == TOK_OP || cur_token.type == TOK_LB) {
             /* check expectation */
-            if (IS_PREFIXABLE(cur_token.name)) {
-                if (expectation == BINARY_OPERATOR) {
+            if (IS_PREFIXER(cur_token.name)) {
+                if (expectation == INFIXER) {
                     sprintf(
                         ERR_MSG_BUF,
                         "Expect binary operator or closing bracket. Get '%s'",
@@ -57,7 +58,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
                 }
             }
             else {
-                if (expectation == PREFIXABLE) {
+                if (expectation == PREFIXER) {
                     sprintf(
                         ERR_MSG_BUF,
                         "Expect unary operator, number, identifier,"
@@ -70,7 +71,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
                         ERR_MSG_BUF
                     );
                 }
-                expectation = PREFIXABLE;
+                expectation = PREFIXER;
             }
 
             /* positive sign do nothing, can discard */
@@ -94,7 +95,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
         /* is a right bracket */
         else if (cur_token.type == TOK_RB) {
             /* check expectation */
-            if (expectation == PREFIXABLE) {
+            if (expectation == PREFIXER) {
                 sprintf(
                     ERR_MSG_BUF,
                     "Expect unary operator, number, identifier,"
@@ -107,7 +108,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
                     ERR_MSG_BUF
                 );
             }
-            expectation = BINARY_OPERATOR;
+            expectation = INFIXER;
 
             /* pop stack until top is left braclet */
             token_t* frame_top = back(&op_stack);
@@ -156,7 +157,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
         /* is other */
         else {
             /* check expectation */
-            if (expectation == BINARY_OPERATOR) {
+            if (expectation == INFIXER) {
                 sprintf(
                     ERR_MSG_BUF,
                     "Expect binary operator or closing bracket. Get '%s'",
@@ -168,7 +169,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
                     ERR_MSG_BUF
                 );
             }
-            expectation = BINARY_OPERATOR;
+            expectation = INFIXER;
             append(&output, &cur_token);
         }
         if (is_debug) {

@@ -789,7 +789,7 @@ bi_mod(bigint_t* a, bigint_t* b) {
 
     bi_udivmod(a, b, &q, &r);
     free_bi(&q);
-    if (BIPTR_IS_ZERO((&r)) == 0) {
+    if (BIPTR_IS_ZERO((&r))) {
         return ZERO_BIGINT();
     }
     if (a->sign != b->sign) {
