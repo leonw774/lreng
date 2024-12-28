@@ -42,8 +42,24 @@ const unsigned char OP_PRECEDENCES[] = {
 
 const char OP_CHARS[] = "{}()!`~^*/%+-<>=&|,$=?;";
 
-const char UNARY_OPS[] = {
-    OP_FDEF, OP_POS, OP_NEG, OP_NOT, OP_GETL, OP_GETR, '\0'
+const unsigned char IS_UNARY_OP[] = {
+    0, 0, 1,
+    0, 0, 0,
+    1, 1, 1, 1, 1,
+    0,
+    0, 0, 0,
+    0, 0,
+    0, 0, 0, 0,
+    0, 0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0, 0,
+    0
 };
 
 const char R_ASSOCIATIVE_OPS[] = {

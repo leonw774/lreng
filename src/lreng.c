@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <getopt.h>
 #include "dynarr.h"
 #include "tree.h"
 #include "errormsg.h"
@@ -9,49 +10,55 @@
 
 int
 main(int argc, char** argv) {
-    const char* usage = "Usage: lreng {filename} [-d]\n";
-    char* filename = NULL;
-    FILE* fp = NULL;
+    const char* usage = "Usage: lreng [-d] [-t tout_path] {file_path}\n";
+    int i, is_debug = 0, is_transpile = 0;
+    char* file_path = NULL;
+    FILE* in_fp = NULL;
     long fsize = 0;
     char* src = NULL;
-    int i;
-    int is_debug = 0;
-
-    if (argc == 2) {
-        filename = argv[1];
-    }
-    else if (argc == 3) {
-        if (strcmp(argv[2], "-d") != 0) {
-            fputs(usage, stdout);
-            return 0;
+    
+    int opt_c;
+    while ((opt_c = getopt(argc, argv, "d")) != -1) {
+        switch (opt_c) {
+        case 'd':
+            is_debug = 1;
+            break;
+        case '?':
+            printf("Unknown option: '-%c'(%d)\n", optopt, optopt);
+            printf(usage);
+            return 1;
+        default:
+            abort();
         }
-        filename = argv[1];
-        is_debug = 1;
+    }
+    if (optind != argc - 1 || argv[optind] == NULL) {
+        printf("Missing required argument\n");
+        return 1;
     }
     else {
-        fputs(usage, stdout);
-        return 0;
+        file_path = argv[optind];
     }
 
-    fp = fopen(filename, "r");
-    if (fp == NULL) {
-        printf("Cannot open file: %s\n", filename);
+    in_fp = fopen(file_path, "r");
+    if (in_fp == NULL) {
+        printf("Cannot open file: %s\n", file_path);
         return OS_ERR_CODE;
     }
-    fseek(fp, 0L, SEEK_END);
-    fsize = ftell(fp);
+    fseek(in_fp, 0L, SEEK_END);
+    fsize = ftell(in_fp);
     if (fsize == 0) {
         fputs("file empty\n", stderr);
         return 0;
     }
-    rewind(fp);
-    src = (char*) malloc(fsize);
+    rewind(in_fp);
+    src = (char*) malloc(fsize + 1);
     if (src == NULL) {
         fputs("memory error\n", stderr);
         return OS_ERR_CODE;
     }
-    fread(src, 1, fsize, fp);
-    fclose(fp);
+    fread(src, 1, fsize, in_fp);
+    src[fsize] = '\0';
+    fclose(in_fp);
 
     dynarr_t tokens = tokenize(src, fsize, is_debug);
     tree_t syntax_tree = tree_parser(tokens, is_debug);

@@ -29,7 +29,7 @@ extern const unsigned char OP_PRECEDENCES[];
 
 extern const char OP_CHARS[];
 
-extern const char UNARY_OPS[];
+extern const unsigned char IS_UNARY_OP[];
 
 extern const char R_ASSOCIATIVE_OPS[];
 

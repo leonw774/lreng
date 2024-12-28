@@ -10,7 +10,7 @@ typedef struct name_object_pair {
 } name_obj_pair_t;
 
 typedef struct frame {
-    dynarr_t entry_indices; /* type: stack_t */
+    dynarr_t entry_indices; /* type: int */
     dynarr_t stack; /* type: dynarr_t of name_obj_pair_t */
     int refer_count;
 } frame_t;

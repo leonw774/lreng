@@ -23,10 +23,11 @@ semantic_checker(const tree_t tree, const const int is_debug) {
     token_t* cur_token_p = tree_iter_get(&tree_iter);
     int cur_depth = -1, cur_index = -1, cur_func_depth = -1;
     dynarr_t func_depth_stack = new_dynarr(sizeof(int));
-
+#ifdef ENABLE_DEBUG
     if (is_debug) {
         printf("check semantic\n");
     }
+#endif
     append(&func_depth_stack, &cur_depth);
     while (cur_token_p != NULL) {
         cur_index = *((int*) back(&tree_iter.index_stack));
@@ -42,6 +43,7 @@ semantic_checker(const tree_t tree, const const int is_debug) {
             if (cur_token_p->name == OP_ASSIGN) {
                 token_t* left_token =
                     &((token_t*) tree.tokens.data)[tree.lefts[cur_index]];
+#ifdef ENABLE_DEBUG
                 if (is_debug) {
                     printf(
                         "Line %d, col %d, checking identifier initialization: ",
@@ -53,6 +55,7 @@ semantic_checker(const tree_t tree, const const int is_debug) {
                     print_token(*cur_token_p);
                     putchar('\n');
                 }
+#endif
                 if (left_token->type != TOK_ID) {
                     is_passed = 0;
                     sprintf(
@@ -91,6 +94,7 @@ semantic_checker(const tree_t tree, const const int is_debug) {
             }
         }
         else if (cur_token_p->type == TOK_ID) {
+#ifdef ENABLE_DEBUG
             if (is_debug) {
                 printf(
                     "Line %d, col %d, checking identifier usage: ",
@@ -99,13 +103,14 @@ semantic_checker(const tree_t tree, const const int is_debug) {
                 );
                 print_token(*cur_token_p);
                 putchar('\n');
+                fflush(stdout);
             }
+#endif
             id_usage[cur_token_p->name] = (unsigned char) 1;
         }
 
         tree_iter_next(&tree_iter);
         cur_token_p = tree_iter_get(&tree_iter);
-        fflush(stdout);
     }
 
     free_tree_iter(&tree_iter);

@@ -16,7 +16,7 @@
         && strchr(R_ASSOCIATIVE_OPS, o2) == NULL) \
     )
 
-#define IS_UNARY(o) (strchr(UNARY_OPS, o) != NULL)
+#define IS_UNARY(o)
 
 /* return expression tokens in postfix */
 dynarr_t
@@ -29,17 +29,21 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
     dynarr_t output = new_dynarr(sizeof(token_t));
     dynarr_t op_stack = new_dynarr(sizeof(token_t));
 
+#ifdef ENABLE_DEBUG
     if (is_debug) {
         puts("tree_parse");
     }
+#endif
     int i, prev_output_count = 0;
     for (i = 0; i < tokens.size; i++) {
         token_t cur_token = ((token_t*) tokens.data)[i];
+#ifdef ENABLE_DEBUG
         if (is_debug) {
             printf("expect=%s token=", (expectation ? "INFIX" : "PREFIX"));
             print_token(cur_token);
             puts("");
         }
+#endif
         /* is an operator or left bracket */
         if (cur_token.type == TOK_OP || cur_token.type == TOK_LB) {
             /* check expectation */
@@ -172,6 +176,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
             expectation = INFIXER;
             append(&output, &cur_token);
         }
+#ifdef ENABLE_DEBUG
         if (is_debug) {
             printf("op_stack=");
             int j;
@@ -187,6 +192,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
                 puts("");
             }
         }
+#endif
     } /* end for */
 
     /* pop stack to output until stack is empty */
@@ -195,7 +201,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
         pop(&op_stack);
     }
     free_dynarr(&op_stack);
-
+#ifdef ENABLE_DEBUG
     if (is_debug) {
         printf("result=");
         for (i = 0; i < output.size; i++) {
@@ -204,6 +210,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
         }
         puts("");
     }
+#endif
     return output;
 }
 
@@ -241,12 +248,14 @@ tree_parser(const dynarr_t tokens, const int is_debug) {
     memset(tree.rights, -1, tree.tokens.size * sizeof(int));
     for (i = 0; i < tree.tokens.size; i++) {
         token_t* cur_token = at(&tree.tokens, i);
+#ifdef ENABLE_DEBUG
         if (is_debug) {
             print_token(*cur_token);
         }
+#endif
         if (cur_token->type == TOK_OP) {
-            int r_index = -1;
-            if (!IS_UNARY(cur_token->name)) {
+            int l_index, r_index = -1;
+            if (!IS_UNARY_OP[cur_token->name]) {
                 r_index = *(int*) back(&stack);
                 pop(&stack);
                 tree.rights[i] = r_index;
@@ -258,10 +267,11 @@ tree_parser(const dynarr_t tokens, const int is_debug) {
                     "Operator has too few operands"
                 );
             }
-            int l_index = *(int*) back(&stack);
+            l_index = *(int*) back(&stack);
             pop(&stack);
             tree.lefts[i] = l_index;
             append(&stack, &i);
+#ifdef ENABLE_DEBUG
             if (is_debug) {
                 printf(" L=");
                 print_token(*(token_t*) at(&tree.tokens, l_index));
@@ -270,16 +280,20 @@ tree_parser(const dynarr_t tokens, const int is_debug) {
                     print_token(*(token_t*) at(&tree.tokens, r_index));
                 }
             }
+#endif
         }
         else {
             append(&stack, &i);
         }
+#ifdef ENABLE_DEBUG
         if (is_debug) {
             puts("");
         }
+#endif
     }
     /* check result */
     if (stack.size != 1) {
+#ifdef ENABLE_DEBUG
         if (is_debug) {
             int n;
             printf("REMAINED IN STACK:\n");
@@ -290,6 +304,7 @@ tree_parser(const dynarr_t tokens, const int is_debug) {
                 puts("");
             }
         }
+#endif
         sprintf(
             ERR_MSG_BUF,
             "Bad syntax somewhere: %d tokens left in stack when parsing tree",
@@ -303,9 +318,11 @@ tree_parser(const dynarr_t tokens, const int is_debug) {
 
     /* free things */
     free_dynarr(&stack);
+#ifdef ENABLE_DEBUG
     if (is_debug) {
         printf("final_tree=\n");
         print_tree(&tree);
     }
+#endif
     return tree;
 }

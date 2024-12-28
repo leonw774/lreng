@@ -1,55 +1,37 @@
 concat_list = list_pair => {
     left_list = `list_pair;
     right_list = ~list_pair;
-    left_list == null ? {
-        right_list
-    }, {
-        ~left_list == null ? {
-            `left_list, right_list
-        }, {
-            `left_list, concat_list(~left_list, ~list_pair)
-        }
-    }
+    left_list == null
+        && right_list
+        || (
+            ~left_list == null
+                && (`left_list, right_list)
+                || (`left_list, concat_list(~left_list, ~list_pair))
+        )
 };
-
+format_int = i => {
+    i < 10
+        && ((i + '0'), null)
+        || (
+            left = format_int((i - i % 10) / 10);
+            right = ((i % 10) + '0'), null;
+            concat_list(left, right)
+        )
+};
 print = string => {
     string != null && ( output(`string); print(~string) )
 };
-
-format_int = i => {
-    i < 10 ? {
-        (i + '0'), null
-    }, {
-        left = format_int((i - i % 10) / 10);
-        right = ((i % 10) + '0'), null;
-        concat_list(left, right)
-    }
-};
-
-filtered_concat = filter_lists_pair => {
-    filter = `filter_lists_pair;
-    lists = ~filter_lists_pair;
-    (filter == null) | (lists == null) ? {
-        null
-    }, {
-        `filter && (
-            concat_list(`lists, filtered_concat(~filter, ~lists))
-        ) || (
-            filtered_concat(~filter, ~lists)
-        )
-    }
-};
-
-fizz = 'F', 'I', 'Z', 'Z', null;
-buzz = 'B', 'U', 'Z', 'Z', null;
-
+fizz_str = 'F', 'I', 'Z', 'Z', null;
+buzz_str = 'B', 'U', 'Z', 'Z', null;
+fizzbuzz_str = 'F', 'I', 'Z', 'Z', 'B', 'U', 'Z', 'Z', null;
 fizzbuzz = n => {
     n != 1 && fizzbuzz(n-1);
-    concat_filter = (n % 3 == 0), (n % 5 == 0), null;
-    strings = fizz, buzz, null;
-    concated_string = filtered_concat(concat_filter, strings);
-    print((concated_string == null) && format_int(n) || concated_string);
+    print(
+        ((n % 15 == 0) && fizzbuzz_str)
+        || ((n % 5 == 0) && buzz_str)
+        || ((n % 3 == 0) && fizz_str)
+        || format_int(n)
+    );
     output('\n')
 };
-
-fizzbuzz(15)
+fizzbuzz(30)

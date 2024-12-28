@@ -624,16 +624,20 @@ tokenize(const char* src, const int src_len, const int is_debug) {
     linecol_iterator_t pos_iter = {src, src_len, 0, pos};
     cargo cur_cargo;
     state_ret (*state_func)(linecol_iterator_t*, cargo) = ws_state;
-    int prev_tokens_count = 0;
+    int i, j, prev_tokens_count = 0;
     cur_cargo.tokens = new_dynarr(sizeof(token_t));
     cur_cargo.str = new_dynarr(sizeof(char));
 
+#ifdef ENABLE_DEBUG
     if (is_debug) {
         puts("tokenize");
     }
+#endif
     while (1) {
+#ifdef ENABLE_DEBUG
         if (is_debug) {
-            char c = pos_iter.src[pos_iter.index];
+            char c = (pos_iter.index < pos_iter.src_len)
+                ? '\0' : pos_iter.src[pos_iter.index];
             if (isprint(c)) {
                 printf("c=\'%c\'\n", c);
             }
@@ -641,15 +645,14 @@ tokenize(const char* src, const int src_len, const int is_debug) {
                 printf("c=0x%x\n", c);
             }
         }
-
+#endif
         if (state_func == NULL) {
             break;
         }
-
         state_ret res = state_func(&pos_iter, cur_cargo);
         cur_cargo = res.cargo;
         state_func = res.state_func;
-
+#ifdef ENABLE_DEBUG
         if (is_debug) {
             print_state_name(state_func);
             char* tmp_str = to_str(&cur_cargo.str);
@@ -665,7 +668,9 @@ tokenize(const char* src, const int src_len, const int is_debug) {
             }
             puts("");
         }
+#endif
     }
+#ifdef ENABLE_DEBUG
     if (is_debug) {
         printf("tokens=");
         int i;
@@ -675,9 +680,8 @@ tokenize(const char* src, const int src_len, const int is_debug) {
         }
         puts("");
     }
-
+#endif
     /* give identifier names */
-    int i, j;
     /* init name str map with keywords */
     dynarr_t name_str_map = new_dynarr(sizeof(char*));
     for (i = 0; i < RESERVED_ID_NUM; i++) {

@@ -2,7 +2,7 @@
 #include <string.h>
 #include "dynarr.h"
 
-#ifndef MEM_CHECK_H
+#ifndef MEMCHECK_H
 
 /* create a new empty dynamic array */
 inline dynarr_t
@@ -56,11 +56,10 @@ append(dynarr_t* x, const void* const elem) {
     if (x->data == NULL) return;
     if (x->size == x->cap) {
         x->cap *= 2;
-        int new_cap_byte_sz = x->elem_size * x->cap;
-        void* tmp_mem = calloc(x->elem_size, x->cap);
-        memcpy(tmp_mem, x->data, x->elem_size * x->size);
-        free(x->data);
-        x->data = tmp_mem;
+        void* tmp = realloc(x->data, x->elem_size * x->cap);
+        if (tmp) {
+            x->data = tmp;
+        }
     }
     memcpy(x->data + x->elem_size * x->size, elem, x->elem_size);
     x->size++;

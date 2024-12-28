@@ -16,7 +16,7 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 
 typedef struct bigint {
-    u8 one;
+    u8 shared;
     u8 nan;
     u8 sign;
     u8 size; /* size is zero if the value is zero */
@@ -25,9 +25,11 @@ typedef struct bigint {
 
 #define bigint_struct_size sizeof(bigint_t)
 
-#define ZERO_BIGINT() ((bigint_t) {.nan = 0, .sign = 0, .size = 0, .digit = 0})
-#define NAN_BIGINT() ((bigint_t) {.nan = 1, .sign = 0, .size = 0, .digit = 0})
-extern const bigint_t ONE_BIGINT();
+#define ZERO_BIGINT() ((bigint_t) {\
+    .shared = 0, .nan = 0, .sign = 0, .size = 0, .digit = 0})
+#define NAN_BIGINT() ((bigint_t) {\
+    .shared = 0, .nan = 1, .sign = 0, .size = 0, .digit = 0})
+extern bigint_t BYTE_BIGINT(unsigned int b);
 
 extern void new_bi(bigint_t* x, u32 size);
 extern void copy_bi(bigint_t* dst, const bigint_t* src);

@@ -5,9 +5,9 @@ mems = dict()
 funcs = dict()
 with open(filename, 'rb') as f:
     for linenum, line in enumerate(f):
-        if not line.startswith(b'[mem_check]'):
+        if not line.startswith(b'[memcheck]'):
             continue
-        strip_line = line.rstrip()[11:]
+        strip_line = line.rstrip()[len(b'[memcheck]'):]
         try:
             func, code_pos, addr, *info = strip_line.split(b' ')
         except Exception as e:

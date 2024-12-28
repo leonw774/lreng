@@ -29,9 +29,9 @@ typedef struct frame frame_t;
 
 typedef struct func {
     int entry_index;
-    int arg_name;
+    int arg_name; /* -1 if no arg */
     int builtin_name; /* -1 if is not builtin function */
-    const frame_t* create_time_frame;
+    frame_t* init_time_frame;
 } func_t;
 
 #define NOT_BUILTIN_FUNC -1
@@ -56,15 +56,14 @@ typedef struct object_or_error {
 #define object_struct_size sizeof(object_t)
 #define object_or_error_struct_size sizeof(object_or_error_t)
 
-#define NULL_OBJECT ((object_t) {.type = TYPE_NULL})
+#define NULL_OBJECT ((object_t) {\
+    .type = TYPE_NULL, .data = {.number = EMPTY_NUMBER()}})
 #define ERR_OBJERR() ((object_or_error_t) {.is_error = 1, .obj = NULL_OBJECT})
 #define OBJ_OBJERR(o) ((object_or_error_t) {.is_error = 0, .obj = o})
 
-#define IS_RESERVED(o) (o->type == TYPE_NULL || o->type == TYPE_BUILTIN_FUNC)
 extern const object_t const RESERVED_OBJS[RESERVED_ID_NUM];
 extern const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM + 1];
 
-extern object_t* alloc_empty_object(object_type_enum type);
 /* deep copy an object */
 extern object_t copy_object(const object_t* obj);
 extern void free_object(object_t* obj);

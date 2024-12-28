@@ -1,31 +1,33 @@
-CFLAGS = -I include/ -O2
-TEST_FLAGS = -I include/ -g
-MEM_CHECK_FLAGS = -include mem_check/mem_check.h -Wno-implicit-function-declaration
+CFLAGS = -I include/
+DEBUG_FLAGS = -g -D ENABLE_DEBUG
+MEMCHECK_FLAGS = -include memcheck/memcheck.h -Wno-implicit-function-declaration
 
-TEST_C = src/**/*.c 
-MAIN_C = src/*.c src/**/*.c
-MEM_CHECK_C = mem_check/*.c
+TEST_DIR = tests
 
-.PHONY: all debug mem_check
-all: lreng tests/bigint.out tests/number.out
+SHARED_SRC = src/**/*.c
+TEST_SRC = $(wildcard $(TEST_DIR)/*.c) 
+MAIN_SRC = src/*.c
 
-debug:
-	$(MAKE) all CFLAGS="$(TEST_FLAGS)"
+TEST_TARGET = $(patsubst %.c, %.out, $(TEST_SRC))
+MAIN_TARGET = lreng
 
-mem_check:
-	$(MAKE) all \
-		MAIN_C="$(MAIN_C) $(MEM_CHECK_C)" \
-		TEST_C="$(TEST_C) $(MEM_CHECK_C)" \
-		CFLAGS="$(TEST_FLAGS) $(MEM_CHECK_FLAGS)"
+.PHONY: all debug memcheck clean
 
-tests/bigint.out: $(TEST_C) tests/bigint.c
+all: CFLAGS += -O2
+all: $(MAIN_TARGET)
+
+$(MAIN_TARGET): $(MAIN_SRC) $(SHARED_SRC)
 	gcc $(CFLAGS) -o $@ $^
 
-tests/number.out: $(TEST_C) tests/number.c
-	gcc $(CFLAGS) -o $@ $^
+debug: CFLAGS += $(DEBUG_FLAGS)
+debug: $(MAIN_TARGET) $(TEST_TARGET)
 
-lreng: $(MAIN_C)
+memcheck: CFLAGS += $(DEBUG_FLAGS) $(MEMCHECK_FLAGS)
+memcheck: $(MAIN_TARGET) $(TEST_TARGET)
+
+# The rules of test targets
+%.out: %.c $(SHARED_SRC)
 	gcc $(CFLAGS) -o $@ $^
 
 clean:
-	rm lreng tests/bigint.out tests/number.out || true
+	rm $(MAIN_TARGET) $(TEST_TARGET) || true

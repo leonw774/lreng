@@ -62,21 +62,24 @@ pop_stack(frame_t* f) {
     pop(&f->entry_indices);
 }
 
-/* shallow copy of frame */
-frame_t* 
+/* deep copy of frame */
+inline frame_t* 
 copy_frame(const frame_t* f) {
     int i, j;
     frame_t* clone_frame = empty_frame();
+    dynarr_t* src_pairs;
+    dynarr_t* dst_pairs;
+    name_obj_pair_t src_pair, dst_pair;
     // printf("copy_frame: from=%p, to=%p\n", f, clone_frame);
     for (i = 0; i < f->stack.size; i++) {
         push_stack(clone_frame, *(int*) at(&f->entry_indices, i));
-        dynarr_t* src_pairs = at(&f->stack, i);
-        dynarr_t* dst_pairs = at(&clone_frame->stack, i);
+        src_pairs = at(&f->stack, i);
+        dst_pairs = at(&clone_frame->stack, i);
         for (j = 0; j < src_pairs->size; j++) {
-            name_obj_pair_t* src_pair = at(src_pairs, j);
+            name_obj_pair_t src_pair = *(name_obj_pair_t*) at(src_pairs, j);
             name_obj_pair_t dst_pair = {
-                .name = src_pair->name,
-                .object = copy_object(&src_pair->object)
+                .name = src_pair.name,
+                .object = copy_object(&src_pair.object) /* deep copy */
             };
             append(dst_pairs, &dst_pair);
         }
@@ -84,7 +87,8 @@ copy_frame(const frame_t* f) {
     return clone_frame;
 }
 
-void free_frame(frame_t* f, const int can_free_pairs) {
+inline void
+free_frame(frame_t* f, const int can_free_pairs) {
     // printf("free_frame: f=%p\n", f);
     int i, j;
     free_dynarr(&f->entry_indices);
@@ -102,7 +106,7 @@ void free_frame(frame_t* f, const int can_free_pairs) {
     free_dynarr(&f->stack);
 }
 
-object_t*
+inline object_t*
 frame_get(const frame_t* f, const int name) {
     // printf("frame_get: frame=%p, name=%d\n", f, name);
     /* search backward */
@@ -119,7 +123,7 @@ frame_get(const frame_t* f, const int name) {
 }
 
 /* return where the object was set */
-object_t*
+inline object_t*
 frame_set(frame_t* f, const int name, const object_t* obj) {
     // printf("frame_set: frame=%p, name=%d obj=", f, name);
     // print_object((object_t*) obj); puts("");

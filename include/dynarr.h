@@ -4,13 +4,15 @@
 #define DYN_ARR_INIT_CAP 4
 
 typedef struct dynarr {
+    unsigned short elem_size; 
+    unsigned short size;
+    unsigned short cap;
     void* data;
-    int elem_size; 
-    int size;
-    int cap;
 } dynarr_t;
 
-#ifndef MEM_CHECK_H
+#define dynarr_size sizeof(dynarr_t)
+
+#ifndef MEMCHECK_H
 
 extern dynarr_t new_dynarr(int elem_size);
 

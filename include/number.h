@@ -35,7 +35,7 @@ typedef struct number {
 #define ZERO_NUMBER() ((number_t) { \
     .numer = ZERO_BIGINT(), .denom = ZERO_BIGINT()})
 #define ONE_NUMBER() ((number_t) { \
-    .numer = ONE_BIGINT(), .denom = ONE_BIGINT()})
+    .numer = BYTE_BIGINT(1), .denom = BYTE_BIGINT(1)})
 #define NAN_NUMBER() ((number_t) { \
     .numer = NAN_BIGINT(), .denom = NAN_BIGINT()})
 

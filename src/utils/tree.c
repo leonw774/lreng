@@ -37,7 +37,7 @@ tree_iter_init(const tree_t* tree, int entry_index) {
     return iter;
 }
 
-token_t*
+inline token_t*
 tree_iter_get(tree_preorder_iterator_t* iter) {
     if (iter->index_stack.size == 0) {
         return NULL;
@@ -46,7 +46,7 @@ tree_iter_get(tree_preorder_iterator_t* iter) {
     return at(&iter->tree->tokens, cur_index);
 }
 
-void
+inline void
 tree_iter_next(tree_preorder_iterator_t* iter) {
     if (iter->index_stack.size == 0) {
         return;

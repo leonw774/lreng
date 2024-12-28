@@ -6,7 +6,7 @@
 
 #define BIPTR_IS_ZERO(x) (x->size == 0)
 
-int
+static inline int
 bit_length(unsigned long x) {
 #if (defined(__clang__) || defined(__GNUC__))
     if (x != 0) {
@@ -32,26 +32,55 @@ bit_length(unsigned long x) {
 #endif
 }
 
-static u32 static_one = 1;
+const static u32 static_bytes[257] = {
+0,
+1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64,
+65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80,
+81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96,
+97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112,
+113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128,
+129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144,
+145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160,
+161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176,
+177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192,
+193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208,
+209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224,
+225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240,
+241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 256
+};
 
-/* all one is shared */
-const bigint_t
-ONE_BIGINT() {
-    static bigint_t x = ZERO_BIGINT();
-    if (x.size == 0) {
-        x.one = 1;
-        x.nan = 0;
-        x.size = 1;
-        x.sign = 0;
-        x.digit = &static_one;
+/* all 1 ~ 256 is shared */
+inline bigint_t
+BYTE_BIGINT(u32 b) {
+    if (b > 256) {
+        printf("BYTE_BIGINT: b should be in [1, 256]\n");
+        exit(1);
     }
-    return x;
+    static int is_init = 0;
+    static bigint_t BYTE_BI_ARR[257];
+    if (is_init == 0) {
+        memset(BYTE_BI_ARR, 0, 257 * sizeof(bigint_t));
+        is_init = 1;
+    }
+    if (BYTE_BI_ARR[b].shared == 0) {
+        BYTE_BI_ARR[b] = (bigint_t) {
+            .shared = 1,
+            .nan = 0,
+            .size = 1,
+            .sign = 0,
+            .digit = (u32*) &static_bytes[b]
+        };
+    }
+    return BYTE_BI_ARR[b];
 }
 
-void
+inline void
 new_bi(bigint_t* x, u32 size) {
     /* x must be freed */
-    x->one = 0;
+    x->shared = 0;
     x->nan = 0;
     x->size = size;
     x->sign = 0;
@@ -66,14 +95,14 @@ new_bi(bigint_t* x, u32 size) {
 
 /* this function do new and move
    dst must be freed, src must not be freed */
-void
+inline void
 copy_bi(bigint_t* dst, const bigint_t* src) {
     if (src->nan) {
         *dst = *src; // just copy
         dst->digit = NULL;
         return;
     }
-    if (src->one) {
+    if (src->shared) {
         *dst = *src; // also just copy
         return;
     }
@@ -83,27 +112,24 @@ copy_bi(bigint_t* dst, const bigint_t* src) {
         return;
     }
     dst->nan = 0;
-    dst->one = 0;
+    dst->shared = 0;
     dst->size = src->size;
     dst->sign = src->sign;
     dst->digit = calloc(src->size, sizeof(u32));
     memcpy(dst->digit, src->digit, src->size * sizeof(u32));
 }
 
-void
+inline void
 free_bi(bigint_t* x) {
-    if (x->one) {
-        return;
-    }
-    if (x->digit != NULL) {
+    if (!x->shared && x->digit != NULL) {
         free(x->digit);
-        x->digit = NULL;
     }
-    x->one = x->nan = x->size = x->sign = 0;
+    x->digit = NULL;
+    x->shared = x->nan = x->size = x->sign = 0;
 }
 
 /* remove leading zeros by reduce size, no reallocation */
-void
+static inline void
 bi_normalize(bigint_t* x) {
     if (x->digit == NULL) {
         return;
@@ -116,12 +142,18 @@ bi_normalize(bigint_t* x) {
     if (i == 0 && x->digit[0] == 0) {
         free_bi(x);
     }
+    /* use byte number if possible */
+    else if (i == 1 && x->digit[0] <= 256) {
+        u32 tmp = x->digit[0];
+        free_bi(x);
+        *x = BYTE_BIGINT(tmp);
+    }
     else {
         x->size = i + 1;
     }
 }
 
-void
+static inline void
 bi_extend(bigint_t* x, u32 added_size) {
     if (added_size == 0) {
         return;
@@ -136,18 +168,17 @@ bi_extend(bigint_t* x, u32 added_size) {
     x->size = new_size;
 }
 
-/* bigint shift left n bits for 1 <= n <= BASE_SHIFT
-   return 0 means this function did not do antthing */
-int
+/* bigint shift left n bits for 1 <= n <= BASE_SHIFT */
+static inline void
 bi_shl(bigint_t* x, u32 n) {
     if (BIPTR_IS_ZERO(x) || n == 0 || n > BASE_SHIFT) {
-        return 0;
+        return;
     }
     u32 i, new_digit, carry = 0;
-    if (x->one) {
+    if (x->shared) {
         x->digit = (u32*) malloc(sizeof(u32));
         x->digit[0] = 1;
-        x->one = 0;
+        x->shared = 0;
     }
     for (i = 0; i < x->size; i++) {
         new_digit = ((x->digit[i] << n) & DIGIT_MASK) + carry;
@@ -158,15 +189,13 @@ bi_shl(bigint_t* x, u32 n) {
         bi_extend(x, 1);
         x->digit[x->size - 1] = carry;
     }
-    return 1;
 }
 
-/* bigint shift right n bits for 1 <= n <= BASE_SHIFT
-   return 0 means this function did not do antthing */
-int
+/* bigint shift right n bits for 1 <= n <= BASE_SHIFT */
+static inline void
 bi_shr(bigint_t* x, u32 n) {
     if (BIPTR_IS_ZERO(x) || n == 0 || n > BASE_SHIFT) {
-        return 0;
+        return;
     }
     int i;
     u32 new_digit, carry = 0;
@@ -176,10 +205,9 @@ bi_shr(bigint_t* x, u32 n) {
         x->digit[i] = new_digit;
     }
     bi_normalize(x);
-    return 1;
 }
 
-int
+inline int
 bi_eq(bigint_t* a, bigint_t* b) {
     if (a->nan || b->nan || a->digit == NULL || b->digit == NULL
         || a->size != b->size || a->sign != b->sign 
@@ -189,7 +217,7 @@ bi_eq(bigint_t* a, bigint_t* b) {
     return 1;
 }
 
-int
+inline int
 bi_lt(bigint_t* a, bigint_t* b) {
     if (a->sign == b->sign) {
         if (a->sign == 0) {
@@ -346,7 +374,7 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
             i--;
         }
         if (i == -1) {
-            *q = ONE_BIGINT();
+            *q = BYTE_BIGINT(1);
             *r = ZERO_BIGINT();
             return;
         }
@@ -520,7 +548,7 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
 }
 
 
-bigint_t
+inline bigint_t
 bi_add(bigint_t* a, bigint_t* b) {
     bigint_t c; 
     /* handle zeros */
@@ -555,7 +583,7 @@ bi_add(bigint_t* a, bigint_t* b) {
     return c;
 }
 
-bigint_t
+inline bigint_t
 bi_sub(bigint_t* a, bigint_t* b) {
     bigint_t c;
     /* handle zeros */
@@ -731,7 +759,7 @@ bi_mul(bigint_t* a, bigint_t* b) {
 }
 
 
-bigint_t
+inline bigint_t
 bi_div(bigint_t* a, bigint_t* b) {
     if (BIPTR_IS_ZERO(b)) {
         printf("bi_div: divided by zero\n");
@@ -746,7 +774,7 @@ bi_div(bigint_t* a, bigint_t* b) {
     }
     /* a == b, return 1 */
     if (bi_eq(a, b)) {
-        return ONE_BIGINT();
+        return BYTE_BIGINT(1);
     }
     /* if |a| < |b|, return 0 */
     if (a->size == b->size && a->digit[a->size -1] < b->digit[b->size -1]
@@ -762,7 +790,7 @@ bi_div(bigint_t* a, bigint_t* b) {
     return q;
 }
 
-bigint_t
+inline bigint_t
 bi_mod(bigint_t* a, bigint_t* b) {
     bigint_t q = ZERO_BIGINT(), r = ZERO_BIGINT(), _r = ZERO_BIGINT();
     if (BIPTR_IS_ZERO(b)) {
@@ -804,7 +832,7 @@ bi_mod(bigint_t* a, bigint_t* b) {
 }
 
 
-int
+inline int
 print_bi(bigint_t* x) {
     int i, printed_bytes_count = 0;
     if (x->nan) {
@@ -891,7 +919,7 @@ bi_to_dec_str(bigint_t* x) {
     return string;
 }
 
-int
+inline int
 print_bi_dec(bigint_t* x) {
     int printed_bytes_count = 0;
     printed_bytes_count += printf("");
@@ -909,6 +937,18 @@ bi_from_str(const char* str) {
     bigint_t x, t1, t2;
     size_t str_length = strlen(str), base = 10;
     u32 i, carry = 0, j = 0, d, safe_size, sign = 0;
+    char byte_number_str[4];
+
+    /* before doing real decoding, do brute force from 0 ~ 256 */
+    if (str[0] == '0' && str_length == 1) {
+        return ZERO_BIGINT();
+    }
+    for (i = 1; i <= 256; i++) {
+        sprintf(byte_number_str, "%d", i);
+        if (strcmp(byte_number_str, str) == 0) {
+            return BYTE_BIGINT(i);
+        }
+    }
 
     if (str[0] == '-') {
         str++;
@@ -916,9 +956,9 @@ bi_from_str(const char* str) {
         sign = 1;
     }
     if (str[0] == '0') {
-        if (str_length == 1) {
+        /* if (str_length == 1) {
             return ZERO_BIGINT();
-        }
+        } */
         /* bin & hex can determine needed size quickly */
         if (str[1] == 'x') {
             safe_size = (str_length - 2) * 4 / 31 + 1;
@@ -1006,7 +1046,16 @@ bi_from_tens_power(i32 exp) {
         printf("bi_from_tens_power: negative exp\n");
         return NAN_BIGINT();
     }
-    bigint_t x = ONE_BIGINT(), t1, t2, t3;
+    if (exp == 0) {
+        return BYTE_BIGINT(1);
+    }
+    if (exp == 1) {
+        return BYTE_BIGINT(10);
+    }
+    if (exp == 2) {
+        return BYTE_BIGINT(100);
+    }
+    bigint_t x = BYTE_BIGINT(1), t1, t2, t3;
     while (exp != 0) {
         if (exp == 1) {
             /* x *= 10 --> x = ((x << 2) + x) << 1 */
