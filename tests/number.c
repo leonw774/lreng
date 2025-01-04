@@ -54,8 +54,9 @@ main() {
     print_number_frac(&result); puts("");
     assert(number_eq(&result, &two_power_two_hundred));
 
-    number_t pi = number_from_str("3.14159265");
-    print_number_dec(&pi, 3); puts("");
+    number_t pi = number_from_str("3.1415926535");
+    print_number_dec(&pi, 4); puts("");
+    print_number_dec(&pi, 7); puts("");
     
     printf("all passed");
     return 0;

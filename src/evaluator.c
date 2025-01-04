@@ -516,7 +516,7 @@ eval_tree(
                 }
 #endif
             }
-            else if (cur_token.name == OP_PFMAKE) {
+            else if (cur_token.name == OP_LFMAKE) {
                 _OBJ_TABLE(cur_index).type = TYPE_FUNC;
                 (_OBJ_TABLE(cur_index)).data.func = (func_t) {
                     .is_pure = 1,

@@ -55,26 +55,17 @@ const static u32 static_bytes[257] = {
 /* all 1 ~ 256 is shared */
 inline bigint_t
 BYTE_BIGINT(u32 b) {
-    if (b > 256) {
+    if (b == 0 || b > 256) {
         printf("BYTE_BIGINT: b should be in [1, 256]\n");
         exit(1);
     }
-    static int is_init = 0;
-    static bigint_t BYTE_BI_ARR[257];
-    if (is_init == 0) {
-        memset(BYTE_BI_ARR, 0, 257 * sizeof(bigint_t));
-        is_init = 1;
-    }
-    if (BYTE_BI_ARR[b].shared == 0) {
-        BYTE_BI_ARR[b] = (bigint_t) {
-            .shared = 1,
-            .nan = 0,
-            .size = 1,
-            .sign = 0,
-            .digit = (u32*) &static_bytes[b]
-        };
-    }
-    return BYTE_BI_ARR[b];
+    return (bigint_t) {
+        .shared = 1,
+        .nan = 0,
+        .size = 1,
+        .sign = 0,
+        .digit = (u32*) &static_bytes[b]
+    };
 }
 
 inline void
@@ -98,12 +89,12 @@ new_bi(bigint_t* x, u32 size) {
 inline void
 copy_bi(bigint_t* dst, const bigint_t* src) {
     if (src->nan) {
-        *dst = *src; // just copy
+        *dst = *src; /* shallow copy */
         dst->digit = NULL;
         return;
     }
     if (src->shared) {
-        *dst = *src; // also just copy
+        *dst = *src; /* shallow copy */
         return;
     }
     if (BIPTR_IS_ZERO(src)) {
@@ -143,7 +134,7 @@ bi_normalize(bigint_t* x) {
         free_bi(x);
     }
     /* use byte number if possible */
-    else if (i == 1 && x->digit[0] <= 256) {
+    else if (i == 0 && x->digit[0] <= 256) {
         u32 tmp = x->digit[0];
         free_bi(x);
         *x = BYTE_BIGINT(tmp);
@@ -157,6 +148,12 @@ static inline void
 bi_extend(bigint_t* x, u32 added_size) {
     if (added_size == 0) {
         return;
+    }
+    if (x->shared) {
+        u32 tmp = x->digit[0];
+        x->digit = (u32*) malloc(sizeof(u32));
+        x->digit[0] = tmp;
+        x->shared = 0;
     }
     u32 new_size = x->size + added_size;
     u32* tmp_mem = calloc(new_size, sizeof(u32));
@@ -176,8 +173,9 @@ bi_shl(bigint_t* x, u32 n) {
     }
     u32 i, new_digit, carry = 0;
     if (x->shared) {
+        u32 tmp = x->digit[0];
         x->digit = (u32*) malloc(sizeof(u32));
-        x->digit[0] = 1;
+        x->digit[0] = tmp;
         x->shared = 0;
     }
     for (i = 0; i < x->size; i++) {
@@ -196,6 +194,12 @@ static inline void
 bi_shr(bigint_t* x, u32 n) {
     if (BIPTR_IS_ZERO(x) || n == 0 || n > BASE_SHIFT) {
         return;
+    }
+    if (x->shared) {
+        u32 tmp = x->digit[0];
+        x->digit = (u32*) malloc(sizeof(u32));
+        x->digit[0] = tmp;
+        x->shared = 0;
     }
     int i;
     u32 new_digit, carry = 0;
@@ -631,15 +635,15 @@ bi_mul(bigint_t* a, bigint_t* b) {
     if (BIPTR_IS_ZERO(a) || BIPTR_IS_ZERO(b)) {
         return ZERO_BIGINT();
     }
-    if (a->size == 1 && a->digit[0] == 1) {
+    if (a_size == 1 && a->digit[0] == 1) {
         copy_bi(&m, b);
         return m;
     }
-    if (b->size == 1 && b->digit[0] == 1) {
+    if (b_size == 1 && b->digit[0] == 1) {
         copy_bi(&m, a);
         return m;
     }
-    if (a->size == 1 && b->size == 1) {
+    if (a_size== 1 && b_size == 1) {
         i64m = (u64) a->digit[0] * b->digit[0];
         new_bi(&m, 2);
         m.digit[0] = (u32) i64m & DIGIT_MASK;
@@ -732,16 +736,28 @@ bi_mul(bigint_t* a, bigint_t* b) {
     free_bi(&tmp1);
     tmp_mem = calloc(z1.size + low_size, sizeof(u32));
     memcpy(tmp_mem + low_size, z1.digit, z1.size * sizeof(u32));
-    free(z1.digit);
-    z1.digit = tmp_mem;
+    if (z1.shared) {
+        z1.digit = tmp_mem;
+        z1.shared = 0;
+    }
+    else {
+        free(z1.digit);
+        z1.digit = tmp_mem;
+    }
     z1.size = z1.size + low_size;
 
     /* z2 = z2' * b^(2*split_size) */
     if (z2.size != 0) {
         tmp_mem = calloc(z2.size + low_size * 2, sizeof(u32));
         memcpy(tmp_mem + (low_size * 2), z2.digit, z2.size * sizeof(u32));
-        free(z2.digit);
-        z2.digit = tmp_mem;
+        if (z2.shared) {
+            z2.digit = tmp_mem;
+            z2.shared = 0;
+        }
+        else {
+            free(z2.digit);
+            z2.digit = tmp_mem;
+        }
         z2.size = z2.size + (low_size * 2);
     }
 
@@ -752,6 +768,7 @@ bi_mul(bigint_t* a, bigint_t* b) {
     free_bi(&z1);
     free_bi(&z2);
     free_bi(&tmp1);
+
     if (a->sign != b->sign) {
         m.sign = 1;
     }
@@ -1032,7 +1049,7 @@ bi_from_str(const char* str) {
 
             /* printf("%d\n", d);
             print_bi(&x); puts("");
-            print_bigint_dec(&x); puts(""); */
+            print_bi_dec(&x); puts(""); */
         }
         bi_normalize(&x);
     }

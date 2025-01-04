@@ -21,6 +21,7 @@
 token_type_enum
 get_op_tok_type(char* op_str) {
     char c = op_str[0];
+    /* if is 2-char operator */
     if (op_str[1] != '\0') {
         if (op_str[0] == '{' && op_str[1] == '|') {
             return TOK_LB;
@@ -31,12 +32,12 @@ get_op_tok_type(char* op_str) {
         return TOK_OP;
     }
     if (
-        c == OP_STRS[OP_LBLOCK][0] || c == OP_STRS[OP_LPAREN][0]
+        c == OP_STRS[OP_LBRACE][0] || c == OP_STRS[OP_LPAREN][0]
         || c == OP_STRS[OP_FCALL][0]
     ) {
         return TOK_LB;
     }
-    else if (c == OP_STRS[OP_RBLOCK][0] || c == OP_STRS[OP_RPAREN][0]) {
+    else if (c == OP_STRS[OP_RBRACE][0] || c == OP_STRS[OP_RPAREN][0]) {
         return TOK_RB;
     }
     return TOK_OP;
@@ -68,7 +69,7 @@ get_op_enum(token_t* last_token, char* op_str) {
     for (op = 0; op < OPERATOR_COUNT; op++) {
         /* ignore special */
         if (
-            op == OP_FMAKE || op == OP_PFMAKE || op == OP_FCALL
+            op == OP_FMAKE || op == OP_LFMAKE || op == OP_FCALL
             || op == OP_POS || op == OP_NEG
         ) {
             continue;

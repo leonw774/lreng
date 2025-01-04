@@ -75,17 +75,17 @@ number_normalize(number_t* x) {
     /* euclidian algorithm */
     copy_bi(&a, &x->numer);
     copy_bi(&b, &x->denom);
+    /* printf("a "); print_bi(&a); puts("");
+    printf("b "); print_bi(&b); puts(""); */
     while (b.size != 0) {
-        free_bi(&t1);
-        copy_bi(&t1, &b); /* t1 = b */
-        t2 = bi_mod(&a, &b); /* t2 = a mod b */
-        free_bi(&b);
         free_bi(&t2);
-        copy_bi(&b, &t2);  /* b = t2 */
+        t2 = bi_mod(&a, &b); /* t2 = a mod b */
         free_bi(&a);
-        copy_bi(&a, &t1); /* a = t1 */
-        // printf("a "); print_bi(&a); puts("");
-        // printf("b "); print_bi(&b); puts("");
+        copy_bi(&a, &b); /* a = t1 */
+        free_bi(&b);
+        copy_bi(&b, &t2);  /* b = t2 */
+        /* printf("a "); print_bi(&a); puts("");
+        printf("b "); print_bi(&b); puts(""); */
     }
 
     /* a is gcd of numer & denom */
@@ -257,7 +257,7 @@ number_mod(number_t* a, number_t* b) {
 number_t
 number_exp(number_t* a, number_t* b) {
     number_t res, cur, t1, t2;
-    bigint_t e, q = ZERO_BIGINT(), r = ZERO_BIGINT(), two = bi_from_str("2");
+    bigint_t e, q = ZERO_BIGINT(), r = ZERO_BIGINT(), two = BYTE_BIGINT(2);
     if (b->denom.size != 1 || b->denom.digit[0] != 1) {
         free_bi(&two);
         return NAN_NUMBER();
@@ -337,8 +337,8 @@ print_number_dec(number_t* x, int precision) {
     char *n_cstr, *d_cstr, *res_cstr;
     char dot = '.' - '0';
     bigint_t ten_to_abs_m;
-    number_t _x, ten = number_from_str("10"), ten_to_m = EMPTY_NUMBER(),
-        t = EMPTY_NUMBER(), q = EMPTY_NUMBER(), r = EMPTY_NUMBER();
+    number_t _x, t = EMPTY_NUMBER(), q = EMPTY_NUMBER(), r = EMPTY_NUMBER(),
+        one = ONE_NUMBER(), ten = number_from_i32(10), ten_to_e = EMPTY_NUMBER();
 
     if (x->numer.nan) {
         return printf("[Number] NaN");
@@ -347,7 +347,7 @@ print_number_dec(number_t* x, int precision) {
         return printf("[Number] 0");
     }
 
-    /* find the lowest m such that 10^m >= abs(n/d) */
+    /* find the lowest m such that b^m >= abs(n/d) */
     n_str = bi_to_dec_str(&x->numer);
     d_str = bi_to_dec_str(&x->denom);
     n_cstr = to_str(&n_str);
@@ -360,34 +360,32 @@ print_number_dec(number_t* x, int precision) {
     free(d_cstr);
 
     /* round the number to 10^(m - precision):
-       for each exponent i := m-1 ~ precision,
-         q = x - (x / 10^(m-i)) % 1
+       for each exponent i := 1 ~ precision,
+         e = m - i
+         q = (x - x % 10^e) / 10^e
          push q into digit stack
-         x -= q * 10^(m-i)
+         x -= q * 10^e
     */
     i = 1;
     ten_to_abs_m = bi_from_tens_power((m < 0) ? -m - i : m - i);
     if (m < 0) {
-        ten_to_m.numer = BYTE_BIGINT(1);
-        ten_to_m.denom = ten_to_abs_m;
+        ten_to_e.numer = BYTE_BIGINT(1);
+        ten_to_e.denom = ten_to_abs_m;
     }
     else {
-        ten_to_m.numer = ten_to_abs_m;
-        ten_to_m.denom = BYTE_BIGINT(1);
+        ten_to_e.numer = ten_to_abs_m;
+        ten_to_e.denom = BYTE_BIGINT(1);
     }
     res_str = new_dynarr(1);
     copy_number(&_x, x);
     while (1) {
+        /* q = (x - x % 10^e) / 10^e */
         free_number(&r);
         free_number(&t);
         free_number(&q);
-        r = number_mod(&_x, &ten_to_m);
+        r = number_mod(&_x, &ten_to_e);
         t = number_sub(&_x, &r);
-        q = number_div(&t, &ten_to_m);
-        // printf("_x   "); print_number_struct(&_x); puts("");
-        // printf("10^m "); print_number_struct(&ten_to_m); puts("");
-        // printf("q    "); print_number_struct(&q); puts("");
-        // printf("r    "); print_number_struct(&r); puts("");
+        q = number_div(&t, &ten_to_e);
         if (q.numer.size != 1 || q.numer.digit[0] >= 10) {
             printf("print_number_dec: q's numer >= 10\n");
             exit(OTHER_ERR_CODE);
@@ -400,20 +398,18 @@ print_number_dec(number_t* x, int precision) {
         if (i > precision) {
             break;
         }
-        /* x -= q * 10^(m-i) */
+        /* x -= q * 10^e */
         free_number(&r);
-        r = number_mul(&q, &ten_to_m);
-        // printf("q*10^(m-i)   "); print_number_struct(&r); puts("");
+        r = number_mul(&q, &ten_to_e);
         free_number(&q);
         q = number_sub(&_x, &r);
-        // printf("x-q*10^(m-i) "); print_number_struct(&q); puts("");
         free_number(&_x);
         copy_number(&_x, &q);
-        /* ten_to_m /= 10 */
+        /* ten_to_e /= 10 */
         free_number(&t);
-        t = number_div(&ten_to_m, &ten);
-        free_number(&ten_to_m);
-        copy_number(&ten_to_m, &t);
+        t = number_div(&ten_to_e, &ten);
+        free_number(&ten_to_e);
+        copy_number(&ten_to_e, &t);
     }
     free_number(&t);
     res_cstr = to_str(&res_str);
@@ -466,11 +462,11 @@ number_from_str(const char* str) {
         }
     }
     str_no_dot[j] = '\0';
-    // printf("%s %d %d\n", str_no_dot, dot_pos, str_length - dot_pos);
+    /* printf("%s %d %d\n", str_no_dot, dot_pos, str_length - dot_pos); */
     n.numer = bi_from_str(str_no_dot);
     n.denom = bi_from_tens_power(str_length - dot_pos);
-    // print_bi_dec(&n.numer); puts("");
-    // print_bi_dec(&n.denom); puts("");
+    /* print_bi_dec(&n.numer); puts("");
+    print_bi_dec(&n.denom); puts(""); */
     free(str_no_dot);
     number_normalize(&n);
     return n;
@@ -499,6 +495,9 @@ number_from_i32(i32 i) {
         new_bi(&n.numer, 2);
         n.numer.digit[0] = j & DIGIT_MASK;
         n.numer.digit[1] = 1;
+    }
+    else if (sign = 0 && j <= 256) {
+        n.numer = BYTE_BIGINT(j);
     }
     else {
         new_bi(&n.numer, 1);

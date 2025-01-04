@@ -25,12 +25,13 @@ There are 5 types:
   - You can represent integers in binary and heximal: `0b110011`, `0xc0de`
   - You can represent the code of printable and escapable ASCII characters. For example, `'A'` evaluates to `65`, `'\\'` is `92`, and `'\n'` is `10`
 - Pair: Store the reference to two data, tagged `left` and `right`;
-- Function: A callable expression that can access variables outside its scope
-- Pure Function: A callable expression that **cannot** access variables outside its scope except global variables
+- Function: A callable expression that can pass in at most one argument. There are two kinds of functions:
+  - Normal: normal function can access both global and scoped variables from outside
+  - Lambda: lambda function can access global but not scoped variables from outside 
 
 ### Global and Scoped
 
-Global means not in a function. Scoped variables are initialized in a function.
+Variable is global when iti is not initialized in a function. Scoped variables are initialized in a function.
 
 
 ## Operators
@@ -68,7 +69,7 @@ These operator do *not* short-circuit.
 
 ### Short-circuit logic
 
-The `&&` (IF-AND) and  `||` (IF-OR) are the logical operations that short-circuit. The `&&` has higher precedence than the `||`.
+The `&&` (CONDITION-AND) and  `||` (CONDITION-OR) are the logical operations that short-circuit. The `&&` has higher precedence than the `||`.
 
  `x`'s boolean  | `x && y` evaluates to | is `y` evaluated  |
 ----------------|-----------------------|----------------------
@@ -96,15 +97,15 @@ print(hello_world)
 
 The `` `string `` is used to get data and `~string` is to get next.
 
-### Function maker and argument binder
+### Function makers and argument binder
 
-The Function maker `{ ... }` and `{| ... |}` turns the wrapped expression into a function and a pure function. The created function use no argument by default. Function must evaluate to a value. Empty function is not allowed.
+The function makers `{ ... }` and `{| ... |}` turns the wrapped expression into a normal and a lambda function. The created function has no argument by default. Function must evaluate to a value. Empty function is not allowed.
 
 The argument binder `x => func` binds *one* argument identifier to a function.
 
 ### Function callers
 
-The caller operators are `()` and `$`. The syntax is `foo(expr)` and `foo $ expr`. They assigns the evaluated result of the expression to the argument variable of the callable (if any) and evaluates the callable.
+The function callers are `()` and `$`. The syntax is `foo(expr)` and `foo $ expr`. They assigns the evaluated result of the expression to the argument variable of the callable (if any) and evaluates the callable.
 
 Note that `$` is right-associative, just like in Haskell, designed to apply multiple callables on a value without too much parenthese. The following codes are equivalent: `f3 $ f2 $ f1 $ val` and `f3(f2(f1(val)))`.
 
