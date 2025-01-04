@@ -21,9 +21,9 @@ free_tree(tree_t* tree) {
 }
 
 /* set entry_index to -1 to use tree's root index */
-tree_preorder_iterator_t
+inline tree_preorder_iterator_t
 tree_iter_init(const tree_t* tree, int entry_index) {
-    int one = 1;
+    const static int one = 1;
     tree_preorder_iterator_t iter = {
         .tree = tree,
         .index_stack = new_dynarr(sizeof(int)),

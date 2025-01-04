@@ -16,18 +16,28 @@ MAIN_TARGET = lreng
 all: CFLAGS += -O2
 all: $(MAIN_TARGET)
 
-$(MAIN_TARGET): $(MAIN_SRC) $(SHARED_SRC)
-	gcc $(CFLAGS) -o $@ $^
-
 debug: CFLAGS += $(DEBUG_FLAGS)
 debug: $(MAIN_TARGET) $(TEST_TARGET)
 
 memcheck: CFLAGS += $(DEBUG_FLAGS) $(MEMCHECK_FLAGS)
 memcheck: $(MAIN_TARGET) $(TEST_TARGET)
 
+# The rule for main target (./lreng)
+$(MAIN_TARGET): $(MAIN_SRC) $(SHARED_SRC)
+	gcc $(CFLAGS) -o $@ $^
+
 # The rules of test targets
 %.out: %.c $(SHARED_SRC)
 	gcc $(CFLAGS) -o $@ $^
+
+merge:
+	cat include/dynarr.h include/operators.h include/token.h include/tree.h \
+	    include/errormsg.h include/bigint.h include/number.h include/objects.h \
+		include/frame.h include/builtin_funcs.h include/lreng.h \
+		src/utils/*.c src/objects/*.c src/*.c \
+	| sed -e '1s/^/#include<string.h>\n#include<ctype.h>\n#include<getopt.h>\n/' \
+		-e '1s/^/#include<stdio.h>\n#include<stdlib.h>\n#include<stdint.h>\n/' \
+		-e '/^#include ["<>a-z_.]*/d' > lreng.c
 
 clean:
 	rm $(MAIN_TARGET) $(TEST_TARGET) || true

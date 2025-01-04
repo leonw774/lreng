@@ -51,7 +51,7 @@ copy_object(const object_t* obj) {
         /* only shallow copy the frame */
         clone = *obj;
         /* refer count += 1 if is not builtin function */
-        if (obj->data.func.builtin_name == NOT_BUILTIN_FUNC) {
+        if (clone.data.func.init_time_frame) {
             clone.data.func.init_time_frame->refer_count++;
         }
         return clone;
@@ -80,7 +80,7 @@ free_object(object_t* obj) {
         if (obj_init_time_frame != NULL) {
             // printf("free_object: frame %p refer_count=%d\n", f, f->refer_count);
             if (obj_init_time_frame->refer_count <= 1) {
-                free_frame(obj_init_time_frame, 1);
+                clear_stack(obj_init_time_frame, 1);
                 free(obj_init_time_frame);
             }
             else {

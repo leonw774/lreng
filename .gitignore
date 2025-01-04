@@ -36,6 +36,7 @@
 
 # Outputs
 lreng
+lreng.c
 *.out*
 debug.txt
 memcheck_out.txt

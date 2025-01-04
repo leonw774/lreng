@@ -21,16 +21,25 @@
 token_type_enum
 get_op_tok_type(char* op_str) {
     char c = op_str[0];
-    if (c == OP_STRS[OP_LBLOCK][0] || c == OP_STRS[OP_LPAREN][0]
-        || c == OP_STRS[OP_FCALL][0]) {
+    if (op_str[1] != '\0') {
+        if (op_str[0] == '{' && op_str[1] == '|') {
+            return TOK_LB;
+        }
+        if (op_str[0] == '|' && op_str[1] == '}') {
+            return TOK_RB;
+        }
+        return TOK_OP;
+    }
+    if (
+        c == OP_STRS[OP_LBLOCK][0] || c == OP_STRS[OP_LPAREN][0]
+        || c == OP_STRS[OP_FCALL][0]
+    ) {
         return TOK_LB;
     }
     else if (c == OP_STRS[OP_RBLOCK][0] || c == OP_STRS[OP_RPAREN][0]) {
         return TOK_RB;
     }
-    else {
-        return TOK_OP;
-    }
+    return TOK_OP;
 }
 
 /* return the operator name (enum) of an operator str. return -1 if failed */
@@ -58,7 +67,10 @@ get_op_enum(token_t* last_token, char* op_str) {
     int op;
     for (op = 0; op < OPERATOR_COUNT; op++) {
         /* ignore special */
-        if (op == OP_POS || op == OP_NEG || op == OP_FDEF || op == OP_FCALL) {
+        if (
+            op == OP_FMAKE || op == OP_PFMAKE || op == OP_FCALL
+            || op == OP_POS || op == OP_NEG
+        ) {
             continue;
         }
         if (strcmp(OP_STRS[op], op_str) == 0) {
@@ -598,9 +610,14 @@ op_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&id_state, cur_cargo};
     }
     else if (IS_OP(c)) {
-        if (cur_cargo.str.size == 1
-            && !is_2char_op(((char*) cur_cargo.str.data)[0], c)) {
-            /* if is not a 2-character operator */
+        if (
+            cur_cargo.str.size == 2
+            || (
+                cur_cargo.str.size == 1
+                && !is_2char_op(*(char*) at(&cur_cargo.str, 0), c)
+            )
+        ) {
+            /* if is already a 2-char operator or cannot be a 2-char operator */
             type = get_op_tok_type(cur_cargo.str.data);
             harvest(&cur_cargo, type, pos);
         }
@@ -637,7 +654,7 @@ tokenize(const char* src, const int src_len, const int is_debug) {
 #ifdef ENABLE_DEBUG
         if (is_debug) {
             char c = (pos_iter.index < pos_iter.src_len)
-                ? '\0' : pos_iter.src[pos_iter.index];
+                ? pos_iter.src[pos_iter.index] : '\0';
             if (isprint(c)) {
                 printf("c=\'%c\'\n", c);
             }

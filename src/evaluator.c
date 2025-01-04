@@ -77,43 +77,47 @@ exec_call(
     }
 #endif
     int i, is_forked = 0, create_index = -1, cur_index = -1;
-    #define func_init_time_frame func_obj->data.func.init_time_frame
-    frame_t* call_frame = empty_frame();
-    /* if the i-th entry index of init-time frame and current frame is the
-       same, call-frame's i-th stack = current frame's i-th stack. but once the
-       entry_index is different they are in different closure path, so only
-       init-time-frame stack */
-    for (i = 0; i < func_init_time_frame->entry_indices.size; i++) {
-        create_index = *(int*) at(&func_init_time_frame->entry_indices, i);
-        cur_index = (i < cur_frame->entry_indices.size)
-            ? *(int*) at(&cur_frame->entry_indices, i) : -1;
-
-        /* push the entry_index */
-        append(&call_frame->entry_indices, &create_index);
-
-        dynarr_t* src_pairs = NULL;
-        if (!is_forked && cur_index == create_index) {
-            src_pairs = (dynarr_t*) at(&cur_frame->stack, i);
-#ifdef ENABLE_DEBUG
-            if (is_debug) {
-                printf("exec_call: stack[%d] use current\n", i);
+    frame_t* call_frame = calloc(1, sizeof(frame_t));
+    call_frame->global_pairs = cur_frame->global_pairs;
+    new_stack(call_frame);
+    if (!func_obj->data.func.is_pure) {
+        #define func_init_time_frame func_obj->data.func.init_time_frame
+        /* if the i-th stack of init-time frame and current frame is the
+        same, call-frame's i-th stack = current frame's i-th stack. but once the
+        entry_index is different they are in different closure path, so only
+        the rest of init-time-frame stack is used */
+        for (i = 0; i < func_init_time_frame->entry_indices.size; i++) {
+            create_index = *(int*) at(&func_init_time_frame->entry_indices, i);
+            cur_index = -1;
+            if (i < cur_frame->entry_indices.size) {
+                cur_index = *(int*) at(&cur_frame->entry_indices, i);
             }
-#endif
-        }
-        else {
-            is_forked = 1;
-            src_pairs = (dynarr_t*) at(&func_init_time_frame->stack, i);
-#ifdef ENABLE_DEBUG
-            if (is_debug) {
-                printf("exec_call: stack[%d] use init-time\n", i);
-            }
-#endif
-        }
+            /* push the entry_index */
+            append(&call_frame->entry_indices, &create_index);
 
-        /* push the shallow copy of source stack */
-        append(&call_frame->stack, src_pairs);
+            dynarr_t* src_pairs = NULL;
+            if (!is_forked && cur_index == create_index) {
+                src_pairs = (dynarr_t*) at(&cur_frame->stack, i);
+#ifdef ENABLE_DEBUG
+                if (is_debug) {
+                    printf("exec_call: stack[%d] use current\n", i);
+                }
+#endif
+            }
+            else {
+                is_forked = 1;
+                src_pairs = (dynarr_t*) at(&func_init_time_frame->stack, i);
+#ifdef ENABLE_DEBUG
+                if (is_debug) {
+                    printf("exec_call: stack[%d] use init-time\n", i);
+                }
+#endif
+            }
+            /* push the shallow copy of source pairs */
+            append(&call_frame->stack, src_pairs);
+        }
+        #undef func_init_time_frame
     }
-    #undef func_init_time_frame
 
     /* push new stack to call_frame and set argument */
     push_stack(call_frame, func_obj->data.func.entry_index);
@@ -137,8 +141,8 @@ exec_call(
     );
     /* free the object own by this call */
     pop_stack(call_frame);
-    /* free the frame but not free bollowed pairs */
-    free_frame(call_frame, 0);
+    /* free the rest of stack but not free bollowed pairs */
+    clear_stack(call_frame, 0);
     free(call_frame);
     return res;
 }
@@ -495,9 +499,10 @@ eval_tree(
             const token_t* right_token =
                 (right_index == -1) ? NULL : &global_tokens[right_index];
             /* function definer */
-            if (cur_token.name == OP_FDEF) {
+            if (cur_token.name == OP_FMAKE) {
                 _OBJ_TABLE(cur_index).type = TYPE_FUNC;
                 (_OBJ_TABLE(cur_index)).data.func = (func_t) {
+                    .is_pure = 0,
                     .builtin_name = NOT_BUILTIN_FUNC,
                     .arg_name = -1,
                     .entry_index = left_index,
@@ -507,6 +512,22 @@ eval_tree(
 #ifdef ENABLE_DEBUG
                 if (is_debug) {
                     printf(" defined function:");
+                    print_object(&_OBJ_TABLE(cur_index)); puts("");
+                }
+#endif
+            }
+            else if (cur_token.name == OP_PFMAKE) {
+                _OBJ_TABLE(cur_index).type = TYPE_FUNC;
+                (_OBJ_TABLE(cur_index)).data.func = (func_t) {
+                    .is_pure = 1,
+                    .builtin_name = NOT_BUILTIN_FUNC,
+                    .arg_name = -1,
+                    .entry_index = left_index,
+                    .init_time_frame = NULL
+                };
+#ifdef ENABLE_DEBUG
+                if (is_debug) {
+                    printf(" defined pure function:");
                     print_object(&_OBJ_TABLE(cur_index)); puts("");
                 }
 #endif

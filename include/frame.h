@@ -10,22 +10,26 @@ typedef struct name_object_pair {
 } name_obj_pair_t;
 
 typedef struct frame {
+    dynarr_t global_pairs; /* type: name_obj_pair_t */
+    /* entry_indices & stack stores the name obj pairs for call stack */
     dynarr_t entry_indices; /* type: int */
     dynarr_t stack; /* type: dynarr_t of name_obj_pair_t */
     int refer_count;
 } frame_t;
 
-extern frame_t* new_frame(const int entry_index);
+extern frame_t* new_frame();
 
-extern frame_t* empty_frame();
+extern frame_t* copy_frame(const frame_t* f);
+
+extern void free_frame(frame_t* f);
+
+extern void new_stack(frame_t* f);
 
 extern void push_stack(frame_t* f, const int entry_index);
 
 extern void pop_stack(frame_t* f);
 
-extern frame_t* copy_frame(const frame_t* f);
-
-extern void free_frame(frame_t* f, const int can_free_pairs);
+extern void clear_stack(frame_t* f, const int can_free_pairs);
 
 extern object_t* frame_get(const frame_t* f, const int name);
 

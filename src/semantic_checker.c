@@ -39,7 +39,7 @@ semantic_checker(const tree_t tree, const const int is_debug) {
                 pop(&func_depth_stack);
                 pop_stack(cur_frame);
             }
-            /* check identifiers */
+            /* check assign rule */
             if (cur_token_p->name == OP_ASSIGN) {
                 token_t* left_token =
                     &((token_t*) tree.tokens.data)[tree.lefts[cur_index]];
@@ -88,7 +88,7 @@ semantic_checker(const tree_t tree, const const int is_debug) {
                 }
             }
             /* walk into a function */
-            else if (cur_token_p->name == OP_FDEF) {
+            else if (cur_token_p->name == OP_FMAKE) {
                 push_stack(cur_frame, cur_index);
                 append(&func_depth_stack, &cur_depth);
             }
@@ -115,8 +115,7 @@ semantic_checker(const tree_t tree, const const int is_debug) {
 
     free_tree_iter(&tree_iter);
     free_dynarr(&func_depth_stack);
-    pop_stack(cur_frame);
-    free_frame(cur_frame, 1);
+    free_frame(cur_frame);
     free(cur_frame);
     free(id_usage);
     return is_passed;

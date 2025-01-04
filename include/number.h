@@ -5,22 +5,16 @@
 
 /* number are normalized as such:
    no flag is set
-    - sign: 0 or 1
-    - zero: 0
-    - nan: 0
-    - numer: non-negative
+    - numer:
+      - sign: 0 or 1
+      - zero: 0
+      - nan: 0
     - denom: positive
 
    is zero:
-    - sign: 0
-    - zero: 1
-    - nan: 0
     - numer, denom: 0
 
    is nan:
-    - sign: 0
-    - zero: 0
-    - nan: 1
     - numer, demon: nan
 */
 typedef struct number {

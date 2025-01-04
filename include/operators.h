@@ -1,10 +1,8 @@
 #ifndef OPERATOR_H
 #define OPERATOR_H
 
-#define OPERATOR_COUNT 33
-
 typedef enum op_name {
-    OP_LBLOCK, OP_RBLOCK, OP_FDEF,
+    OP_LBLOCK, OP_RBLOCK, OP_FMAKE, OP_LPIPEBLOCK, OP_RPIPEBLOCK, OP_PFMAKE,
     OP_LPAREN, OP_RPAREN, OP_FCALL,
     OP_POS, OP_NEG, OP_NOT, OP_GETL, OP_GETR,
     OP_EXP,
@@ -22,6 +20,8 @@ typedef enum op_name {
     OP_ASSIGN, OP_CONDFCALL,
     OP_EXPRSEP
 } op_name_enum;
+
+#define OPERATOR_COUNT OP_EXPRSEP + 1
 
 extern const char* const OP_STRS[];
 

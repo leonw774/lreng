@@ -28,6 +28,7 @@ typedef struct pair {
 typedef struct frame frame_t;
 
 typedef struct func {
+    int is_pure;
     int entry_index;
     int arg_name; /* -1 if no arg */
     int builtin_name; /* -1 if is not builtin function */

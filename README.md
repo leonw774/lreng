@@ -10,22 +10,28 @@ A simple minimal interpreted programming language.
 
 The optional `-d` flag outputs debug information.
 
-## Data types
-
-There are 4 types:
-- Number: Numbers in lreng are all rational numbers 
-  - You can represent numbers in decimal with point: `3.14159`
-  - You can represent integers in binary and heximal: `0b110011`, `0xc0de`
-  - You can represent the code of printable and escapable ASCII characters. For example, `'A'` evaluates to `65`, `'\\'` is `92`, and `'\n'` is `10`
-- Pair: Store the reference to two data, tagged `left` and `right`;
-- Function: Store executable code and an optional argument identifier
-- Null: The unit type. Has key word `null`.
-
 ## Variable
 
 Variable identifiers should match regex `[_A-Za-z][_A-Za-z0-9]+`.
 
 All variables are immutable.
+
+### Types
+
+There are 5 types:
+- Null: The unit type. Has key word `null`.
+- Number: Numbers in lreng are all rational numbers 
+  - You can represent numbers in decimal with point: `3.14159`
+  - You can represent integers in binary and heximal: `0b110011`, `0xc0de`
+  - You can represent the code of printable and escapable ASCII characters. For example, `'A'` evaluates to `65`, `'\\'` is `92`, and `'\n'` is `10`
+- Pair: Store the reference to two data, tagged `left` and `right`;
+- Function: A callable expression that can access variables outside its scope
+- Pure Function: A callable expression that **cannot** access variables outside its scope except global variables
+
+### Global and Scoped
+
+Global means not in a function. Scoped variables are initialized in a function.
+
 
 ## Operators
 
@@ -92,21 +98,21 @@ The `` `string `` is used to get data and `~string` is to get next.
 
 ### Function maker and argument binder
 
-The function maker `{` and `}` turns the wrapped codes into a function (no argument by default). Function must evaluate to a value. Empty funcyion is not allowed.
+The Function maker `{ ... }` and `{| ... |}` turns the wrapped expression into a function and a pure function. The created function use no argument by default. Function must evaluate to a value. Empty function is not allowed.
 
 The argument binder `x => func` binds *one* argument identifier to a function.
 
-### Function caller
+### Function callers
 
-The function caller are `()` and `$`. The syntax is `func(expr)` and `func $ expr`. They assigns the evaluated result of the expression to the argument variable of the function (if any) and evaluates the function code.
+The caller operators are `()` and `$`. The syntax is `foo(expr)` and `foo $ expr`. They assigns the evaluated result of the expression to the argument variable of the callable (if any) and evaluates the callable.
 
-Note that `$` is right-associative, just like in Haskell, designed to apply multiple functions on a value without too much parenthese. The following codes are equivalent: `func3 $ func2 $ func1 $ val` and `func3(func2(func1(val)))`.
+Note that `$` is right-associative, just like in Haskell, designed to apply multiple callables on a value without too much parenthese. The following codes are equivalent: `f3 $ f2 $ f1 $ val` and `f3(f2(f1(val)))`.
 
-The syntax `func_name()` is valid and will be parsed as `func_name(null)`.
+The syntax `foo()` is valid and will be parsed as `foo(null)`.
 
-### Conditional function pair caller
+### Conditional pair function caller
 
-The `?` operator is designed to do proper conditional expression evaluation. The syntax is `cond ? func_pair`. If `cond` is true, the `` `func_pair `` is called, otherwise, the `~func_pair` is called. The passed argument is always null.
+The `?` operator is designed to do proper conditional expression evaluation. The syntax is `cond ? callable_pair`. If `cond` is true, the `` `callable_pair `` is called, otherwise, the `~callable_pair` is called. The passed argument is always null.
 
 ### Expression connector
 

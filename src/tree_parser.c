@@ -4,10 +4,16 @@
 #include "errormsg.h"
 #include "lreng.h"
 
-#define IS_PREFIXER(op) \
-    (op == OP_FDEF || op == OP_LPAREN || op == OP_LBLOCK\
-    || op == OP_POS || op == OP_NEG || op == OP_NOT\
-    || op == OP_GETL || op == OP_GETR)
+#define IS_PREFIXER(op) ( \
+    op == OP_LBLOCK || op == OP_FMAKE || op == OP_LPIPEBLOCK || op == OP_PFMAKE \
+    || op == OP_LPAREN || op == OP_POS || op == OP_NEG || op == OP_NOT \
+    || op == OP_GETL || op == OP_GETR \
+)
+
+#define EXPECT_PREFIX_MSG \
+    "Expect unary operator, number, identifier, or open bracket. Get '%s'"
+#define EXPECT_BINARY_MSG \
+    "Expect binary operator or closing bracket. Get '%s'"
 
 /* is the precedence o1 < o2 ? */
 #define OP_PRECED_LT(o1, o2) \
@@ -50,9 +56,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
             if (IS_PREFIXER(cur_token.name)) {
                 if (expectation == INFIXER) {
                     sprintf(
-                        ERR_MSG_BUF,
-                        "Expect binary operator or closing bracket. Get '%s'",
-                        OP_STRS[cur_token.name]
+                        ERR_MSG_BUF, EXPECT_BINARY_MSG, OP_STRS[cur_token.name]
                     );
                     throw_syntax_error(
                         cur_token.pos.line,
@@ -64,10 +68,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
             else {
                 if (expectation == PREFIXER) {
                     sprintf(
-                        ERR_MSG_BUF,
-                        "Expect unary operator, number, identifier,"
-                        "or open bracket. Get '%s'",
-                        OP_STRS[cur_token.name]
+                        ERR_MSG_BUF, EXPECT_PREFIX_MSG, OP_STRS[cur_token.name]
                     );
                     throw_syntax_error(
                         cur_token.pos.line,
@@ -100,12 +101,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
         else if (cur_token.type == TOK_RB) {
             /* check expectation */
             if (expectation == PREFIXER) {
-                sprintf(
-                    ERR_MSG_BUF,
-                    "Expect unary operator, number, identifier,"
-                    "or open bracket. Get '%s'",
-                    cur_token.str
-                );
+                sprintf(ERR_MSG_BUF, EXPECT_PREFIX_MSG, cur_token.str);
                 throw_syntax_error(
                     cur_token.pos.line,
                     cur_token.pos.col,
@@ -142,8 +138,13 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
             }
             else if (top_op == OP_LBLOCK && cur_op == OP_RBLOCK) {
                 /* function maker */
-                token_t fdef = {NULL, OP_FDEF, TOK_OP, frame_top->pos};
-                append(&output, &fdef);
+                token_t fmake = {NULL, OP_FMAKE, TOK_OP, frame_top->pos};
+                append(&output, &fmake);
+            }
+            else if (top_op == OP_LPIPEBLOCK && cur_op == OP_RPIPEBLOCK) {
+                /* pure function maker */
+                token_t pfmake = {NULL, OP_PFMAKE, TOK_OP, frame_top->pos};
+                append(&output, &pfmake);
             }
             else if (!(top_op == OP_LPAREN && cur_op == OP_RPAREN)) {
                 sprintf(
@@ -162,11 +163,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
         else {
             /* check expectation */
             if (expectation == INFIXER) {
-                sprintf(
-                    ERR_MSG_BUF,
-                    "Expect binary operator or closing bracket. Get '%s'",
-                    cur_token.str
-                );
+                sprintf(ERR_MSG_BUF, EXPECT_BINARY_MSG, cur_token.str);
                 throw_syntax_error(
                     cur_token.pos.line,
                     cur_token.pos.col,
