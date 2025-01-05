@@ -75,8 +75,8 @@ number_normalize(number_t* x) {
     /* euclidian algorithm */
     copy_bi(&a, &x->numer);
     copy_bi(&b, &x->denom);
-    /* printf("a "); print_bi(&a); puts("");
-    printf("b "); print_bi(&b); puts(""); */
+    /* printf("a "); print_bi(&a, '\n');
+    printf("b "); print_bi(&b, '\n'); */
     while (b.size != 0) {
         free_bi(&t2);
         t2 = bi_mod(&a, &b); /* t2 = a mod b */
@@ -84,8 +84,8 @@ number_normalize(number_t* x) {
         copy_bi(&a, &b); /* a = t1 */
         free_bi(&b);
         copy_bi(&b, &t2);  /* b = t2 */
-        /* printf("a "); print_bi(&a); puts("");
-        printf("b "); print_bi(&b); puts(""); */
+        /* printf("a "); print_bi(&a, '\n');
+        printf("b "); print_bi(&b, '\n'); */
     }
 
     /* a is gcd of numer & denom */
@@ -305,12 +305,12 @@ number_exp(number_t* a, number_t* b) {
 void
 print_number_struct(number_t* x) {
     printf("[Number]");
-    printf("\tnumer="); print_bi(&x->numer); puts("");
-    printf("\tdenom="); print_bi(&x->denom); puts("");
+    printf("\tnumer="); print_bi(&x->numer, '\n');
+    printf("\tdenom="); print_bi(&x->denom, '\n');
 }
 
 int
-print_number_frac(number_t* x) {
+print_number_frac(number_t* x, char end) {
     int i, printed_bytes_count = 0;
     printed_bytes_count += printf("[Number] ");
     if (x->numer.nan) {
@@ -322,21 +322,24 @@ print_number_frac(number_t* x) {
         return printed_bytes_count;
     }
     putchar('(');
-    printed_bytes_count += print_bi_dec(&x->numer);
+    printed_bytes_count += print_bi_dec(&x->numer, '\0');
     printf(", ");
-    printed_bytes_count += print_bi_dec(&x->denom);
+    printed_bytes_count += print_bi_dec(&x->denom, '\0');
     putchar(')');
+    if (end != '\0') {
+        printed_bytes_count += printf("%c", end);
+    }
     return printed_bytes_count + 4;
 }
 
 int
-print_number_dec(number_t* x, int precision) {
+print_number_dec(number_t* x, int precision, char end) {
     int printed_bytes_count = 0;
     int i, n_exp, d_exp, m, e;
     dynarr_t n_str, d_str, res_str;
     char *n_cstr, *d_cstr, *res_cstr;
     char dot = '.' - '0';
-    bigint_t ten_to_abs_m;
+    bigint_t ten_to_abs_e;
     number_t _x, t = EMPTY_NUMBER(), q = EMPTY_NUMBER(), r = EMPTY_NUMBER(),
         one = ONE_NUMBER(), ten = number_from_i32(10), ten_to_e = EMPTY_NUMBER();
 
@@ -367,13 +370,13 @@ print_number_dec(number_t* x, int precision) {
          x -= q * 10^e
     */
     i = 1;
-    ten_to_abs_m = bi_from_tens_power((m < 0) ? -m - i : m - i);
+    ten_to_abs_e = bi_from_tens_power((m < 0) ? -m - i : m - i);
     if (m < 0) {
         ten_to_e.numer = BYTE_BIGINT(1);
-        ten_to_e.denom = ten_to_abs_m;
+        ten_to_e.denom = ten_to_abs_e;
     }
     else {
-        ten_to_e.numer = ten_to_abs_m;
+        ten_to_e.numer = ten_to_abs_e;
         ten_to_e.denom = BYTE_BIGINT(1);
     }
     res_str = new_dynarr(1);
@@ -420,6 +423,9 @@ print_number_dec(number_t* x, int precision) {
     free_dynarr(&n_str);
     free_dynarr(&d_str);
     free(res_cstr);
+    if (end != '\0') {
+        printed_bytes_count += printf("%c", end);
+    }
     return printed_bytes_count;
 }
 
@@ -465,8 +471,8 @@ number_from_str(const char* str) {
     /* printf("%s %d %d\n", str_no_dot, dot_pos, str_length - dot_pos); */
     n.numer = bi_from_str(str_no_dot);
     n.denom = bi_from_tens_power(str_length - dot_pos);
-    /* print_bi_dec(&n.numer); puts("");
-    print_bi_dec(&n.denom); puts(""); */
+    /* print_bi_dec(&n.numer, '\n');
+    print_bi_dec(&n.denom, '\n'); */
     free(str_no_dot);
     number_normalize(&n);
     return n;

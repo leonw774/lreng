@@ -134,7 +134,7 @@ bi_normalize(bigint_t* x) {
         free_bi(x);
     }
     /* use byte number if possible */
-    else if (i == 0 && x->digit[0] <= 256) {
+    else if (i == 0 && x->sign == 0 && x->digit[0] <= 256) {
         u32 tmp = x->digit[0];
         free_bi(x);
         *x = BYTE_BIGINT(tmp);
@@ -346,8 +346,8 @@ bi_usub(bigint_t* res, bigint_t* a, bigint_t* b) {
     }
     if (borrow != 0) {
         printf("bi_usub: last borrow is not zero\n");
-        print_bi_dec(a); puts("");
-        print_bi_dec(b); puts("");
+        print_bi_dec(a, '\n');
+        print_bi_dec(b, '\n');
         res->nan = 1;
     }
     res->sign = sign;
@@ -475,8 +475,8 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
         bi_shl(&u, d);
         bi_shl(&v, d);
     }
-    // printf("u "); print_bi(&u); puts("");
-    // printf("v "); print_bi(&v); puts("");
+    /* printf("u "); print_bi(&u, '\n');
+    printf("v "); print_bi(&v, '\n'); */
 
     /* 2. initialize j:
        now u has at most m+n+1 digits and v has n digits, the quotent will
@@ -492,11 +492,12 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
         ujn = uj[v_size];
         ujnm1 = uj[v_size-1];
         ujnm2 = (v_size > 1) ? uj[v_size-2] : 0;
-        // printf("ujn %d ujnm1 %d\n", ujn, ujnm1);
+        /* printf("ujn %d ujnm1 %d\n", ujn, ujnm1); */
+
         /* 3. Estimate qj and rj:
            this step guarentee that q[j] <= qj <= q[j] + 1 */
         utop2 = (((u64) ujn) << BASE_SHIFT) | (u64) ujnm1;
-        // printf("utop2 %lld vnm1 %lld\n", utop2, vnm1);
+        /* printf("utop2 %lld vnm1 %lld\n", utop2, vnm1); */
         qj = (u32) (utop2 / vnm1);
         rj = (u32) (utop2 % vnm1);
         while (qj == DIGIT_BASE
@@ -507,7 +508,7 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
                 break;
             }
         }
-        // printf("qj rj %lld %lld \n", qj, rj);
+        /* printf("qj rj %lld %lld \n", qj, rj); */
 
         /* 4. Substract u[j:j+n] by qj * v[0:n-1]
            because qj could be larger byone, the borrow need to be signed to
@@ -526,7 +527,7 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
         /* 5. if the result of last step is negative i.e. borrow + u[j+n] < 0,
            decrease qj by 1 and add v[0:n-1] back to u[j:j+n] */
         if (((i32) uj[v_size]) < 0) {
-            // printf("uj[v_size]) < 0\n");
+            /* printf("uj[v_size]) < 0\n"); */
             u32 carry = 0;
             /* add v[0:n-1] back to u[j:j+n] */
             for (k = 0; k < v_size; k++) {
@@ -539,16 +540,17 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
 
         /* 6. store and quotent digit qj into q */
         q->digit[j] = qj;
-        // printf("%d ", j); print_bi(q); puts("");
+        /* printf("%d ", j); print_bi(q, '\n'); */
     }
 
     /* the content of u (shifted _u) is now shifted remainder, shift it back */  
     copy_bi(r, &u);
     bi_shr(r, d);
-    // printf("r "); print_bi(r); puts("");
     /* normalize the result */
     bi_normalize(r);
     bi_normalize(q);
+    /* printf("r "); print_bi(r, '\n');
+    printf("q "); print_bi(r, '\n'); */
 }
 
 
@@ -850,7 +852,7 @@ bi_mod(bigint_t* a, bigint_t* b) {
 
 
 inline int
-print_bi(bigint_t* x) {
+print_bi(bigint_t* x, char end) {
     int i, printed_bytes_count = 0;
     if (x->nan) {
         printed_bytes_count = printf("[BiInt] NaN");
@@ -867,6 +869,9 @@ print_bi(bigint_t* x) {
     for (i = 0; i< x->size; i++) {
         printed_bytes_count += printf("%8x, ", x->digit[i]);
         fflush(stdout);
+    }
+    if (end != '\0') {
+        printed_bytes_count += printf("%c", end);
     }
     return printed_bytes_count;
 }
@@ -937,12 +942,15 @@ bi_to_dec_str(bigint_t* x) {
 }
 
 inline int
-print_bi_dec(bigint_t* x) {
+print_bi_dec(bigint_t* x, char end) {
     int printed_bytes_count = 0;
     printed_bytes_count += printf("");
     dynarr_t x_str = bi_to_dec_str(x);
     char* x_cstr = to_str(&x_str);
     printed_bytes_count = printf("[BigInt] %s", x_cstr);
+    if (end != '\0') {
+        printed_bytes_count += printf("%c", end);
+    }
     free(x_cstr);
     free_dynarr(&x_str);
     return printed_bytes_count;
@@ -1048,8 +1056,8 @@ bi_from_str(const char* str) {
             }
 
             /* printf("%d\n", d);
-            print_bi(&x); puts("");
-            print_bi_dec(&x); puts(""); */
+            print_bi(&x, '\n');
+            print_bi_dec(&x, '\n'); */
         }
         bi_normalize(&x);
     }
@@ -1118,7 +1126,7 @@ bi_from_tens_power(i32 exp) {
             copy_bi(&x, &t2);
             exp -= 3;
         }
-        /* print_bigint_dec(&x); puts(""); */
+        /* print_bigint_dec(&x, '\n'); */
     }
     return x;
 }

@@ -92,38 +92,44 @@ free_object(object_t* obj) {
 }
 
 inline int
-print_object(object_t* obj) {
+print_object(object_t* obj, char end) {
     int printed_bytes_count = 0;
     if (obj->type == TYPE_NULL) {
-        return printf("[Null]");
+        printed_bytes_count = printf("[Null]");
     }
     else if (obj->type == TYPE_NUM) {
-        return print_number_frac(&obj->data.number);
+        printed_bytes_count = print_number_frac(&obj->data.number, '\0');
     }
     else if (obj->type == TYPE_PAIR) {
         printed_bytes_count = printf("[Pair] (");
-        printed_bytes_count += print_object(obj->data.pair.left);
+        printed_bytes_count += print_object(obj->data.pair.left, '\0');
         printed_bytes_count += printf(", ");
-        printed_bytes_count += print_object(obj->data.pair.right);
-        putchar(')');
-        return printed_bytes_count + 1;
+        printed_bytes_count += print_object(obj->data.pair.right, '\0');
+        printed_bytes_count += printf(")");
     }
     else if (obj->type == TYPE_FUNC) {
         if (obj->data.func.builtin_name != NOT_BUILTIN_FUNC) {
-            return printf(
+            printed_bytes_count = printf(
                 "[Func] builtin_name=%d", obj->data.func.builtin_name
             );
         }
-        int i;
-        return printf(
-            "[Func] arg_name=%d, entry_index=%d, frame=%p",
-            obj->data.func.arg_name,
-            obj->data.func.entry_index,
-            obj->data.func.init_time_frame
-        );
+        else {
+            printed_bytes_count = printf(
+                "[Func] arg_name=%d, entry_index=%d, frame=%p",
+                obj->data.func.arg_name,
+                obj->data.func.entry_index,
+                obj->data.func.init_time_frame
+            );
+        }
     }
-    printf("print_object: bad object type: %d\n", obj->type);
-    return 0;
+    else {
+        printf("print_object: bad object type: %d\n", obj->type);
+        return 0;
+    }
+    if (end != '\0') {
+        printed_bytes_count += printf("%c", end);
+    }
+    return printed_bytes_count;
 }
 
 inline int

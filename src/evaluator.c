@@ -127,9 +127,9 @@ exec_call(
 #ifdef ENABLE_DEBUG
     if (is_debug) {
         printf("exec_call: call_frame=%p\nfunc_obj=", call_frame);
-        print_object(func_obj); puts("");
+        print_object(func_obj, '\n');
         printf("arg_obj=");
-        print_object(arg_obj); puts("");
+        print_object(arg_obj, '\n');
     }
 #endif
     /* eval from function's entry index */
@@ -512,7 +512,7 @@ eval_tree(
 #ifdef ENABLE_DEBUG
                 if (is_debug) {
                     printf(" defined function:");
-                    print_object(&_OBJ_TABLE(cur_index)); puts("");
+                    print_object(&_OBJ_TABLE(cur_index), '\n');
                 }
 #endif
             }
@@ -528,7 +528,7 @@ eval_tree(
 #ifdef ENABLE_DEBUG
                 if (is_debug) {
                     printf(" defined pure function:");
-                    print_object(&_OBJ_TABLE(cur_index)); puts("");
+                    print_object(&_OBJ_TABLE(cur_index), '\n');
                 }
 #endif
             }
@@ -583,7 +583,7 @@ eval_tree(
 #ifdef ENABLE_DEBUG
                 if (is_debug) {
                     printf("initialized identifier '%s' to ", left_token->str);
-                    print_object(obj_on_frame); puts("");
+                    print_object(obj_on_frame, '\n');
                 }
 #endif
                 _OBJ_TABLE(cur_index) = *obj_on_frame;
@@ -699,7 +699,7 @@ eval_tree(
                     "  get identifiter '%s' (name=%d) from frame (addr=%p): ",
                     cur_token.str, cur_token.name, o
                 );
-                print_object(o); puts("");
+                print_object(o, '\n');
             }
 #endif
         }
@@ -715,8 +715,7 @@ eval_tree(
 #ifdef ENABLE_DEBUG
         if (is_debug) {
             printf("< (node %d) eval result: ", cur_index);
-            print_object(&_OBJ_TABLE(cur_index));
-            puts("");
+            print_object(&_OBJ_TABLE(cur_index), '\n');
             fflush(stdout);
         }
 #endif
@@ -752,7 +751,7 @@ eval_tree(
         ) {
 #ifdef ENABLE_DEBUG
             if (is_debug) {
-                printf("free [%d]:", i); print_object(&obj_table[i]); puts("");
+                printf("free [%d]:", i); print_object(&obj_table[i], '\n');
                 fflush(stdout);
             }
 #endif
@@ -765,7 +764,7 @@ eval_tree(
 #ifdef ENABLE_DEBUG
     if (is_debug) {
         printf("eval_tree returned ");
-        print_object(&tmp_obj_err.obj); puts("");
+        print_object(&tmp_obj_err.obj, '\n');
         fflush(stdout);
     }
 #endif

@@ -44,9 +44,9 @@ extern bigint_t bi_mul(bigint_t* a, bigint_t* b);
 extern bigint_t bi_div(bigint_t* a, bigint_t* b);
 extern bigint_t bi_mod(bigint_t* a, bigint_t* b);
 
-extern int print_bi(bigint_t* x);
+extern int print_bi(bigint_t* x, char end);
 extern dynarr_t bi_to_dec_str(bigint_t* x);
-extern int print_bi_dec(bigint_t* x);
+extern int print_bi_dec(bigint_t* x, char end);
 extern bigint_t bi_from_str(const char* str);
 extern bigint_t bi_from_tens_power(i32 exp);
 

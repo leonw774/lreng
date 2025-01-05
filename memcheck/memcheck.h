@@ -80,7 +80,7 @@ static FILE* MEMCHECK_OUTFILE = NULL;
 static void
 init_memcheck_out_file() {
     if (MEMCHECK_OUTFILE == NULL) {
-        // MEMCHECK_OUTFILE = fopen("memcheck_out.txt", "w+");
+        /* MEMCHECK_OUTFILE = fopen("memcheck_out.txt", "w+"); */
         MEMCHECK_OUTFILE = stdout;
     }
 }

@@ -41,9 +41,9 @@ int main() {
     bigint_t zhex = bi_from_str("0xffffffff");
     bigint_t zdec = bi_from_str("4294967295");
     bigint_t zbin = bi_from_str("0b11111111111111111111111111111111");
-    print_bi_dec(&zhex); puts(" = ");
-    print_bi_dec(&zdec); puts(" = ");
-    print_bi_dec(&zbin); puts("");
+    print_bi_dec(&zhex, '\0'); puts(" = ");
+    print_bi_dec(&zdec, '\0'); puts(" = ");
+    print_bi_dec(&zbin, '\n');
     assert(bi_eq(&zhex, &zdec));
     assert(bi_eq(&zdec, &zbin));
 
@@ -51,57 +51,67 @@ int main() {
 
     /* add */
     result = bi_add(&a, &b);
-    print_bi_dec(&a); printf(" + "); print_bi_dec(&b); puts(" = ");
-    print_bi_dec(&result); puts("");
+    print_bi_dec(&a, '\0'); printf(" + ");
+    print_bi_dec(&b, '\0'); puts(" = ");
+    print_bi_dec(&result, '\n');
     assert(bi_eq(&result, &apb));
 
     result = bi_add(&c, &d);
-    print_bi_dec(&c); printf(" + "); print_bi_dec(&d); puts(" = ");
-    print_bi_dec(&result); puts("");
+    print_bi_dec(&c, '\0'); printf(" + ");
+    print_bi_dec(&d, '\0'); puts(" = ");
+    print_bi_dec(&result, '\n');
     assert(bi_eq(&result, &cpd));
 
     /* sub */
     result = bi_sub(&c, &d);
-    print_bi_dec(&c); printf(" - "); print_bi_dec(&d); puts(" = ");
-    print_bi_dec(&result); puts("");
+    print_bi_dec(&c, '\0'); printf(" - ");
+    print_bi_dec(&d, '\0'); puts(" = ");
+    print_bi_dec(&result, '\n');
     assert(bi_eq(&result, &csd));
 
     result = bi_sub(&e, &f);
-    print_bi_dec(&e); printf(" - "); print_bi_dec(&f); puts(" = ");
-    print_bi_dec(&result); puts("");
+    print_bi_dec(&e, '\0'); printf(" - ");
+    print_bi_dec(&f, '\0'); puts(" = ");
+    print_bi_dec(&result, '\n');
     assert(bi_eq(&result, &esf));
 
     /* mul */
     result = bi_mul(&e, &f);
-    print_bi_dec(&e); printf(" * "); print_bi_dec(&f); puts(" = ");
-    print_bi_dec(&result); puts("");
+    print_bi_dec(&e, '\0'); printf(" * ");
+    print_bi_dec(&f, '\0'); puts(" = ");
+    print_bi_dec(&result, '\n');
     assert(bi_eq(&result, &emf));
 
     result = bi_mul(&g, &h);
-    print_bi_dec(&g); printf(" * "); print_bi_dec(&h); puts(" = ");
-    print_bi_dec(&result); puts("");
+    print_bi_dec(&g, '\0'); printf(" * ");
+    print_bi_dec(&h, '\0'); puts(" = ");
+    print_bi_dec(&result, '\n');
     assert(bi_eq(&result, &gmh));
 
     /* div */
     result = bi_div(&g, &h);
-    print_bi_dec(&g); printf(" / "); print_bi_dec(&h); puts(" = ");
-    print_bi_dec(&result); puts("");
+    print_bi_dec(&g, '\0'); printf(" / ");
+    print_bi_dec(&h, '\0'); puts(" = ");
+    print_bi_dec(&result, '\n');
     assert(bi_eq(&result, &gdh));
 
     result = bi_div(&i, &j);
-    print_bi_dec(&i); printf(" / "); print_bi_dec(&j); puts(" = ");
-    print_bi_dec(&result); puts("");
+    print_bi_dec(&i, '\0'); printf(" / ");
+    print_bi_dec(&j, '\0'); puts(" = ");
+    print_bi_dec(&result, '\n');
     assert(bi_eq(&result, &idj));
 
     /* mod */
     result = bi_mod(&i, &j);
-    print_bi_dec(&i); printf(" %% "); print_bi_dec(&j); puts(" = ");
-    print_bi_dec(&result); puts("");
+    print_bi_dec(&i, '\0'); printf(" %% ");
+    print_bi_dec(&j, '\0'); puts(" = ");
+    print_bi_dec(&result, '\n');
     assert(bi_eq(&result, &imodj));
 
     result = bi_mod(&a, &b);
-    print_bi_dec(&a); printf(" %% "); print_bi_dec(&b); puts(" = ");
-    print_bi_dec(&result); puts("");
+    print_bi_dec(&a, '\0'); printf(" %% ");
+    print_bi_dec(&b, '\0'); puts(" = ");
+    print_bi_dec(&result, '\n');
     assert(bi_eq(&result, &amodb));
 
     /* very big */
@@ -110,17 +120,17 @@ int main() {
     bigint_t bery_big_1m2 = bi_from_str("8787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
     bigint_t bery_big_1d2 = bi_from_str("1137931034482758620689655172413793103448275862068965517241379310344827586206896551724137931034482758620689655172413793103448275862068965517241379310344827586206896551724137931034482758620689655172413793103448275862068965517241379310344827586206896");
 
-    printf("very_big_1:\n"); print_bi(&very_big_1); puts("");
-    printf("very_big_2:\n"); print_bi(&very_big_2); puts("");
+    printf("very_big_1:\n"); print_bi(&very_big_1, '\n');
+    printf("very_big_2:\n"); print_bi(&very_big_2, '\n');
 
     result = bi_mul(&very_big_1, &very_big_2);
     printf("very_big_1 * very_big_2"); puts(" = ");
-    print_bi_dec(&result); puts("");
+    print_bi_dec(&result, '\n');
     assert(bi_eq(&result, &bery_big_1m2));
 
     result = bi_div(&very_big_1, &very_big_2);
     printf("very_big_1 / very_big_2"); puts(" = ");
-    print_bi_dec(&result); puts("");
+    print_bi_dec(&result, '\n');
     assert(bi_eq(&result, &bery_big_1d2));
 
     printf("all passed\n");

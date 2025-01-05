@@ -68,7 +68,7 @@ extern const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM + 1];
 /* deep copy an object */
 extern object_t copy_object(const object_t* obj);
 extern void free_object(object_t* obj);
-extern int print_object(object_t* obj);
+extern int print_object(object_t* obj, char end);
 
 extern int object_eq(object_t* a, object_t* b);
 extern int to_bool(object_t* obj);
