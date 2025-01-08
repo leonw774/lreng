@@ -39,7 +39,7 @@ copy_frame(const frame_t* f) {
     name_obj_pair_t src_pair, dst_pair;
     new_stack(clone_frame);
     for (i = 0; i < f->stack.size; i++) {
-        push_stack(clone_frame, *(int*) at(&f->entry_indices, i));
+        push_stack(clone_frame, *(int*) at(&f->indexs, i));
         src_pairs = at(&f->stack, i);
         dst_pairs = at(&clone_frame->stack, i);
         for (j = 0; j < src_pairs->size; j++) {
@@ -68,14 +68,14 @@ free_frame(frame_t* f) {
 
 inline void
 new_stack(frame_t* f) {
-    f->entry_indices = new_dynarr(sizeof(int));
+    f->indexs = new_dynarr(sizeof(int));
     f->stack = new_dynarr(sizeof(dynarr_t));
 }
 
 /* push new stack_start_index */
 inline void
 push_stack(frame_t* f, const int entry_index) {
-    append(&f->entry_indices, &entry_index);
+    append(&f->indexs, &entry_index);
     dynarr_t new_pairs = new_dynarr(sizeof(name_obj_pair_t));
     append(&f->stack, &new_pairs);
 }
@@ -84,7 +84,7 @@ push_stack(frame_t* f, const int entry_index) {
 inline void
 pop_stack(frame_t* f) {
     int i;
-    if (f->entry_indices.size == 0) {
+    if (f->indexs.size == 0) {
         return;
     }
     dynarr_t* last_pairs = back(&f->stack);
@@ -93,14 +93,14 @@ pop_stack(frame_t* f) {
     }
     free_dynarr(last_pairs);
     pop(&f->stack);
-    pop(&f->entry_indices);
+    pop(&f->indexs);
 }
 
 /* free call stack but not the global */
 inline void
 clear_stack(frame_t* f, const int can_free_pairs) {
     int i, j;
-    free_dynarr(&f->entry_indices);
+    free_dynarr(&f->indexs);
     if (can_free_pairs) {
         for (i = 0; i < f->stack.size; i++) {
             dynarr_t* pairs = at(&f->stack, i);
@@ -140,7 +140,7 @@ frame_set(frame_t* f, const int name, const object_t* obj) {
     int i;
     object_t* found_object = NULL;
     dynarr_t* pairs;
-    if (f->entry_indices.size == 0) {
+    if (f->indexs.size == 0) {
         pairs = &f->global_pairs;
     }
     else {

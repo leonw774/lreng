@@ -5,7 +5,7 @@
 #include "lreng.h"
 
 #define IS_PREFIXER(op) ( \
-    op == OP_LBRACE || op == OP_FMAKE || op == OP_LPIPEBRACE || op == OP_LFMAKE \
+    op == OP_LCURLY || op == OP_FMAKE || op == OP_LSQUARE || op == OP_MMAKE \
     || op == OP_LPAREN || op == OP_POS || op == OP_NEG || op == OP_NOT \
     || op == OP_GETL || op == OP_GETR \
 )
@@ -136,14 +136,14 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
                 token_t fcall = {NULL, OP_FCALL, TOK_OP, frame_top->pos};
                 append(&output, &fcall);
             }
-            else if (top_op == OP_LBRACE && cur_op == OP_RBRACE) {
+            else if (top_op == OP_LCURLY && cur_op == OP_RCURLY) {
                 /* function maker */
                 token_t fmake = {NULL, OP_FMAKE, TOK_OP, frame_top->pos};
                 append(&output, &fmake);
             }
-            else if (top_op == OP_LPIPEBRACE && cur_op == OP_RPIPEBRACE) {
+            else if (top_op == OP_LSQUARE && cur_op == OP_RSQUARE) {
                 /* pure function maker */
-                token_t pfmake = {NULL, OP_LFMAKE, TOK_OP, frame_top->pos};
+                token_t pfmake = {NULL, OP_MMAKE, TOK_OP, frame_top->pos};
                 append(&output, &pfmake);
             }
             else if (!(top_op == OP_LPAREN && cur_op == OP_RPAREN)) {

@@ -71,59 +71,78 @@ exec_call(
         }
         return func_ptr(arg_obj);
     }
+
 #ifdef ENABLE_DEBUG
     if (is_debug) {
         printf("exec_call: prepare call frame\n");
     }
 #endif
-    int i, is_forked = 0, create_index = -1, cur_index = -1;
-    frame_t* call_frame = calloc(1, sizeof(frame_t));
-    call_frame->global_pairs = cur_frame->global_pairs;
-    new_stack(call_frame);
-    if (!func_obj->data.func.is_pure) {
-        #define func_init_time_frame func_obj->data.func.init_time_frame
-        /* if the i-th stack of init-time frame and current frame is the
-        same, call-frame's i-th stack = current frame's i-th stack. but once the
-        entry_index is different they are in different closure path, so only
-        the rest of init-time-frame stack is used */
-        for (i = 0; i < func_init_time_frame->entry_indices.size; i++) {
-            create_index = *(int*) at(&func_init_time_frame->entry_indices, i);
-            cur_index = -1;
-            if (i < cur_frame->entry_indices.size) {
-                cur_index = *(int*) at(&cur_frame->entry_indices, i);
-            }
-            /* push the entry_index */
-            append(&call_frame->entry_indices, &create_index);
+    frame_t* call_frame;
+    if (func_obj->data.func.is_macro) {
+        call_frame = (frame_t*) cur_frame;
+    }
+    else {
+        #define f_init_frame func_obj->data.func.init_time_frame
+        int i, last_cur_index, cur_index = -1, init_index = -1, is_forked = 0;
+        call_frame = calloc(1, sizeof(frame_t));
+        call_frame->global_pairs = cur_frame->global_pairs;
 
-            dynarr_t* src_pairs = NULL;
-            if (!is_forked && cur_index == create_index) {
-                src_pairs = (dynarr_t*) at(&cur_frame->stack, i);
-#ifdef ENABLE_DEBUG
-                if (is_debug) {
-                    printf("exec_call: stack[%d] use current\n", i);
+        if (
+            cur_frame->stack.size > 0
+            && *(int*) back(&cur_frame->indexs) == func_obj->data.func.index
+        ) {
+            // if is recursion, copy the current stack except the last
+            call_frame->indexs = copy_dynarr(&cur_frame->indexs);
+            pop(&call_frame->indexs);
+            call_frame->stack = copy_dynarr(&cur_frame->stack);
+            pop(&call_frame->stack);
+        }
+        else {
+            /* if the i-th stack of init-time frame and current frame is the
+            same, call-frame's i-th stack = current frame's i-th stack. but once
+            the entry_index is different they are in different closure path, so
+            only the rest of init-time-frame stack is used */
+            new_stack(call_frame);
+            for (i = 0; i < f_init_frame->stack.size; i++) {
+                init_index = *(int*) at(&f_init_frame->indexs, i);
+                cur_index = -1;
+                if (i < cur_frame->stack.size) {
+                    cur_index = *(int*) at(&cur_frame->indexs, i);
                 }
-#endif
-            }
-            else {
-                is_forked = 1;
-                src_pairs = (dynarr_t*) at(&func_init_time_frame->stack, i);
-#ifdef ENABLE_DEBUG
-                if (is_debug) {
-                    printf("exec_call: stack[%d] use init-time\n", i);
+                /* push the entry_index */
+                append(&call_frame->indexs, &init_index);
+
+                dynarr_t* src_pairs = NULL;
+                if (!is_forked && cur_index == init_index) {
+                    src_pairs = (dynarr_t*) at(&cur_frame->stack, i);
+    #ifdef ENABLE_DEBUG
+                    if (is_debug) {
+                        printf("exec_call: stack[%d] use current\n", i);
+                    }
+    #endif
                 }
-#endif
+                else {
+                    is_forked = 1;
+                    src_pairs = (dynarr_t*) at(&f_init_frame->stack, i);
+    #ifdef ENABLE_DEBUG
+                    if (is_debug) {
+                        printf("exec_call: stack[%d] use init-time\n", i);
+                    }
+    #endif
+                }
+                /* push the shallow copy of source pairs */
+                append(&call_frame->stack, src_pairs);
             }
-            /* push the shallow copy of source pairs */
-            append(&call_frame->stack, src_pairs);
+        }
+
+        /* push new stack to call_frame and set argument */
+        push_stack(call_frame, func_obj->data.func.index);
+        if (func_obj->data.func.arg_name != -1) {
+            frame_set(call_frame, func_obj->data.func.arg_name, arg_obj);
         }
         #undef func_init_time_frame
     }
 
-    /* push new stack to call_frame and set argument */
-    push_stack(call_frame, func_obj->data.func.entry_index);
-    if (func_obj->data.func.arg_name != -1) {
-        frame_set(call_frame, func_obj->data.func.arg_name, arg_obj);
-    }
 #ifdef ENABLE_DEBUG
     if (is_debug) {
         printf("exec_call: call_frame=%p\nfunc_obj=", call_frame);
@@ -136,14 +155,16 @@ exec_call(
     object_or_error_t res = eval_tree(
         tree,
         call_frame,
-        func_obj->data.func.entry_index,
+        func_obj->data.func.index,
         is_debug
     );
-    /* free the object own by this call */
-    pop_stack(call_frame);
-    /* free the rest of stack but not free bollowed pairs */
-    clear_stack(call_frame, 0);
-    free(call_frame);
+    if (!func_obj->data.func.is_macro) {
+        /* free the object own by this function call */
+        pop_stack(call_frame);
+        /* free the rest of stack but not free bollowed pairs */
+        clear_stack(call_frame, 0);
+        free(call_frame);
+    }
     return res;
 }
 
@@ -502,10 +523,10 @@ eval_tree(
             if (cur_token.name == OP_FMAKE) {
                 _OBJ_TABLE(cur_index).type = TYPE_FUNC;
                 (_OBJ_TABLE(cur_index)).data.func = (func_t) {
-                    .is_pure = 0,
+                    .is_macro = 0,
                     .builtin_name = NOT_BUILTIN_FUNC,
                     .arg_name = -1,
-                    .entry_index = left_index,
+                    .index = left_index,
                     /* owns a deep copy of the frame it created under */
                     .init_time_frame = copy_frame(cur_frame)
                 };
@@ -516,13 +537,13 @@ eval_tree(
                 }
 #endif
             }
-            else if (cur_token.name == OP_LFMAKE) {
+            else if (cur_token.name == OP_MMAKE) {
                 _OBJ_TABLE(cur_index).type = TYPE_FUNC;
                 (_OBJ_TABLE(cur_index)).data.func = (func_t) {
-                    .is_pure = 1,
+                    .is_macro = 1,
                     .builtin_name = NOT_BUILTIN_FUNC,
                     .arg_name = -1,
-                    .entry_index = left_index,
+                    .index = left_index,
                     .init_time_frame = NULL
                 };
 #ifdef ENABLE_DEBUG

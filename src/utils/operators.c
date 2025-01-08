@@ -1,7 +1,7 @@
 #include "operators.h"
 
 const char* const OP_STRS[] = {
-    "{", "}", "@", "{|", "|}", "@|",
+    "{", "}", "@", "[", "]", "@!",
     "(", ")", "()",
     "+", "-", "!", "`", "~",
     "^",
@@ -40,7 +40,7 @@ const unsigned char OP_PRECEDENCES[] = {
     16
 };
 
-const char OP_CHARS[] = "{}()!`~^*/%+-<>=&|,$=?;";
+const char OP_CHARS[] = "{}()[]!`~^*/%+-<>=&|,$=?;";
 
 const unsigned char IS_UNARY_OP[] = {
     0, 0, 1, 0, 0, 1,
@@ -75,7 +75,5 @@ is_2char_op(char left, char right) {
     }
     return (left == '=' && right == '>')
         || (left == '&' && right == '&')
-        || (left == '|' && right == '|')
-        || (left == '{' && right == '|')
-        || (left == '|' && right == '}');
+        || (left == '|' && right == '|');
 }

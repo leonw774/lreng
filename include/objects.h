@@ -28,10 +28,10 @@ typedef struct pair {
 typedef struct frame frame_t;
 
 typedef struct func {
-    int is_pure;
-    int entry_index;
-    int arg_name; /* -1 if no arg */
+    int is_macro;
     int builtin_name; /* -1 if is not builtin function */
+    int index; /* the index on tree */
+    int arg_name; /* -1 if no arg */
     frame_t* init_time_frame;
 } func_t;
 

@@ -18,26 +18,23 @@
                   ((c) >= 'a' && (c) <= 'f') || \
                   ((c) >= 'A' && (c) <= 'F'))
 
-token_type_enum
+static inline token_type_enum
 get_op_tok_type(char* op_str) {
     char c = op_str[0];
     /* if is 2-char operator */
     if (op_str[1] != '\0') {
-        if (op_str[0] == '{' && op_str[1] == '|') {
-            return TOK_LB;
-        }
-        if (op_str[0] == '|' && op_str[1] == '}') {
-            return TOK_RB;
-        }
         return TOK_OP;
     }
     if (
-        c == OP_STRS[OP_LBRACE][0] || c == OP_STRS[OP_LPAREN][0]
-        || c == OP_STRS[OP_FCALL][0]
+        c == OP_STRS[OP_LCURLY][0] || c == OP_STRS[OP_LSQUARE][0]
+        || c == OP_STRS[OP_LPAREN][0] || c == OP_STRS[OP_FCALL][0]
     ) {
         return TOK_LB;
     }
-    else if (c == OP_STRS[OP_RBRACE][0] || c == OP_STRS[OP_RPAREN][0]) {
+    else if (
+        c == OP_STRS[OP_RCURLY][0] || c == OP_STRS[OP_RSQUARE][0]
+        || c == OP_STRS[OP_RPAREN][0]
+    ) {
         return TOK_RB;
     }
     return TOK_OP;
@@ -69,7 +66,7 @@ get_op_enum(token_t* last_token, char* op_str) {
     for (op = 0; op < OPERATOR_COUNT; op++) {
         /* ignore special */
         if (
-            op == OP_FMAKE || op == OP_LFMAKE || op == OP_FCALL
+            op == OP_FMAKE || op == OP_MMAKE || op == OP_FCALL
             || op == OP_POS || op == OP_NEG
         ) {
             continue;
@@ -119,11 +116,13 @@ typedef struct cargo {
 /* append cargo.str it to cargo.tokens, and clear cargo.str */
 void
 harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos) {
+    char* tok_str = (char*) to_str(&cur_cargo->str);
     if (type == TOK_OP || type == TOK_LB || type == TOK_RB) {
         op_name_enum op = get_op_enum(
             (token_t*) back(&cur_cargo->tokens),
-            cur_cargo->str.data
+            tok_str
         );
+        free(tok_str);
         if (op == -1) {
             throw_syntax_error(
                 pos.line, pos.col,
@@ -146,7 +145,6 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos) {
     }
     else {
         int i, is_in_reserved_ids = 0;
-        char* tok_str = (char*) to_str(&cur_cargo->str);
         if (cur_cargo->str.size >= 128) {
             throw_syntax_error(
                 pos.line, pos.col,

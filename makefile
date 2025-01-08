@@ -1,4 +1,5 @@
 CFLAGS = -I include/
+PROFILE_FLAGS = -fno-pie -no-pie -pg -O2
 DEBUG_FLAGS = -g -D ENABLE_DEBUG
 MEMCHECK_FLAGS = -include memcheck/memcheck.h -Wno-implicit-function-declaration
 
@@ -15,6 +16,9 @@ MAIN_TARGET = lreng
 
 all: CFLAGS += -O2
 all: $(MAIN_TARGET)
+
+profile: CFLAGS += $(PROFILE_FLAGS)
+profile: $(MAIN_TARGET)
 
 debug: CFLAGS += $(DEBUG_FLAGS)
 debug: $(MAIN_TARGET) $(TEST_TARGET)

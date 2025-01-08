@@ -11,8 +11,8 @@ typedef struct name_object_pair {
 
 typedef struct frame {
     dynarr_t global_pairs; /* type: name_obj_pair_t */
-    /* entry_indices & stack stores the name obj pairs for call stack */
-    dynarr_t entry_indices; /* type: int */
+    /* indexs & stack stores the name obj pairs for call stack */
+    dynarr_t indexs; /* type: int */
     dynarr_t stack; /* type: dynarr_t of name_obj_pair_t */
     int refer_count;
 } frame_t;

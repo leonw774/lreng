@@ -11,13 +11,13 @@ const object_t const RESERVED_OBJS[RESERVED_ID_NUM] = {
     NULL_OBJECT,
     (object_t) {.type = TYPE_FUNC, .data = { .func = {
         .init_time_frame = NULL,
-        .entry_index = -1,
+        .index = -1,
         .arg_name = -1,
         .builtin_name = RESERVED_ID_NAME_INPUT
     }}},
     (object_t) { .type = TYPE_FUNC, .data = { .func = {
         .init_time_frame = NULL,
-        .entry_index = -1,
+        .index = -1,
         .arg_name = -1,
         .builtin_name = RESERVED_ID_NAME_OUTPUT
     }}}
@@ -117,7 +117,7 @@ print_object(object_t* obj, char end) {
             printed_bytes_count = printf(
                 "[Func] arg_name=%d, entry_index=%d, frame=%p",
                 obj->data.func.arg_name,
-                obj->data.func.entry_index,
+                obj->data.func.index,
                 obj->data.func.init_time_frame
             );
         }
@@ -143,7 +143,7 @@ object_eq(object_t* a, object_t* b) {
             a_func->arg_name == b_func->arg_name
             && a_func->builtin_name == b_func->builtin_name
             && a_func->init_time_frame == b_func->init_time_frame
-            && a_func->entry_index == b_func->entry_index
+            && a_func->index == b_func->index
         );
     }
     else if (a->type == TYPE_NULL) {

@@ -1,13 +1,13 @@
 concat_list = list_pair => {
     left_list = `list_pair;
     right_list = ~list_pair;
-    left_list == null
-        && right_list
-        || (
-            ~left_list == null
-                && (`left_list, right_list)
-                || (`left_list, concat_list(~left_list, ~list_pair))
-        )
+    left_list == null ? [
+        right_list
+    ], [
+        ~left_list == null
+            && (`left_list, right_list)
+            || (`left_list, concat_list(~left_list, ~list_pair))
+    ]
 };
 format_int = i => {
     i < 10

@@ -18,20 +18,20 @@ All variables are immutable.
 
 ### Types
 
-There are 5 types:
+There are 4 types:
 - Null: The unit type. Has key word `null`.
 - Number: Numbers in lreng are all rational numbers 
   - You can represent numbers in decimal with point: `3.14159`
   - You can represent integers in binary and heximal: `0b110011`, `0xc0de`
   - You can represent the code of printable and escapable ASCII characters. For example, `'A'` evaluates to `65`, `'\\'` is `92`, and `'\n'` is `10`
 - Pair: Store the reference to two data, tagged `left` and `right`;
-- Function: A callable expression that can pass in at most one argument. There are two kinds of functions:
-  - Normal: normal function can access both global and scoped variables from outside
-  - Lambda: lambda function can access global but not scoped variables from outside 
+- Callable: A expression that can be called or jumped to.
+  - Function: A callable that can pass in at most one argument.
+  - Macro: A callable that does not have its own stack and cannot pass in argument.
 
 ### Global and Scoped
 
-Variable is global when iti is not initialized in a function. Scoped variables are initialized in a function.
+Variable is global when it is not initialized in a callable. Scoped variables are initialized in a callable.
 
 
 ## Operators
@@ -81,7 +81,7 @@ The `&&` (CONDITION-AND) and  `||` (CONDITION-OR) are the logical operations tha
  1              | `x`                   | no
  0              | `y`                   | yes
 
-For example, `x == 1 && 3` evaluates to `3` if `x` is `1` and otherwise evaluates to `0`. Notice that `x == 1 && 0 || -1` always evaluates to `-1` because `x == 1 && 0` evaluated to `0` no matter `x` equals `0` or not. So the idiom `cond && t || f` does not work extactly the same as `if cond then t else f` since `t` could be `0` or `null`. The equivalent of "if-then-else" is `cond && t; !cond || f` or with conditional function pair caller `cond ? { t }, { f }`.
+For example, `x == 1 && 3` evaluates to `3` if `x` is `1` and otherwise evaluates to `0`. Notice that `x == 1 && 0 || -1` always evaluates to `-1` because `x == 1 && 0` evaluated to `0` no matter `x` equals `0` or not. So the idiom `cond && t || f` does not work extactly the same as `if cond then t else f` since `t` could be `0` or `null`. The equivalent of "if-then-else" is `cond && t; !cond || f` or using conditional pair caller and macros `cond ? [ t ], [ f ]`.
 
 ### Pair maker, left getter and right getter
 
@@ -97,21 +97,25 @@ print(hello_world)
 
 The `` `string `` is used to get data and `~string` is to get next.
 
-### Function makers and argument binder
+### Function maker and argument binder
 
-The function makers `{ ... }` and `{| ... |}` turns the wrapped expression into a normal and a lambda function. The created function has no argument by default. Function must evaluate to a value. Empty function is not allowed.
+The function makers `{ ... }`  and macro maker turns the wrapped expression into a function. The created function has no argument by default. Empty function is not allowed.
 
 The argument binder `x => func` binds *one* argument identifier to a function.
 
-### Function callers
+### Macro maker
 
-The function callers are `()` and `$`. The syntax is `foo(expr)` and `foo $ expr`. They assigns the evaluated result of the expression to the argument variable of the callable (if any) and evaluates the callable.
+Like the function, the macro maker `[ ... ]` turns the wrapped expression into a macro. Macro do not use argument and empty macro is also not allowed.  
 
-Note that `$` is right-associative, just like in Haskell, designed to apply multiple callables on a value without too much parenthese. The following codes are equivalent: `f3 $ f2 $ f1 $ val` and `f3(f2(f1(val)))`.
+### Callers
+
+The callers are `()` and `$`. The syntax is `foo(expr)` and `foo $ expr`. They assigns the evaluated result of the expression to the argument variable of the callable (if any) and evaluates the callable. If the callable `foo` is macro, it simply ignores the argument.
+
+The `$` is right-associative, just like in Haskell, designed to apply multiple callables on a value without too much parenthese. The following codes are equivalent: `f3 $ f2 $ f1 $ val` and `f3(f2(f1(val)))`.
 
 The syntax `foo()` is valid and will be parsed as `foo(null)`.
 
-### Conditional pair function caller
+### Conditional pair caller
 
 The `?` operator is designed to do proper conditional expression evaluation. The syntax is `cond ? callable_pair`. If `cond` is true, the `` `callable_pair `` is called, otherwise, the `~callable_pair` is called. The passed argument is always null.
 
