@@ -43,5 +43,8 @@ merge:
 		-e '1s/^/#include<stdio.h>\n#include<stdlib.h>\n#include<stdint.h>\n/' \
 		-e '/^#include ["<>a-z_.]*/d' > lreng.c
 
+dumpasm:
+	objdump -aS ./lreng > > lreng.asm
+
 clean:
 	rm $(MAIN_TARGET) $(TEST_TARGET) || true

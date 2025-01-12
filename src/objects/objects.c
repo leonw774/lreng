@@ -9,13 +9,13 @@
 
 const object_t const RESERVED_OBJS[RESERVED_ID_NUM] = {
     NULL_OBJECT,
-    (object_t) {.type = TYPE_FUNC, .data = { .func = {
+    (object_t) {.type = TYPE_FUNC, .data = { .callable = {
         .init_time_frame = NULL,
         .index = -1,
         .arg_name = -1,
         .builtin_name = RESERVED_ID_NAME_INPUT
     }}},
-    (object_t) { .type = TYPE_FUNC, .data = { .func = {
+    (object_t) { .type = TYPE_FUNC, .data = { .callable = {
         .init_time_frame = NULL,
         .index = -1,
         .arg_name = -1,
@@ -51,8 +51,8 @@ copy_object(const object_t* obj) {
         /* only shallow copy the frame */
         clone = *obj;
         /* refer count += 1 if is not builtin function */
-        if (clone.data.func.init_time_frame) {
-            clone.data.func.init_time_frame->refer_count++;
+        if (clone.data.callable.init_time_frame) {
+            clone.data.callable.init_time_frame->refer_count++;
         }
         return clone;
     default:
@@ -73,12 +73,11 @@ free_object(object_t* obj) {
     }
     else if (obj->type = TYPE_FUNC) {
         /* if is builtin function, it doesn't have frame */
-        if (obj->data.func.builtin_name != NOT_BUILTIN_FUNC) {
+        if (obj->data.callable.builtin_name != NOT_BUILTIN_FUNC) {
             return;
         }
-        #define obj_init_time_frame obj->data.func.init_time_frame
+        #define obj_init_time_frame obj->data.callable.init_time_frame
         if (obj_init_time_frame != NULL) {
-            // printf("free_object: frame %p refer_count=%d\n", f, f->refer_count);
             if (obj_init_time_frame->refer_count <= 1) {
                 clear_stack(obj_init_time_frame, 1);
                 free(obj_init_time_frame);
@@ -108,17 +107,17 @@ print_object(object_t* obj, char end) {
         printed_bytes_count += printf(")");
     }
     else if (obj->type == TYPE_FUNC) {
-        if (obj->data.func.builtin_name != NOT_BUILTIN_FUNC) {
+        if (obj->data.callable.builtin_name != NOT_BUILTIN_FUNC) {
             printed_bytes_count = printf(
-                "[Func] builtin_name=%d", obj->data.func.builtin_name
+                "[Func] builtin_name=%d", obj->data.callable.builtin_name
             );
         }
         else {
             printed_bytes_count = printf(
                 "[Func] arg_name=%d, entry_index=%d, frame=%p",
-                obj->data.func.arg_name,
-                obj->data.func.index,
-                obj->data.func.init_time_frame
+                obj->data.callable.arg_name,
+                obj->data.callable.index,
+                obj->data.callable.init_time_frame
             );
         }
     }
@@ -138,7 +137,7 @@ object_eq(object_t* a, object_t* b) {
         return 0;
     }
     else if (a->type == TYPE_FUNC) {
-        func_t *a_func = &a->data.func, *b_func = &b->data.func;
+        callable_t *a_func = &a->data.callable, *b_func = &b->data.callable;
         return (
             a_func->arg_name == b_func->arg_name
             && a_func->builtin_name == b_func->builtin_name

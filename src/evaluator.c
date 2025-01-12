@@ -63,9 +63,9 @@ exec_call(
     const int is_debug
 ) {
     /* if is builtin */
-    if (func_obj->data.func.builtin_name != -1) {
+    if (func_obj->data.callable.builtin_name != -1) {
         object_or_error_t (*func_ptr)(object_t*) =
-            BUILDTIN_FUNC_ARRAY[func_obj->data.func.builtin_name];
+            BUILDTIN_FUNC_ARRAY[func_obj->data.callable.builtin_name];
         if (func_ptr == NULL) {
             return ERR_OBJERR();
         }
@@ -78,18 +78,18 @@ exec_call(
     }
 #endif
     frame_t* call_frame;
-    if (func_obj->data.func.is_macro) {
+    if (func_obj->data.callable.is_macro) {
         call_frame = (frame_t*) cur_frame;
     }
     else {
-        #define f_init_frame func_obj->data.func.init_time_frame
+        #define f_init_frame func_obj->data.callable.init_time_frame
         int i, last_cur_index, cur_index = -1, init_index = -1, is_forked = 0;
         call_frame = calloc(1, sizeof(frame_t));
         call_frame->global_pairs = cur_frame->global_pairs;
 
         if (
             cur_frame->stack.size > 0
-            && *(int*) back(&cur_frame->indexs) == func_obj->data.func.index
+            && *(int*) back(&cur_frame->indexs) == func_obj->data.callable.index
         ) {
             // if is recursion, copy the current stack except the last
             call_frame->indexs = copy_dynarr(&cur_frame->indexs);
@@ -136,9 +136,9 @@ exec_call(
         }
 
         /* push new stack to call_frame and set argument */
-        push_stack(call_frame, func_obj->data.func.index);
-        if (func_obj->data.func.arg_name != -1) {
-            frame_set(call_frame, func_obj->data.func.arg_name, arg_obj);
+        push_stack(call_frame, func_obj->data.callable.index);
+        if (func_obj->data.callable.arg_name != -1) {
+            frame_set(call_frame, func_obj->data.callable.arg_name, arg_obj);
         }
         #undef func_init_time_frame
     }
@@ -155,10 +155,10 @@ exec_call(
     object_or_error_t res = eval_tree(
         tree,
         call_frame,
-        func_obj->data.func.index,
+        func_obj->data.callable.index,
         is_debug
     );
-    if (!func_obj->data.func.is_macro) {
+    if (!func_obj->data.callable.is_macro) {
         /* free the object own by this function call */
         pop_stack(call_frame);
         /* free the rest of stack but not free bollowed pairs */
@@ -501,7 +501,7 @@ eval_tree(
             /* function maker */
             case OP_FMAKE:
                 _OBJ_TABLE(cur_index).type = TYPE_FUNC;
-                (_OBJ_TABLE(cur_index)).data.func = (func_t) {
+                (_OBJ_TABLE(cur_index)).data.callable = (callable_t) {
                     .is_macro = 0,
                     .builtin_name = NOT_BUILTIN_FUNC,
                     .arg_name = -1,
@@ -519,7 +519,7 @@ eval_tree(
             /* macro maker */
             case OP_MMAKE:
                 _OBJ_TABLE(cur_index).type = TYPE_FUNC;
-                (_OBJ_TABLE(cur_index)).data.func = (func_t) {
+                (_OBJ_TABLE(cur_index)).data.callable = (callable_t) {
                     .is_macro = 1,
                     .builtin_name = NOT_BUILTIN_FUNC,
                     .arg_name = -1,
@@ -552,7 +552,7 @@ eval_tree(
                 _OBJ_TABLE(cur_index) = *right_obj;
                 *right_obj = NULL_OBJECT;
                 _IS_FROM_FRAME(cur_index) = _IS_FROM_FRAME(right_index);
-                _OBJ_TABLE(cur_index).data.func.arg_name = left_token->name;
+                _OBJ_TABLE(cur_index).data.callable.arg_name = left_token->name;
                 break;
             /* assignment */
             case OP_ASSIGN:

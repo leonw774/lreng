@@ -27,20 +27,20 @@ typedef struct pair {
 
 typedef struct frame frame_t;
 
-typedef struct func {
+typedef struct callable {
     int is_macro;
     int builtin_name; /* -1 if is not builtin function */
     int index; /* the index on tree */
     int arg_name; /* -1 if no arg */
     frame_t* init_time_frame;
-} func_t;
+} callable_t;
 
 #define NOT_BUILTIN_FUNC -1
 
 union object_union {
     number_t number;
     pair_t pair;
-    func_t func;
+    callable_t callable;
 };
 
 typedef struct object {

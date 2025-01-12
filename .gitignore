@@ -37,6 +37,7 @@
 # Outputs
 lreng
 lreng.c
+lreng.asm
 *.out*
 debug.txt
 memcheck_out.txt

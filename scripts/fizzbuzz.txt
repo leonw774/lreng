@@ -33,4 +33,4 @@ fizzbuzz = n => {
     );
     output('\n')
 };
-fizzbuzz(6000)
+fizzbuzz(30)
