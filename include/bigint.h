@@ -16,10 +16,10 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 
 typedef struct bigint {
-    u8 shared;
-    u8 nan;
     u8 sign;
+    u8 nan;
     u8 size; /* size is zero if the value is zero */
+    u8 shared;
     u32* digit;
 } bigint_t;
 

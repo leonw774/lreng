@@ -53,13 +53,10 @@ to_str(dynarr_t* x) {
 
 inline void
 append(dynarr_t* x, const void* const elem) {
-    if (x->data == NULL) return;
+    // if (x->data == NULL) return;
     if (x->size == x->cap) {
         x->cap *= 2;
-        void* tmp = realloc(x->data, x->elem_size * x->cap);
-        if (tmp) {
-            x->data = tmp;
-        }
+        x->data = realloc(x->data, x->elem_size * x->cap);
     }
     memcpy(x->data + x->elem_size * x->size, elem, x->elem_size);
     x->size++;
@@ -79,7 +76,10 @@ at(const dynarr_t* x, const unsigned int index) {
 
 inline void*
 back(const dynarr_t* x) {
-    if (x->data == NULL || x->size == 0) {
+    // if (x->data == NULL) {
+    //     return NULL;
+    // }
+    if (x->size == 0) {
         return NULL;
     }
     return x->data + (x->size - 1) * x->elem_size;

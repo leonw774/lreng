@@ -11,7 +11,7 @@
 int
 main(int argc, char** argv) {
     const char* usage = "Usage: lreng [-d] [-t tout_path] {file_path}\n";
-    int i, is_debug = 0, is_transpile = 0;
+    int is_debug = 0, is_transpile = 0;
     char* file_path = NULL;
     FILE* in_fp = NULL;
     long fsize = 0;
@@ -59,7 +59,10 @@ main(int argc, char** argv) {
     fread(src, 1, fsize, in_fp);
     src[fsize] = '\0';
     fclose(in_fp);
-
+#ifdef IS_PROFILE
+int i;
+for (i = 0; i < 10; i++) {
+#endif
     dynarr_t tokens = tokenize(src, fsize, is_debug);
     tree_t syntax_tree = tree_parser(tokens, is_debug);
     int is_good_semantic = semantic_checker(syntax_tree, is_debug);
@@ -68,11 +71,13 @@ main(int argc, char** argv) {
     }
     frame_t* top_frame = new_frame(syntax_tree.root_index);
     eval_tree(&syntax_tree, top_frame, syntax_tree.root_index, is_debug);
-
     free_frame(top_frame);
     free(top_frame);
     free_tree(&syntax_tree);
     free_dynarr(&tokens);
+#ifdef IS_PROFILE
+}
+#endif
     free(src);
     return 0;
 }

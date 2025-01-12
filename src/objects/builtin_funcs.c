@@ -34,8 +34,11 @@ object_or_error_t
 builtin_func_output(object_t* obj) {
     /* check if obj is number */
     if (obj->type != TYPE_NUM) {
-        print_runtime_error(0, 0,
-            "built-in function 'output': argument type should be number");
+        print_runtime_error(
+            0, 0, "built-in function 'output': argument is not a number but:"
+        );
+        print_object(obj, '\n');
+        return ERR_OBJERR();
     }
     number_t n = obj->data.number;
     unsigned char c;

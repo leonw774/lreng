@@ -8,6 +8,7 @@ typedef struct tree {
     dynarr_t tokens; /* type: token_t */
     int* lefts;/* index of left child, -1 of none */
     int* rights; /* index of right child, -1 of none */
+    int* sizes; /* number of nodes under a node */
     int root_index; /* index of the root node */
     int max_id_name; /* number of ids in tree */
 } tree_t;

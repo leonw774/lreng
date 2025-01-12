@@ -10,13 +10,12 @@ concat_list = list_pair => {
     ]
 };
 format_int = i => {
-    i < 10
-        && ((i + '0'), null)
-        || (
-            left = format_int((i - i % 10) / 10);
-            right = ((i % 10) + '0'), null;
-            concat_list(left, right)
+    i < 10 && ((i + '0'), null) || (
+        concat_list(
+            format_int((i - i % 10) / 10),
+            ((i % 10) + '0'), null
         )
+    )
 };
 print = string => {
     string != null && ( output(`string); print(~string) )
@@ -34,4 +33,4 @@ fizzbuzz = n => {
     );
     output('\n')
 };
-fizzbuzz(30)
+fizzbuzz(6000)

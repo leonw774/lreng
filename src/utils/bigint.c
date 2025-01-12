@@ -138,11 +138,8 @@ copy_bi(bigint_t* dst, const bigint_t* src) {
         dst->digit = NULL;
         return;
     }
-    dst->nan = 0;
-    dst->shared = 0;
-    dst->size = src->size;
-    dst->sign = src->sign;
-    dst->digit = calloc(src->size, sizeof(u32));
+    *dst = *src;
+    dst->digit = malloc(src->size * sizeof(u32));
     memcpy(dst->digit, src->digit, src->size * sizeof(u32));
 }
 

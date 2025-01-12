@@ -432,56 +432,33 @@ eval_tree(
     const const int is_debug
 ) {
     const token_t* global_tokens = tree->tokens.data;
+    const int tree_size = tree->sizes[entry_index];
+    /* obj_table_offset = entry_index - tree_size + 1
+       because global tokens are order in postfix */
+    const int obj_table_offset = entry_index - tree_size + 1;
     
-    /* init obj_table_offset as entry_index because in postfix,
-       parent's index is greater children's */
-    int obj_table_offset = entry_index;
-    unsigned long tree_size = 0;
-    tree_preorder_iterator_t tree_iter;
     dynarr_t token_index_stack; /* type: int */
     object_t* obj_table;
     unsigned char* is_from_frame; /* is the object shallow copied from frame */
     unsigned char* is_evaled;
 
     token_t cur_token;
-    int cur_index, cur_local_index, left_index, right_index;
+    int cur_index, left_index, right_index;
     object_t* left_obj;
     object_t* right_obj;
 
     int i, is_error = 0;
     object_or_error_t tmp_obj_err;
+
 #ifdef ENABLE_DEBUG
     if (is_debug) {
         printf("eval_tree\n");
         printf("entry_index=%d cur_frame=%p ", entry_index, cur_frame);
-    }
-#endif
-    /* iterate tree to get tree size from the root */
-    tree_iter = tree_iter_init(tree, entry_index);
-    while (tree_iter_get(&tree_iter)) {
-        int cur_index = *(int*) back(&tree_iter.index_stack);
-        if (cur_index < obj_table_offset) {
-            obj_table_offset = cur_index;
-        }
-        tree_size++;
-        tree_iter_next(&tree_iter);
-    }
-    /* if (entry_index - obj_table_offset + 1 != tree_size) {
-        printf(
-            "\neval_tree: bad tree. %d != %d\n",
-            entry_index - obj_table_offset + 1,
-            tree_size
-        );
-        printf("obj_table_offset = %d ", obj_table_offset);
-        printf("tree_size = %d\n", tree_size);
-        exit(OTHER_ERR_CODE);
-    } */
-#ifdef ENABLE_DEBUG
-    if (is_debug) {
         printf("obj_table_offset = %d ", obj_table_offset);
         printf("tree_size = %d\n", tree_size);
     }
 #endif
+
     /* obj_table store shallow copyed intermidiate results */
     is_evaled = calloc(tree_size, sizeof(unsigned char));
     is_from_frame = calloc(tree_size, sizeof(unsigned char));
@@ -515,12 +492,14 @@ eval_tree(
             ? NULL : &_OBJ_TABLE(right_index);
 
         if (cur_token.type == TOK_OP) {
-            const token_t* left_token =
-                (left_index == -1) ? NULL : &global_tokens[left_index];
-            const token_t* right_token =
-                (right_index == -1) ? NULL : &global_tokens[right_index];
-            /* function definer */
-            if (cur_token.name == OP_FMAKE) {
+            const token_t* left_token = (left_index == -1)
+                ? NULL : &global_tokens[left_index];
+            const token_t* right_token = (right_index == -1)
+                ? NULL : &global_tokens[right_index];
+
+            switch (cur_token.name) {
+            /* function maker */
+            case OP_FMAKE:
                 _OBJ_TABLE(cur_index).type = TYPE_FUNC;
                 (_OBJ_TABLE(cur_index)).data.func = (func_t) {
                     .is_macro = 0,
@@ -536,8 +515,9 @@ eval_tree(
                     print_object(&_OBJ_TABLE(cur_index), '\n');
                 }
 #endif
-            }
-            else if (cur_token.name == OP_MMAKE) {
+                break;
+            /* macro maker */
+            case OP_MMAKE:
                 _OBJ_TABLE(cur_index).type = TYPE_FUNC;
                 (_OBJ_TABLE(cur_index)).data.func = (func_t) {
                     .is_macro = 1,
@@ -552,14 +532,11 @@ eval_tree(
                     print_object(&_OBJ_TABLE(cur_index), '\n');
                 }
 #endif
-            }
+                break;
             /* argument binder */
-            else if (cur_token.name == OP_ARG) {
+            case OP_ARG:
                 if (right_obj == NULL) {
-                    append(
-                        &token_index_stack,
-                        &tree->rights[cur_index]
-                    );
+                    append(&token_index_stack, &tree->rights[cur_index]);
                     continue;
                 }
                 if (right_obj->type != TYPE_FUNC) {
@@ -576,9 +553,9 @@ eval_tree(
                 *right_obj = NULL_OBJECT;
                 _IS_FROM_FRAME(cur_index) = _IS_FROM_FRAME(right_index);
                 _OBJ_TABLE(cur_index).data.func.arg_name = left_token->name;
-            }
+                break;
             /* assignment */
-            else if (cur_token.name == OP_ASSIGN) {
+            case OP_ASSIGN:
                 if (right_obj == NULL) {
                     append(&token_index_stack, &right_index);
                     continue;
@@ -609,11 +586,11 @@ eval_tree(
 #endif
                 _OBJ_TABLE(cur_index) = *obj_on_frame;
                 _IS_FROM_FRAME(cur_index) = 1;
-            }
-            /* logic-and or logic-or  */
-            else if (
-                cur_token.name == OP_CONDAND || cur_token.name == OP_CONDOR
-            ) {
+                break;
+
+            /* logic-and or logic-or */
+            case OP_CONDAND:
+            case OP_CONDOR:
                 int is_condor = cur_token.name == OP_CONDOR;
                 /* eval left first and eval right conditionally */
                 if (left_obj == NULL) {
@@ -641,8 +618,9 @@ eval_tree(
                     *left_obj = NULL_OBJECT;
                     _IS_FROM_FRAME(cur_index) = _IS_FROM_FRAME(left_index);
                 }
-            }
-            else if (cur_token.name == OP_EXPRSEP) {
+                break;
+            /* expresion seperator */
+            case OP_EXPRSEP:
                 if (left_obj == NULL && right_obj == NULL) {
                     append(&token_index_stack, &right_index);
                     append(&token_index_stack, &left_index);
@@ -652,9 +630,9 @@ eval_tree(
                 _OBJ_TABLE(cur_index) = *right_obj;
                 *right_obj = NULL_OBJECT;
                 _IS_FROM_FRAME(cur_index) = _IS_FROM_FRAME(right_index);
-            }
+                break;
             /* other operator */
-            else {
+            default:
                 if (IS_UNARY_OP[cur_token.name] && left_obj == NULL) {
                     append(&token_index_stack, &left_index);
                     continue;
@@ -758,7 +736,6 @@ eval_tree(
 
     /* free things */
     free_dynarr(&token_index_stack);
-    free_tree_iter(&tree_iter);
 #ifdef ENABLE_DEBUG
     if (is_debug) {
         printf("free obj_tables\n");

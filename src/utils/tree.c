@@ -42,8 +42,7 @@ tree_iter_get(tree_preorder_iterator_t* iter) {
     if (iter->index_stack.size == 0) {
         return NULL;
     }
-    int cur_index = *(int*) back(&iter->index_stack);
-    return at(&iter->tree->tokens, cur_index);
+    return at(&iter->tree->tokens, *(int*) back(&iter->index_stack));
 }
 
 inline void

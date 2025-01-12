@@ -238,11 +238,13 @@ tree_parser(const dynarr_t tokens, const int is_debug) {
         }
     }
 
-    /* lefts and rights */
+    /* lefts, rights and sizes */
     tree.lefts = malloc(tree.tokens.size * sizeof(int));
     tree.rights = malloc(tree.tokens.size * sizeof(int));
+    tree.sizes = malloc(tree.tokens.size * sizeof(int));
     memset(tree.lefts, -1, tree.tokens.size * sizeof(int));
     memset(tree.rights, -1, tree.tokens.size * sizeof(int));
+    memset(tree.sizes, 0, tree.tokens.size * sizeof(int));
     for (i = 0; i < tree.tokens.size; i++) {
         token_t* cur_token = at(&tree.tokens, i);
 #ifdef ENABLE_DEBUG
@@ -282,9 +284,16 @@ tree_parser(const dynarr_t tokens, const int is_debug) {
         else {
             append(&stack, &i);
         }
+
+        tree.sizes[i] = (
+            1
+            + ((tree.lefts[i] == -1) ? 0 : tree.sizes[tree.lefts[i]])
+            + ((tree.rights[i] == -1) ? 0 : tree.sizes[tree.rights[i]])
+        );
+
 #ifdef ENABLE_DEBUG
         if (is_debug) {
-            puts("");
+            putchar('\n');
         }
 #endif
     }

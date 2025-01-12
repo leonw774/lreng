@@ -1,5 +1,5 @@
 CFLAGS = -I include/
-PROFILE_FLAGS = -fno-pie -no-pie -pg -O2
+PROFILE_FLAGS = -fno-pie -no-pie -pg -O1 -D IS_PROFILE
 DEBUG_FLAGS = -g -D ENABLE_DEBUG
 MEMCHECK_FLAGS = -include memcheck/memcheck.h -Wno-implicit-function-declaration
 
