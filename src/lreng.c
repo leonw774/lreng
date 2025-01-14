@@ -32,7 +32,7 @@ main(int argc, char** argv) {
         }
     }
     if (optind != argc - 1 || argv[optind] == NULL) {
-        printf("Missing required argument\n");
+        puts(usage);
         return 1;
     }
     else {

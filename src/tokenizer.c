@@ -508,13 +508,13 @@ ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     }
 
     /* transfrom cargo str char into its ascii number */
-    int lit_char = ((char*) cur_cargo.str.data)[0];
+    unsigned char lit_char = ((char*) cur_cargo.str.data)[0];
     int digit_num = (lit_char < 10) ? 1 : ((lit_char < 100) ? 2 : 3);
     free(cur_cargo.str.data);
     cur_cargo.str.data = calloc(4, sizeof(char));
     cur_cargo.str.size = digit_num;
     cur_cargo.str.cap = 4;
-    snprintf(cur_cargo.str.data, 4, "%d", lit_char);
+    snprintf(cur_cargo.str.data, 4, "%u", lit_char);
     harvest(&cur_cargo, TOK_NUM, pos);
 
     /* next state */

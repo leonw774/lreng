@@ -940,8 +940,8 @@ bi_to_dec_str(bigint_t* x) {
         else if (x->size == 2) {
             figure_num = sprintf(
                 buf,
-                "%lu",
-                (((u64) x->digit[1]) << BASE_SHIFT) | x->digit[0]
+                "%llu",
+                (((unsigned long long) x->digit[1]) << BASE_SHIFT) | x->digit[0]
             );
             for (i = 0; i < figure_num; i++) {
                 append(&string, &buf[i]);
@@ -979,7 +979,7 @@ print_bi_dec(bigint_t* x, char end) {
     int printed_bytes_count = 0;
     dynarr_t x_str = bi_to_dec_str(x);
     char* x_cstr = to_str(&x_str);
-    printed_bytes_count = printf("[BigInt] %s", x_cstr);
+    printed_bytes_count = printf("[BigInt] %s", x_cstr ? x_cstr : "(null)");
     if (end != '\0') {
         printed_bytes_count += printf("%c", end);
     }
