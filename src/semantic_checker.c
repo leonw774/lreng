@@ -8,7 +8,7 @@
 #include "frame.h"
 
 int
-semantic_checker(const tree_t tree, const const int is_debug) {
+semantic_checker(const tree_t tree, const int is_debug) {
     int i, is_passed = 1;
     unsigned char* id_usage = calloc(
         tree.max_id_name + 1, sizeof(unsigned char));
@@ -16,7 +16,7 @@ semantic_checker(const tree_t tree, const const int is_debug) {
         id_usage[i] = (unsigned char) 1;
     }
 
-    frame_t* cur_frame = new_frame(tree.root_index);
+    frame_t* cur_frame = new_frame();
     object_t objnull = RESERVED_OBJS[RESERVED_ID_NAME_NULL];
 
     tree_preorder_iterator_t tree_iter = tree_iter_init(&tree, -1);

@@ -357,7 +357,7 @@ bi_usub(bigint_t* res, bigint_t* a, bigint_t* b) {
             i--;
         }
         if (i == -1) {
-            *res = ZERO_BIGINT();
+            *res = ZERO_BIGINT;
         }
         if (a->digit[i] < b->digit[i]) {
             bigint_t* tmp = a; a = b; b = tmp;
@@ -401,7 +401,7 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
 
     /* if u < v, no need to compute */
     if (u_size < v_size) {
-        *q = ZERO_BIGINT();
+        *q = ZERO_BIGINT;
         copy_bi(r, _u);
         return;
     }
@@ -412,11 +412,11 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
         }
         if (i == -1) {
             *q = BYTE_BIGINT(1);
-            *r = ZERO_BIGINT();
+            *r = ZERO_BIGINT;
             return;
         }
         if (_u->digit[i] < _v->digit[i]) {
-            *q = ZERO_BIGINT();
+            *q = ZERO_BIGINT;
             copy_bi(r, _u);
             return;
         }
@@ -592,7 +592,7 @@ bi_add(bigint_t* a, bigint_t* b) {
     bigint_t c; 
     /* handle zeros */
     if (BIPTR_IS_ZERO(a) && BIPTR_IS_ZERO(b)) {
-        return ZERO_BIGINT();
+        return ZERO_BIGINT;
     }
     else if (BIPTR_IS_ZERO(a)) {
         copy_bi(&c, b);
@@ -602,7 +602,7 @@ bi_add(bigint_t* a, bigint_t* b) {
         copy_bi(&c, a);
         return c;
     }
-    c = ZERO_BIGINT();
+    c = ZERO_BIGINT;
     if (a->sign) {
         if (b->sign) {
             bi_uadd(&c, a, b);
@@ -627,7 +627,7 @@ bi_sub(bigint_t* a, bigint_t* b) {
     bigint_t c;
     /* handle zeros */
     if (BIPTR_IS_ZERO(a) && BIPTR_IS_ZERO(b)) {
-        return ZERO_BIGINT();
+        return ZERO_BIGINT;
     }
     else if (BIPTR_IS_ZERO(a)) {
         copy_bi(&c, b);
@@ -668,7 +668,7 @@ bi_mul(bigint_t* a, bigint_t* b) {
     
     /* base conditions */
     if (BIPTR_IS_ZERO(a) || BIPTR_IS_ZERO(b)) {
-        return ZERO_BIGINT();
+        return ZERO_BIGINT;
     }
     if (a_size == 1 && a->digit[0] == 1) {
         copy_bi(&m, b);
@@ -716,7 +716,7 @@ bi_mul(bigint_t* a, bigint_t* b) {
     /* split a and b */
     if (a_size <= low_size) {
         copy_bi(&a_low, a);
-        a_high = ZERO_BIGINT();
+        a_high = ZERO_BIGINT;
     }
     else {
         new_bi(&a_low, low_size);
@@ -732,7 +732,7 @@ bi_mul(bigint_t* a, bigint_t* b) {
     bi_normalize(&a_high);
     if (b_size <= low_size) {
         copy_bi(&b_low, b);
-        b_high = ZERO_BIGINT();
+        b_high = ZERO_BIGINT;
     }
     else {
         new_bi(&b_low, low_size);
@@ -818,7 +818,7 @@ bi_div(bigint_t* a, bigint_t* b) {
         return NAN_BIGINT();
     }
     if (BIPTR_IS_ZERO(a)) {
-        return ZERO_BIGINT();
+        return ZERO_BIGINT;
     }
     /* if |b| == 1, return a */
     if (b->size == 1 && b->digit[0] == 1) {
@@ -831,9 +831,9 @@ bi_div(bigint_t* a, bigint_t* b) {
     /* if |a| < |b|, return 0 */
     if (a->size == b->size && a->digit[a->size -1] < b->digit[b->size -1]
         || a->size < b->size) {
-        return ZERO_BIGINT();
+        return ZERO_BIGINT;
     }
-    bigint_t q = ZERO_BIGINT(), r = ZERO_BIGINT();
+    bigint_t q = ZERO_BIGINT, r = ZERO_BIGINT;
     bi_udivmod(a, b, &q, &r);
     free_bi(&r);
     if (a->sign != b->sign) {
@@ -844,21 +844,21 @@ bi_div(bigint_t* a, bigint_t* b) {
 
 inline bigint_t
 bi_mod(bigint_t* a, bigint_t* b) {
-    bigint_t q = ZERO_BIGINT(), r = ZERO_BIGINT(), _r = ZERO_BIGINT();
+    bigint_t q = ZERO_BIGINT, r = ZERO_BIGINT, _r = ZERO_BIGINT;
     if (BIPTR_IS_ZERO(b)) {
         printf("bi_mod: divided by zero\n");
         return NAN_BIGINT();
     }
     if (BIPTR_IS_ZERO(a)) {
-        return ZERO_BIGINT();
+        return ZERO_BIGINT;
     }
     /* if |b| == 1, return 0 */
     if (b->size == 1 && b->digit[0] == 1) {
-        return ZERO_BIGINT();
+        return ZERO_BIGINT;
     }
     /* a == b, return 0 */
     if (bi_eq(a, b)) {
-        return ZERO_BIGINT();
+        return ZERO_BIGINT;
     }
     /* if |a| < |b|, return a */
     if (a->size == b->size && a->digit[a->size -1] < b->digit[b->size -1]
@@ -870,7 +870,7 @@ bi_mod(bigint_t* a, bigint_t* b) {
     bi_udivmod(a, b, &q, &r);
     free_bi(&q);
     if (BIPTR_IS_ZERO((&r))) {
-        return ZERO_BIGINT();
+        return ZERO_BIGINT;
     }
     if (a->sign != b->sign) {
         bi_usub(&_r, &r, b);
@@ -940,7 +940,7 @@ bi_to_dec_str(bigint_t* x) {
         else if (x->size == 2) {
             figure_num = sprintf(
                 buf,
-                "%lld",
+                "%lu",
                 (((u64) x->digit[1]) << BASE_SHIFT) | x->digit[0]
             );
             for (i = 0; i < figure_num; i++) {
@@ -948,7 +948,7 @@ bi_to_dec_str(bigint_t* x) {
             }
             return string;
         }
-        bigint_t y, ten, q = ZERO_BIGINT(), r = ZERO_BIGINT();
+        bigint_t y, ten, q = ZERO_BIGINT, r = ZERO_BIGINT;
         dynarr_t reversed_digits = new_dynarr(1);
         char d;
         copy_bi(&y, x);
@@ -977,7 +977,6 @@ bi_to_dec_str(bigint_t* x) {
 inline int
 print_bi_dec(bigint_t* x, char end) {
     int printed_bytes_count = 0;
-    printed_bytes_count += printf("");
     dynarr_t x_str = bi_to_dec_str(x);
     char* x_cstr = to_str(&x_str);
     printed_bytes_count = printf("[BigInt] %s", x_cstr);
@@ -999,7 +998,7 @@ bi_from_str(const char* str) {
 
     /* before doing real decoding, do brute force from 0 ~ 256 */
     if (str[0] == '0' && str_length == 1) {
-        return ZERO_BIGINT();
+        return ZERO_BIGINT;
     }
     if (str_length <= 3) {
         for (i = 1; i <= 256; i++) {
@@ -1016,7 +1015,7 @@ bi_from_str(const char* str) {
     }
     if (str[0] == '0') {
         /* if (str_length == 1) {
-            return ZERO_BIGINT();
+            return ZERO_BIGINT;
         } */
         /* bin & hex can determine needed size quickly */
         if (str[1] == 'x') {

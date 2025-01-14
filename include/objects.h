@@ -57,12 +57,11 @@ typedef struct object_or_error {
 #define object_struct_size sizeof(object_t)
 #define object_or_error_struct_size sizeof(object_or_error_t)
 
-#define NULL_OBJECT ((object_t) {\
-    .type = TYPE_NULL, .data = {.number = EMPTY_NUMBER()}})
-#define ERR_OBJERR() ((object_or_error_t) {.is_error = 1, .obj = NULL_OBJECT})
+#define NULL_OBJECT ((object_t) {.type = TYPE_NULL})
+#define ERR_OBJERR ((object_or_error_t) {.is_error = 1, .obj = NULL_OBJECT})
 #define OBJ_OBJERR(o) ((object_or_error_t) {.is_error = 0, .obj = o})
 
-extern const object_t const RESERVED_OBJS[RESERVED_ID_NUM];
+extern const object_t RESERVED_OBJS[RESERVED_ID_NUM];
 extern const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM + 1];
 
 /* deep copy an object */

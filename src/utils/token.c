@@ -43,6 +43,6 @@ print_token(token_t token) {
             type_str = "";
     }
     return (token.name == -1)
-        ? printf("[%s \"%s\"]", type_str, token_str, token.name)
+        ? printf("[%s \"%s\"]", type_str, token_str)
         : printf("[%s \"%s\" %d]", type_str, token_str, token.name);
 }

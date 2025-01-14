@@ -256,6 +256,7 @@ ws_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
             pos.col,
             ERR_MSG_BUF
         );
+        return (state_ret) {NULL, cur_cargo};
     }
 }
 
@@ -314,6 +315,7 @@ zero_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
             pos.col,
             ERR_MSG_BUF
         );
+        return (state_ret) {NULL, cur_cargo};
     }
 }
 
@@ -356,6 +358,7 @@ num_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
             pos.col,
             ERR_MSG_BUF
         );
+        return (state_ret) {NULL, cur_cargo};
     }
 }
 
@@ -391,6 +394,7 @@ hex_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
             pos.col,
             ERR_MSG_BUF
         );
+        return (state_ret) {NULL, cur_cargo};
     }
 }
 
@@ -426,6 +430,7 @@ bin_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
             pos.col,
             ERR_MSG_BUF
         );
+        return (state_ret) {NULL, cur_cargo};
     }
 }
 
@@ -447,6 +452,7 @@ ch_open_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
             pos.col,
             ERR_MSG_BUF
         );
+        return (state_ret) {NULL, cur_cargo};
     }
 }
 
@@ -505,10 +511,10 @@ ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     int lit_char = ((char*) cur_cargo.str.data)[0];
     int digit_num = (lit_char < 10) ? 1 : ((lit_char < 100) ? 2 : 3);
     free(cur_cargo.str.data);
-    cur_cargo.str.data = malloc(4 * sizeof(char));
+    cur_cargo.str.data = calloc(4, sizeof(char));
     cur_cargo.str.size = digit_num;
     cur_cargo.str.cap = 4;
-    sprintf(cur_cargo.str.data, "%d\0", lit_char);
+    snprintf(cur_cargo.str.data, 4, "%d", lit_char);
     harvest(&cur_cargo, TOK_NUM, pos);
 
     /* next state */
@@ -533,6 +539,7 @@ ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
             pos.col,
             ERR_MSG_BUF
         );
+        return (state_ret) {NULL, cur_cargo};
     }
 }
 
@@ -568,6 +575,7 @@ id_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
             pos.col,
             ERR_MSG_BUF
         );
+        return (state_ret) {NULL, cur_cargo};
     }
 }
 
@@ -630,6 +638,7 @@ op_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
             pos.col,
             ERR_MSG_BUF
         );
+        return (state_ret) {NULL, cur_cargo};
     }
 }
 

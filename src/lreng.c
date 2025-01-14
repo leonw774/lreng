@@ -10,7 +10,7 @@
 
 int
 main(int argc, char** argv) {
-    const char* usage = "Usage: lreng [-d] [-t tout_path] {file_path}\n";
+    const char* usage = "Usage: lreng [-d] {file_path}\n";
     int is_debug = 0, is_transpile = 0;
     char* file_path = NULL;
     FILE* in_fp = NULL;
@@ -25,7 +25,7 @@ main(int argc, char** argv) {
             break;
         case '?':
             printf("Unknown option: '-%c'(%d)\n", optopt, optopt);
-            printf(usage);
+            puts(usage);
             return 1;
         default:
             abort();
@@ -56,7 +56,7 @@ main(int argc, char** argv) {
         fputs("memory error\n", stderr);
         return OS_ERR_CODE;
     }
-    fread(src, 1, fsize, in_fp);
+    size_t fread_result = fread(src, 1, fsize, in_fp);
     src[fsize] = '\0';
     fclose(in_fp);
 #ifdef IS_PROFILE
@@ -69,7 +69,7 @@ for (i = 0; i < 10; i++) {
     if (!is_good_semantic) {
         return SEMANTIC_ERR_CODE;
     }
-    frame_t* top_frame = new_frame(syntax_tree.root_index);
+    frame_t* top_frame = new_frame();
     eval_tree(&syntax_tree, top_frame, syntax_tree.root_index, is_debug);
     free_frame(top_frame);
     free(top_frame);
@@ -79,5 +79,8 @@ for (i = 0; i < 10; i++) {
 }
 #endif
     free(src);
+#ifdef IS_WASM
+    putchar('\n');
+#endif
     return 0;
 }

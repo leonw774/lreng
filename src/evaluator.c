@@ -64,10 +64,10 @@ exec_call(
 ) {
     /* if is builtin */
     if (func_obj->data.callable.builtin_name != -1) {
-        object_or_error_t (*func_ptr)(object_t*) =
+        const object_or_error_t (*func_ptr)(object_t*) =
             BUILDTIN_FUNC_ARRAY[func_obj->data.callable.builtin_name];
         if (func_ptr == NULL) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         return func_ptr(arg_obj);
     }
@@ -181,41 +181,41 @@ exec_op(
     switch(op_token.name) {
     case OP_FCALL:
         if (is_bad_type(op_token, TYPE_FUNC, TYPE_ANY, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         };
         return exec_call(tree, cur_frame, left_obj, right_obj, is_debug);
     /* case OP_POS: */
         /* OP_POS would be discarded in tree parser */
     case OP_NEG:
         if (is_bad_type(op_token, TYPE_NUM, NO_OPRAND, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         tmp_obj = copy_object(left_obj);
         tmp_obj.data.number.numer.sign = !tmp_obj.data.number.numer.sign;
         return OBJ_OBJERR(tmp_obj);
     case OP_NOT:
         if (is_bad_type(op_token, TYPE_ANY, NO_OPRAND, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         return OBJ_OBJERR(((object_t) {
             .type = TYPE_NUM,
             .data = {
-                .number = to_bool(left_obj) ? ONE_NUMBER() : ZERO_NUMBER()
+                .number = to_bool(left_obj) ? ONE_NUMBER : ZERO_NUMBER
             }
         }));
     case OP_GETL:
         if (is_bad_type(op_token, TYPE_PAIR, NO_OPRAND, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         return OBJ_OBJERR(copy_object(left_obj->data.pair.left));
     case OP_GETR:
         if (is_bad_type(op_token, TYPE_PAIR, NO_OPRAND, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         return OBJ_OBJERR(copy_object(left_obj->data.pair.right));
     case OP_EXP:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         if (right_obj->data.number.denom.size != 1
             || right_obj->data.number.denom.digit[0] != 1) {
@@ -224,7 +224,7 @@ exec_op(
                 op_token.pos.col,
                 "Exponent must be integer"
             );
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         return OBJ_OBJERR(((object_t) {
             .type = TYPE_NUM,
@@ -235,7 +235,7 @@ exec_op(
         }));
     case OP_MUL:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         return OBJ_OBJERR(((object_t) {
             .type = TYPE_NUM,
@@ -246,7 +246,7 @@ exec_op(
         }));
     case OP_DIV:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         if (right_obj->data.number.numer.size == 0) {
             print_runtime_error(
@@ -254,7 +254,7 @@ exec_op(
                 op_token.pos.col,
                 "Divided by zero"
             );
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         return OBJ_OBJERR(((object_t) {
             .type = TYPE_NUM,
@@ -265,7 +265,7 @@ exec_op(
         }));
     case OP_MOD:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         return OBJ_OBJERR(((object_t) {
             .type = TYPE_NUM,
@@ -276,7 +276,7 @@ exec_op(
         }));
     case OP_ADD:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         return OBJ_OBJERR(((object_t) {
             .type = TYPE_NUM,
@@ -287,7 +287,7 @@ exec_op(
         }));
     case OP_SUB:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         return OBJ_OBJERR(((object_t) {
             .type = TYPE_NUM,
@@ -298,7 +298,7 @@ exec_op(
         }));
     case OP_LT:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         return OBJ_OBJERR(((object_t) {
             .type = TYPE_NUM,
@@ -308,7 +308,7 @@ exec_op(
         }));
     case OP_LE:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         return OBJ_OBJERR(((object_t) {
             .type = TYPE_NUM,
@@ -318,7 +318,7 @@ exec_op(
         }));
     case OP_GT:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         return OBJ_OBJERR(((object_t) {
             .type = TYPE_NUM,
@@ -328,7 +328,7 @@ exec_op(
         }));
     case OP_GE:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         return OBJ_OBJERR(((object_t) {
             .type = TYPE_NUM,
@@ -348,7 +348,7 @@ exec_op(
         }));
     case OP_AND:
         if (is_bad_type(op_token, TYPE_ANY, TYPE_ANY, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         return OBJ_OBJERR(((object_t) {
             .type = TYPE_NUM,
@@ -358,7 +358,7 @@ exec_op(
         }));
     case OP_OR:
         if (is_bad_type(op_token, TYPE_ANY, TYPE_ANY, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         return OBJ_OBJERR(((object_t) {
             .type = TYPE_NUM,
@@ -368,7 +368,7 @@ exec_op(
         }));
     case OP_PAIR:
         if (is_bad_type(op_token, TYPE_ANY, TYPE_ANY, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         tmp_obj = (object_t) {
             .type = TYPE_PAIR,
@@ -382,12 +382,12 @@ exec_op(
         return OBJ_OBJERR(tmp_obj);
     case OP_FCALLR:
         if (is_bad_type(op_token, TYPE_FUNC, TYPE_ANY, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         return exec_call(tree, cur_frame, left_obj, right_obj, is_debug);
     case OP_CONDFCALL:
         if (is_bad_type(op_token, TYPE_ANY, TYPE_PAIR, left_obj, right_obj)) {
-            return ERR_OBJERR();
+            return ERR_OBJERR;
         }
         /* check inside the pair */
         {
@@ -401,7 +401,7 @@ exec_op(
                 tmp_op_token, TYPE_FUNC, TYPE_FUNC,
                 right_obj->data.pair.left, right_obj->data.pair.right
             )) {
-                return ERR_OBJERR();
+                return ERR_OBJERR;
             }
 
         }
@@ -419,7 +419,7 @@ exec_op(
             op_token.pos.col,
             "exec_op: bad op name"
         );
-        return ERR_OBJERR();
+        return ERR_OBJERR;
     }
 }
 
@@ -429,7 +429,7 @@ eval_tree(
     const tree_t* tree,
     frame_t* cur_frame,
     const int entry_index,
-    const const int is_debug
+    const int is_debug
 ) {
     const token_t* global_tokens = tree->tokens.data;
     const int tree_size = tree->sizes[entry_index];
@@ -591,7 +591,6 @@ eval_tree(
             /* logic-and or logic-or */
             case OP_CONDAND:
             case OP_CONDOR:
-                int is_condor = cur_token.name == OP_CONDOR;
                 /* eval left first and eval right conditionally */
                 if (left_obj == NULL) {
                     append(&token_index_stack, &left_index);
@@ -602,7 +601,7 @@ eval_tree(
                    F            | T         | T
                    T            | F         | T
                    T            | T         | F             */
-                if (to_bool(left_obj) != is_condor) {
+                if (to_bool(left_obj) != (cur_token.name == OP_CONDOR)) {
                     if (right_obj == NULL) {
                         append(&token_index_stack, &right_index);
                         continue;
@@ -728,7 +727,7 @@ eval_tree(
             printf("eval_tree return with error\n");
         }
 #endif
-        tmp_obj_err = ERR_OBJERR();
+        tmp_obj_err = ERR_OBJERR;
     }
     else {
         tmp_obj_err = OBJ_OBJERR(copy_object(&_OBJ_TABLE(entry_index)));

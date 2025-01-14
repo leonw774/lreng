@@ -12,7 +12,7 @@ copy_number(number_t* dst, const number_t* src) {
         dst->denom = NAN_BIGINT();
     }
     else if (src->numer.size == 0) {
-        dst->numer = ZERO_BIGINT();
+        dst->numer = ZERO_BIGINT;
         dst->denom = BYTE_BIGINT(1);
     }
     copy_bi(&dst->numer, &src->numer);
@@ -28,7 +28,7 @@ free_number(number_t* x) {
 void
 number_normalize(number_t* x) {
     int sign = 0;
-    bigint_t a, b, t1 = ZERO_BIGINT(), t2 = ZERO_BIGINT(), one = BYTE_BIGINT(1);
+    bigint_t a, b, t1 = ZERO_BIGINT, t2 = ZERO_BIGINT, one = BYTE_BIGINT(1);
 
     /* flags */
     if (x->numer.nan || x->denom.nan) {
@@ -43,7 +43,7 @@ number_normalize(number_t* x) {
     if (x->numer.size == 0) {
         free_bi(&x->numer);
         free_bi(&x->denom);
-        *x = ZERO_NUMBER();
+        *x = ZERO_NUMBER;
         return;
     }
     /* n == 1 or d = 1 */ 
@@ -54,7 +54,7 @@ number_normalize(number_t* x) {
     if (x->denom.size == 0) {
         free_bi(&x->numer);
         free_bi(&x->denom);
-        *x = NAN_NUMBER();
+        *x = NAN_NUMBER;
         return;
     }
     /* n == d */
@@ -150,13 +150,13 @@ number_lt(number_t* a, number_t* b) {
 
 inline number_t
 number_add(number_t* a, number_t* b) {
-    number_t res = EMPTY_NUMBER();
+    number_t res = EMPTY_NUMBER;
     bigint_t t1, t2;
     if (a->numer.nan || b->numer.nan) {
-        return NAN_NUMBER();
+        return NAN_NUMBER;
     }
     if (a->numer.size == 0 && b->numer.size == 0) {
-        return ZERO_NUMBER();
+        return ZERO_NUMBER;
     }
     if (a->numer.size == 0) {
         copy_number(&res, b);
@@ -178,13 +178,13 @@ number_add(number_t* a, number_t* b) {
 
 inline number_t
 number_sub(number_t* a, number_t* b) {
-    number_t res = EMPTY_NUMBER();
+    number_t res = EMPTY_NUMBER;
     bigint_t t1, t2;
     if (a->numer.nan || b->numer.nan) {
-        return NAN_NUMBER();
+        return NAN_NUMBER;
     }
     if (a->numer.size == 0 && b->numer.size == 0) {
-        return ZERO_NUMBER();
+        return ZERO_NUMBER;
     }
     if (a->numer.size == 0) {
         copy_number(&res, b);
@@ -207,12 +207,12 @@ number_sub(number_t* a, number_t* b) {
 
 inline number_t
 number_mul(number_t* a, number_t* b) {
-    number_t res = EMPTY_NUMBER();
+    number_t res = EMPTY_NUMBER;
     if (a->numer.nan || b->numer.nan) {
-        return NAN_NUMBER();
+        return NAN_NUMBER;
     }
     if (a->numer.size == 0 || b->numer.size == 0) {
-        return ZERO_NUMBER();
+        return ZERO_NUMBER;
     }
     res.numer = bi_mul(&a->numer, &b->numer);
     res.denom = bi_mul(&a->denom, &b->denom);
@@ -222,15 +222,15 @@ number_mul(number_t* a, number_t* b) {
 
 inline number_t
 number_div(number_t* a, number_t* b) {
-    number_t res = EMPTY_NUMBER();
+    number_t res = EMPTY_NUMBER;
     if (a->numer.nan || b->numer.nan) {
-        return NAN_NUMBER();
+        return NAN_NUMBER;
     }
     if (a->numer.size == 0) {
-        return ZERO_NUMBER();
+        return ZERO_NUMBER;
     }
     if (b->numer.size == 0) {
-        return NAN_NUMBER();
+        return NAN_NUMBER;
     }
     res.numer = bi_mul(&a->numer, &b->denom);
     res.denom = bi_mul(&a->denom, &b->numer);
@@ -240,7 +240,7 @@ number_div(number_t* a, number_t* b) {
 
 inline number_t
 number_mod(number_t* a, number_t* b) {
-    number_t res = EMPTY_NUMBER();
+    number_t res = EMPTY_NUMBER;
     bigint_t n, d, t1, t2;
     t1 = bi_mul(&a->numer, &b->denom);
     t2 = bi_mul(&b->numer, &a->denom);
@@ -257,17 +257,17 @@ number_mod(number_t* a, number_t* b) {
 number_t
 number_exp(number_t* a, number_t* b) {
     number_t res, cur, t1, t2;
-    bigint_t e, q = ZERO_BIGINT(), r = ZERO_BIGINT(), two = BYTE_BIGINT(2);
+    bigint_t e, q = ZERO_BIGINT, r = ZERO_BIGINT, two = BYTE_BIGINT(2);
     if (b->denom.size != 1 || b->denom.digit[0] != 1) {
         free_bi(&two);
-        return NAN_NUMBER();
+        return NAN_NUMBER;
     }
     if (b->numer.digit[0] == 0) {
         free_bi(&two);
-        return ONE_NUMBER();
+        return ONE_NUMBER;
     }
 
-    res = ONE_NUMBER(); /* res = 1 */
+    res = ONE_NUMBER; /* res = 1 */
     copy_number(&cur, a); /* cur = a */
     copy_bi(&e, &b->numer); /* e = b */
     while (e.size != 0) {
@@ -340,8 +340,8 @@ print_number_dec(number_t* x, int precision, char end) {
     char *n_cstr, *d_cstr, *res_cstr;
     char dot = '.' - '0';
     bigint_t ten_to_abs_e;
-    number_t _x, t = EMPTY_NUMBER(), q = EMPTY_NUMBER(), r = EMPTY_NUMBER(),
-        one = ONE_NUMBER(), ten = number_from_i32(10), ten_to_e = EMPTY_NUMBER();
+    number_t _x, t = EMPTY_NUMBER, q = EMPTY_NUMBER, r = EMPTY_NUMBER,
+        one = ONE_NUMBER, ten = number_from_i32(10), ten_to_e = EMPTY_NUMBER;
 
     if (x->numer.nan) {
         return printf("[Number] NaN");
@@ -431,13 +431,13 @@ print_number_dec(number_t* x, int precision, char end) {
 
 number_t
 number_from_str(const char* str) {
-    number_t n = EMPTY_NUMBER();
+    number_t n = EMPTY_NUMBER;
     size_t str_length = strlen(str);
     u32 i, j, dot_pos = str_length, is_less_one = 0;
 
     if (str[0] == '0') {
         if (str_length == 1) {
-            return ZERO_NUMBER();
+            return ZERO_NUMBER;
         }
         if (str[1] == 'b' || str[1] == 'x') {
             n.numer = bi_from_str(str);
@@ -449,7 +449,7 @@ number_from_str(const char* str) {
         }
         else {
             printf("number_from_str: bad format\n");
-            return NAN_NUMBER();
+            return NAN_NUMBER;
         }
     }
 
@@ -480,13 +480,13 @@ number_from_str(const char* str) {
 
 number_t
 number_from_i32(i32 i) {
-    number_t n = EMPTY_NUMBER();
+    number_t n = EMPTY_NUMBER;
     u32 j, sign = 0;
     if (i == 0) {
-        return ZERO_NUMBER();
+        return ZERO_NUMBER;
     }
     if (i == 1) {
-        return ONE_NUMBER();
+        return ONE_NUMBER;
     }
     n.denom = BYTE_BIGINT(1);
     if (i < 0) {
@@ -502,7 +502,7 @@ number_from_i32(i32 i) {
         n.numer.digit[0] = j & DIGIT_MASK;
         n.numer.digit[1] = 1;
     }
-    else if (sign = 0 && j <= 256) {
+    else if (sign == 0 && j <= 256) {
         n.numer = BYTE_BIGINT(j);
     }
     else {

@@ -25,7 +25,7 @@ typedef struct bigint {
 
 #define bigint_struct_size sizeof(bigint_t)
 
-#define ZERO_BIGINT() ((bigint_t) {\
+#define ZERO_BIGINT ((bigint_t) {\
     .shared = 0, .nan = 0, .sign = 0, .size = 0, .digit = 0})
 #define NAN_BIGINT() ((bigint_t) {\
     .shared = 0, .nan = 1, .sign = 0, .size = 0, .digit = 0})

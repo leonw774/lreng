@@ -24,14 +24,12 @@ typedef struct number {
 
 #define number_struct_size sizeof(number_t)
 
-#define EMPTY_NUMBER() ((number_t) { \
-    .numer = ZERO_BIGINT(), .denom = ZERO_BIGINT()})
-#define ZERO_NUMBER() ((number_t) { \
-    .numer = ZERO_BIGINT(), .denom = ZERO_BIGINT()})
-#define ONE_NUMBER() ((number_t) { \
-    .numer = BYTE_BIGINT(1), .denom = BYTE_BIGINT(1)})
-#define NAN_NUMBER() ((number_t) { \
-    .numer = NAN_BIGINT(), .denom = NAN_BIGINT()})
+#define EMPTY_NUMBER ((number_t) {.numer = ZERO_BIGINT, .denom = ZERO_BIGINT})
+#define ZERO_NUMBER EMPTY_NUMBER
+#define ONE_NUMBER ((number_t) { \
+    .numer = BYTE_BIGINT(1), .denom = BYTE_BIGINT(1) \
+})
+#define NAN_NUMBER ((number_t) {.numer = NAN_BIGINT(), .denom = NAN_BIGINT()})
 
 extern void copy_number(number_t* dst, const number_t* src);
 extern void free_number(number_t* x);

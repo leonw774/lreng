@@ -12,14 +12,14 @@ const object_or_error_t (*BUILDTIN_FUNC_ARRAY[RESERVED_ID_NUM])(object_t*) = {
     &builtin_func_output
 }; 
 
-object_or_error_t
+const object_or_error_t
 builtin_func_input(object_t* obj) {
     int c;
     if (obj->type != TYPE_NULL) {
         print_runtime_error(
             0, 0, "built-in function 'input': argument type should be null"
         );
-        return ERR_OBJERR();
+        return ERR_OBJERR;
     }
     c = getchar();
     return OBJ_OBJERR(
@@ -30,7 +30,7 @@ builtin_func_input(object_t* obj) {
     );
 }
 
-object_or_error_t
+const object_or_error_t
 builtin_func_output(object_t* obj) {
     /* check if obj is number */
     if (obj->type != TYPE_NUM) {
@@ -38,7 +38,7 @@ builtin_func_output(object_t* obj) {
             0, 0, "built-in function 'output': argument is not a number but:"
         );
         print_object(obj, '\n');
-        return ERR_OBJERR();
+        return ERR_OBJERR;
     }
     number_t n = obj->data.number;
     unsigned char c;
@@ -67,7 +67,7 @@ builtin_func_output(object_t* obj) {
         free(denom_str);
         free_dynarr(&numer_dynarr);
         free_dynarr(&denom_dynarr);
-        return ERR_OBJERR();
+        return ERR_OBJERR;
     }
     return OBJ_OBJERR(NULL_OBJECT);
 }

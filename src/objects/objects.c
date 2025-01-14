@@ -7,7 +7,7 @@
 #include "errormsg.h"
 #include "objects.h"
 
-const object_t const RESERVED_OBJS[RESERVED_ID_NUM] = {
+const object_t RESERVED_OBJS[RESERVED_ID_NUM] = {
     NULL_OBJECT,
     (object_t) {.type = TYPE_FUNC, .data = { .callable = {
         .init_time_frame = NULL,
@@ -71,7 +71,7 @@ free_object(object_t* obj) {
         free(obj->data.pair.left);
         free(obj->data.pair.right);
     }
-    else if (obj->type = TYPE_FUNC) {
+    else if (obj->type == TYPE_FUNC) {
         /* if is builtin function, it doesn't have frame */
         if (obj->data.callable.builtin_name != NOT_BUILTIN_FUNC) {
             return;
