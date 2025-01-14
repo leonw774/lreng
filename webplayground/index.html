@@ -9,19 +9,54 @@
         body {
             font-family: Tahoma, Helvetica, Arial, sans-serif;
         }
+        #content {
+            display: flex;
+            height: 100%;
+        }
+        #left {
+            width: 75%;
+            min-width: 300px;
+            vertical-align: top;
+        }
+        #file-content {
+            width: 100%;
+            height: 250px;
+            resize: vertical;
+        }
+        #stdin {
+            resize: vertical;
+            width: 75%;
+        }
+        #run {
+            float: right;
+            padding: 5px;
+            margin-top: 1em;
+        }
+        #right {
+            margin-left: 30px;
+            width: 100%;
+        }
+        #stdout {
+            border: black solid 1px;
+            overflow-y: scroll;
+        }
     </style>
 </head>
 <body>
     <h1>ɭeŋ: A simple minimal interpreted functional programming language</h1>
-    <div>
-        <label for="file-content">Write your program here:</label><br>
-        <textarea id="file-content" rows="10" cols="50"></textarea><br><br>
-        <label for="stdin">stdin:</label><br>
-        <input id="stdin" type="text" placeholder="Enter characters"><br><br>
-        <button onclick="runProgram()">Run Program</button>
+    <div id="content">
+        <div id="left">
+            <button id="run" onclick="runProgram()">Run Program</button>
+            <label for="file-content"><h3>Write your program here:</h3></label>
+            <textarea id="file-content" ></textarea><br /><br />
+            <label for="stdin"></h3>stdin:</h3></label><br />
+            <textarea id="stdin" cols="30"></textarea>
+        </div>
+        <div id="right">
+            <h3>stdout:</h3>
+            <pre id="stdout"></pre>
+        </div>
     </div>
-    <h2>stdout:</h2>
-    <pre id="stdout"></pre>
 
     <script src="lreng.js"></script>
     <script>
