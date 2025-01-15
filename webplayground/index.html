@@ -4,51 +4,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="codemirror/lib/codemirror.css" />
     <title>lreng</title>
     <style>
         body {
-            font-family: Tahoma, Helvetica, Arial, sans-serif;
+            font-family: "Courier New", Courier, monospace;
+            font-weight: bold;
+            background-color: #f4f1ea;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
         }
+
+        h1 {
+            font-size: 24px;
+            text-align: center;
+            color: #1c5d99;
+            border-bottom: 2px solid #1c5d99;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            margin: 15px 0 5px;
+            color: #333;
+            font-size: 18px;
+        }
+
+        #lang-name {
+            font-family: Cambria, 'Times New Roman', serif;
+            font-size: 27px;
+            font-style: italic;
+        }
+
+        /* Layout Styling */
         #content {
             display: flex;
-            height: 100%;
+            justify-content: space-between;
+            gap: 20px;
         }
+
         #left {
-            width: 75%;
-            min-width: 300px;
-            vertical-align: top;
+            flex: 3;
+            display: flex;
+            flex-direction: column;
         }
+
         #file-content {
-            width: 100%;
-            height: 250px;
-            resize: vertical;
+            height: 400px;
         }
-        #stdin {
-            resize: vertical;
-            width: 75%;
-        }
-        #run {
-            float: right;
-            padding: 5px;
-            margin-top: 1em;
-        }
+
         #right {
-            margin-left: 30px;
-            width: 100%;
+            display: flex;
+            flex: 2;
+            flex-direction: column;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
-        #stdout {
-            border: black solid 1px;
-            overflow-y: scroll;
+
+        /* Input and Output Areas */
+        textarea {
+            width: 100%;
+            border: 1px solid #ccc;
+            background-color: #fbf8f1; /* Vintage off-white */
+            color: #1c1c1c; /* Darker text for clarity */
+            font-family: "Courier New", Courier, monospace;
+            font-size: 14px;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 3px;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+
+        #right pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background-color: #eaf2f8; /* Light blue background for stdout */
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-y: auto;
+            color: #333;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 14px;
+            flex-grow: 1;
+        }
+
+        /* Button Styling */
+        #run {
+            background-color: #1c5d99;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 10px 20px;
+            transition: background-color 0.3s ease;
+            align-self: flex-end;
+        }
+
+        #run:hover {
+            background-color: #144372;
+        }
+
+        /* Labels */
+        label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            #content {
+                flex-direction: column;
+            }
+
+            #right {
+                margin-top: 20px;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>ɭeŋ: A simple minimal interpreted functional programming language</h1>
+    <h1><span id="lang-name">ɭeŋ</span> - A simple minimal interpreted functional programming language</h1>
     <div id="content">
         <div id="left">
-            <button id="run" onclick="runProgram()">Run Program</button>
+            <div id="run" onclick="runProgram()">Run Program</div>
             <label for="file-content"><h3>Write your program here:</h3></label>
-            <textarea id="file-content" ></textarea><br /><br />
+            <textarea id="file-content"></textarea><br /><br />
             <label for="stdin"></h3>stdin:</h3></label><br />
             <textarea id="stdin" cols="30"></textarea>
         </div>
@@ -57,6 +144,13 @@
             <pre id="stdout"></pre>
         </div>
     </div>
+
+    <script src="codemirror/lib/codemirror.js"></script>
+    <script>
+      let editor = CodeMirror.fromTextArea(document.getElementById("file-content"), {
+        lineNumbers: true
+      });
+    </script>
 
     <script src="lreng.js"></script>
     <script>
@@ -73,7 +167,7 @@
 
         async function runProgram() {
             // Get user inputs
-            const fileContent = document.getElementById('file-content').value;
+            const fileContent = editor.getValue();
             stdin = document.getElementById('stdin').value;
             stdinStream = new TextEncoder().encode(stdin + '\n');
             stdinIndex = 0;

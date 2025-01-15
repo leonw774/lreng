@@ -39,17 +39,17 @@ $(MAIN_TARGET): $(MAIN_SRC) $(SHARED_SRC)
 	gcc $(CFLAGS) -o $@ $^
 
 # ================================
-# Web Aseembly
+# Web Playground
 # ================================
 
-WASM_TARGET = webplayground/lreng.js
+WEB_TARGET = webplayground/lreng.js
 
-wasm:
+web:
 	rm -r webplayground/lreng.*
-	emcc $(SHARED_SRC) $(MAIN_SRC) -I include/ -D IS_WASM -o $(WASM_TARGET) \
+	emcc $(SHARED_SRC) $(MAIN_SRC) -I include/ -D IS_WASM -o $(WEB_TARGET) \
 		-s "EXPORTED_RUNTIME_METHODS=['FS','callMain']" 
 
-clean_wasm:
+clean_web:
 	rm -r webplayground/lreng.* || true
 
 # ================================
@@ -64,6 +64,3 @@ merge:
 	| sed -e '1s/^/#include<string.h>\n#include<ctype.h>\n#include<getopt.h>\n/' \
 		-e '1s/^/#include<stdio.h>\n#include<stdlib.h>\n#include<stdint.h>\n/' \
 		-e '/^#include ["<>a-z_.]*/d' > lreng.c
-
-dumpasm:
-	objdump -aS ./lreng >> lreng.asm

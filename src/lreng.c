@@ -32,7 +32,9 @@ main(int argc, char** argv) {
         }
     }
     if (optind != argc - 1 || argv[optind] == NULL) {
+#ifndef IS_WASM
         puts(usage);
+#endif
         return 1;
     }
     else {
