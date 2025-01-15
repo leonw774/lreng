@@ -45,7 +45,7 @@ $(MAIN_TARGET): $(MAIN_SRC) $(SHARED_SRC)
 WEB_TARGET = webplayground/lreng.js
 
 web:
-	rm -r webplayground/lreng.*
+	rm -r webplayground/lreng.* || true
 	emcc $(SHARED_SRC) $(MAIN_SRC) -I include/ -D IS_WASM -o $(WEB_TARGET) \
 		-s "EXPORTED_RUNTIME_METHODS=['FS','callMain']" 
 
