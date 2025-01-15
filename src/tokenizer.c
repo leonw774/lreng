@@ -18,6 +18,14 @@
                   ((c) >= 'a' && (c) <= 'f') || \
                   ((c) >= 'A' && (c) <= 'F'))
 
+#define INVALID_CHAR_MSG (isprint(c) && !isspace(c) \
+        ? "Invalid character: '%c'" : "Invalid character: 0x%x")
+#define INVALID_ESCCHAR_MSG (isprint(c) && !isspace(c) \
+        ? "Invalid escape character: '%c'" : "Invalid escape character: 0x%x")
+#define INVALID_CHAR_LIT_MSG (isprint(c) && !isspace(c) \
+        ? "Expect single quote, get '%c'" : "Expect single quote, get: 0x%x")
+
+
 static inline token_type_enum
 get_op_tok_type(char* op_str) {
     char c = op_str[0];
@@ -250,7 +258,7 @@ ws_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
-        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
         throw_syntax_error(
             pos.line,
             pos.col,
@@ -309,7 +317,7 @@ zero_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
-        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
         throw_syntax_error(
             pos.line,
             pos.col,
@@ -352,7 +360,7 @@ num_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
-        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
         throw_syntax_error(
             pos.line,
             pos.col,
@@ -388,7 +396,7 @@ hex_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
-        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
         throw_syntax_error(
             pos.line,
             pos.col,
@@ -424,7 +432,7 @@ bin_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
-        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
         throw_syntax_error(
             pos.line,
             pos.col,
@@ -446,7 +454,7 @@ ch_open_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&ch_lit_state, cur_cargo};
     }
     else {
-        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
         throw_syntax_error(
             pos.line,
             pos.col,
@@ -482,7 +490,7 @@ ch_esc_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         c = '\v';
     }
     else {
-        sprintf(ERR_MSG_BUF, "Invalid escape character: %c", c);
+        sprintf(ERR_MSG_BUF, INVALID_ESCCHAR_MSG, c);
         throw_syntax_error(
             pos.line,
             pos.col,
@@ -533,7 +541,7 @@ ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
-        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_LIT_MSG, c);
         throw_syntax_error(
             pos.line,
             pos.col,
@@ -569,7 +577,7 @@ id_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
-        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
         throw_syntax_error(
             pos.line,
             pos.col,
@@ -632,7 +640,7 @@ op_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
         return (state_ret) {&op_state, cur_cargo};
     }
     else {
-        sprintf(ERR_MSG_BUF, "Invalid character: %c", c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
         throw_syntax_error(
             pos.line,
             pos.col,
