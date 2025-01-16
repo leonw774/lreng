@@ -220,7 +220,12 @@ print(hello_world)
             outputElement.textContent = '';
 
             // Run the program
-            await Module.callMain(["input.txt"]);
+            try {
+                await Module.callMain(["input.txt"]);
+            }
+            catch (error) {
+                outputElement.textContent = "Program exits with error: " + JSON.stringify(error);
+            }
         }
     </script>
 </body>

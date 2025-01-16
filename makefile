@@ -46,7 +46,8 @@ WEB_TARGET = webplayground/lreng.js
 
 web:
 	rm -r webplayground/lreng.* || true
-	emcc $(SHARED_SRC) $(MAIN_SRC) -I include/ -D IS_WASM -o $(WEB_TARGET) \
+	emcc $(SHARED_SRC) $(MAIN_SRC) \
+		-I include/ -D IS_WASM -O2 -sSTACK_SIZE=1MB -o $(WEB_TARGET) \
 		-s "EXPORTED_RUNTIME_METHODS=['FS','callMain']" 
 
 clean_web:
