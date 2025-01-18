@@ -4,17 +4,17 @@
 #ifndef FRAME_H
 #define FRAME_H
 
-typedef struct name_object_pair {
+typedef struct name_objptr_pair {
     int name;
-    object_t object;
-} name_obj_pair_t;
+    object_t* objptr;
+} name_objptr_pair_t;
 
 typedef struct frame {
     dynarr_t global_pairs; /* type: name_obj_pair_t */
     /* indexs & stack stores the name obj pairs for call stack */
     dynarr_t indexs; /* type: int */
     dynarr_t stack; /* type: dynarr_t of name_obj_pair_t */
-    int refer_count;
+    int ref_count;
 } frame_t;
 
 extern frame_t* new_frame();
@@ -33,7 +33,7 @@ extern void clear_stack(frame_t* f, const int can_free_pairs);
 
 extern object_t* frame_get(const frame_t* f, const int name);
 
-extern object_t* frame_set(frame_t* f, const int name, const object_t* obj);
+extern void frame_set(frame_t* f, const int name, object_t* obj);
 
 
 #endif

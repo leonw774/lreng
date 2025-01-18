@@ -11,10 +11,11 @@ typedef enum object_type {
     TYPE_NULL,
     TYPE_NUM,
     TYPE_PAIR,
-    TYPE_FUNC,
-    TYPE_BUILTIN_FUNC,
+    TYPE_CALL,
     TYPE_ANY
 } object_type_enum;
+
+typedef unsigned char object_type_t;
 
 #define OBJECT_TYPE_NUM TYPE_ANY
 
@@ -37,35 +38,32 @@ typedef struct callable {
 
 #define NOT_BUILTIN_FUNC -1
 
-union object_union {
+typedef union object_data {
     number_t number;
     pair_t pair;
     callable_t callable;
-};
+} object_data_t;
 
 typedef struct object {
-    object_type_enum type;
-    union object_union data;
+    unsigned char is_error;
+    unsigned char is_const;
+    object_type_t type;
+    unsigned int ref_count;
+    object_data_t data;
 } object_t;
 
-typedef struct object_or_error {
-    unsigned char is_error;
-    object_t obj;
-} object_or_error_t;
-
-#define object_union_size sizeof(union object_union)
+#define object_data_size sizeof(object_data_t)
 #define object_struct_size sizeof(object_t)
-#define object_or_error_struct_size sizeof(object_or_error_t)
 
-#define NULL_OBJECT ((object_t) {.type = TYPE_NULL})
-#define ERR_OBJERR ((object_or_error_t) {.is_error = 1, .obj = NULL_OBJECT})
-#define OBJ_OBJERR(o) ((object_or_error_t) {.is_error = 0, .obj = o})
+extern const object_t* NULL_OBJECT_PTR;
+extern const object_t* ERR_OBJECT_PTR;
+extern const object_t ERR_OBJECT;
 
 extern const object_t RESERVED_OBJS[RESERVED_ID_NUM];
 extern const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM + 1];
 
-/* deep copy an object */
-extern object_t copy_object(const object_t* obj);
+extern object_t* create_object(object_type_enum type, object_data_t data);
+extern object_t* copy_object(object_t* obj);
 extern void free_object(object_t* obj);
 extern int print_object(object_t* obj, char end);
 

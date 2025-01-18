@@ -7,87 +7,89 @@
 #include "errormsg.h"
 #include "objects.h"
 
+const object_t* NULL_OBJECT_PTR = &RESERVED_OBJS[0];
+const object_t* ERR_OBJECT_PTR = &ERR_OBJECT;
+const object_t ERR_OBJECT = (object_t) {.is_error = 1, .type = TYPE_NULL};
+
 const object_t RESERVED_OBJS[RESERVED_ID_NUM] = {
-    NULL_OBJECT,
-    (object_t) {.type = TYPE_FUNC, .data = { .callable = {
-        .init_time_frame = NULL,
-        .index = -1,
-        .arg_name = -1,
-        .builtin_name = RESERVED_ID_NAME_INPUT
-    }}},
-    (object_t) { .type = TYPE_FUNC, .data = { .callable = {
-        .init_time_frame = NULL,
-        .index = -1,
-        .arg_name = -1,
-        .builtin_name = RESERVED_ID_NAME_OUTPUT
-    }}}
+    (object_t) {.is_error = 0, .is_const = 1, .type = TYPE_NULL},
+    (object_t) {.is_error = 0, .is_const = 1, .type = TYPE_CALL,
+        .data.callable = {
+            .init_time_frame = NULL,
+            .index = -1,
+            .arg_name = -1,
+            .builtin_name = RESERVED_ID_NAME_INPUT
+        }
+    },
+    (object_t) {.is_error = 0, .is_const = 1, .type = TYPE_CALL,
+        .data.callable = {
+            .init_time_frame = NULL,
+            .index = -1,
+            .arg_name = -1,
+            .builtin_name = RESERVED_ID_NAME_OUTPUT
+        }
+    }
 };
 
 const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM + 1] = {
-    "Null", "Number", "Pair", "Function", "Built-in Function",
+    "Null", "Number", "Pair", "Function",
     "Any"
 };
 
-object_t
-copy_object(const object_t* obj) {
-    object_t clone;
-    switch (obj->type) {
-    case TYPE_NUM:
-        clone = (object_t) {.type = TYPE_NUM};
-        copy_number(&clone.data.number, &obj->data.number);
-        return clone;
-    case TYPE_PAIR:
-        clone = (object_t) {
-            .type = TYPE_PAIR,
-            .data = {.pair = {
-                .left = malloc(sizeof(object_t)),
-                .right = malloc(sizeof(object_t))
-            }}
-        };
-        *(clone.data.pair.left) = copy_object(obj->data.pair.left);
-        *(clone.data.pair.right) = copy_object(obj->data.pair.right);
-        return clone;
-    case TYPE_FUNC:
-        /* only shallow copy the frame */
-        clone = *obj;
-        /* refer count += 1 if is not builtin function */
-        if (clone.data.callable.init_time_frame) {
-            clone.data.callable.init_time_frame->refer_count++;
-        }
-        return clone;
-    default:
-        return *obj;
+object_t* create_object(object_type_enum type, object_data_t data) {
+    object_t* objptr = malloc(sizeof(object_t));
+    *objptr = (object_t) {
+        .is_error = 0,
+        .is_const = 0,
+        .type = type,
+        .ref_count = 1,
+        .data = data
+    };
+    return objptr;
+}
+
+object_t*
+copy_object(object_t* obj) {
+    if (!obj->is_const) {
+        obj->ref_count++;
     }
+    return obj;
 }
 
 inline void
 free_object(object_t* obj) {
+    if (obj->is_const) {
+        return;
+    }
+    if (obj->ref_count > 1) {
+        obj->ref_count--;
+        return;
+    }
     if (obj->type == TYPE_NUM) {
         free_number(&obj->data.number);
     }
     else if (obj->type == TYPE_PAIR) {
         free_object(obj->data.pair.left);
         free_object(obj->data.pair.right);
-        free(obj->data.pair.left);
-        free(obj->data.pair.right);
     }
-    else if (obj->type == TYPE_FUNC) {
+    else if (obj->type == TYPE_CALL) {
         /* if is builtin function, it doesn't have frame */
         if (obj->data.callable.builtin_name != NOT_BUILTIN_FUNC) {
             return;
         }
         #define obj_init_time_frame obj->data.callable.init_time_frame
         if (obj_init_time_frame != NULL) {
-            if (obj_init_time_frame->refer_count <= 1) {
+            if (obj_init_time_frame->ref_count <= 1) {
                 clear_stack(obj_init_time_frame, 1);
                 free(obj_init_time_frame);
             }
             else {
-                obj_init_time_frame->refer_count--;
+                obj_init_time_frame->ref_count--;
             }
         }
         #undef obj_init_time_frame
     }
+    free(obj);
 }
 
 inline int
@@ -106,7 +108,7 @@ print_object(object_t* obj, char end) {
         printed_bytes_count += print_object(obj->data.pair.right, '\0');
         printed_bytes_count += printf(")");
     }
-    else if (obj->type == TYPE_FUNC) {
+    else if (obj->type == TYPE_CALL) {
         if (obj->data.callable.builtin_name != NOT_BUILTIN_FUNC) {
             printed_bytes_count = printf(
                 "[Func] builtin_name=%d", obj->data.callable.builtin_name
@@ -136,7 +138,7 @@ object_eq(object_t* a, object_t* b) {
     if (a->type != b->type) {
         return 0;
     }
-    else if (a->type == TYPE_FUNC) {
+    else if (a->type == TYPE_CALL) {
         callable_t *a_func = &a->data.callable, *b_func = &b->data.callable;
         return (
             a_func->arg_name == b_func->arg_name

@@ -17,6 +17,7 @@ free_tree(tree_t* tree) {
     free_dynarr(&tree->tokens);
     free(tree->lefts);
     free(tree->rights);
+    free(tree->sizes);
     tree->root_index = -1;
 }
 

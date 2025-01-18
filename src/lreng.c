@@ -72,7 +72,13 @@ for (i = 0; i < 10; i++) {
         return SEMANTIC_ERR_CODE;
     }
     frame_t* top_frame = new_frame();
-    eval_tree(&syntax_tree, top_frame, syntax_tree.root_index, is_debug);
+    object_t* final_return_object = eval_tree(
+        &syntax_tree,
+        top_frame,
+        syntax_tree.root_index,
+        is_debug
+    );
+    free_object(final_return_object);
     free_frame(top_frame);
     free(top_frame);
     free_tree(&syntax_tree);

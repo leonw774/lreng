@@ -6,31 +6,29 @@
 #include "builtin_funcs.h"
 
 /* correspond to reserved_id_name */
-const object_or_error_t (*BUILDTIN_FUNC_ARRAY[RESERVED_ID_NUM])(object_t*) = {
+object_t* (*BUILDTIN_FUNC_ARRAY[RESERVED_ID_NUM])(object_t*) = {
     NULL,
     &builtin_func_input,
     &builtin_func_output
 }; 
 
-const object_or_error_t
+object_t*
 builtin_func_input(object_t* obj) {
     int c;
     if (obj->type != TYPE_NULL) {
         print_runtime_error(
             0, 0, "built-in function 'input': argument type should be null"
         );
-        return ERR_OBJERR;
+        return (object_t*) ERR_OBJECT_PTR;
     }
     c = getchar();
-    return OBJ_OBJERR(
-        ((object_t) {
-            .type = TYPE_NUM,
-            .data = {.number = number_from_i32(c)}
-        })
+    return create_object(
+        TYPE_NUM,
+        (object_data_t) number_from_i32(c)
     );
 }
 
-const object_or_error_t
+object_t*
 builtin_func_output(object_t* obj) {
     /* check if obj is number */
     if (obj->type != TYPE_NUM) {
@@ -38,7 +36,7 @@ builtin_func_output(object_t* obj) {
             0, 0, "built-in function 'output': argument is not a number but:"
         );
         print_object(obj, '\n');
-        return ERR_OBJERR;
+        return (object_t*) ERR_OBJECT_PTR;
     }
     number_t n = obj->data.number;
     unsigned char c;
@@ -67,7 +65,7 @@ builtin_func_output(object_t* obj) {
         free(denom_str);
         free_dynarr(&numer_dynarr);
         free_dynarr(&denom_dynarr);
-        return ERR_OBJERR;
+        return (object_t*) ERR_OBJECT_PTR;
     }
-    return OBJ_OBJERR(NULL_OBJECT);
+    return (object_t*) NULL_OBJECT_PTR;
 }

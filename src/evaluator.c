@@ -54,7 +54,7 @@ is_bad_type(
     return 0;
 }
 
-static inline object_or_error_t
+static inline object_t*
 exec_call(
     const tree_t* tree,
     const frame_t* cur_frame,
@@ -64,10 +64,10 @@ exec_call(
 ) {
     /* if is builtin */
     if (func_obj->data.callable.builtin_name != -1) {
-        const object_or_error_t (*func_ptr)(object_t*) =
+        object_t* (*func_ptr)(object_t*) =
             BUILDTIN_FUNC_ARRAY[func_obj->data.callable.builtin_name];
         if (func_ptr == NULL) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
         return func_ptr(arg_obj);
     }
@@ -152,7 +152,7 @@ exec_call(
     }
 #endif
     /* eval from function's entry index */
-    object_or_error_t res = eval_tree(
+    object_t* res = eval_tree(
         tree,
         call_frame,
         func_obj->data.callable.index,
@@ -168,7 +168,7 @@ exec_call(
     return res;
 }
 
-static inline object_or_error_t
+static inline object_t*
 exec_op(
     const tree_t* tree,
     const frame_t* cur_frame,
@@ -177,45 +177,46 @@ exec_op(
     object_t* right_obj,
     const int is_debug
 ) {
-    object_t tmp_obj;
+    object_t* tmp_obj;
     switch(op_token.name) {
     case OP_FCALL:
-        if (is_bad_type(op_token, TYPE_FUNC, TYPE_ANY, left_obj, right_obj)) {
-            return ERR_OBJERR;
+        if (is_bad_type(op_token, TYPE_CALL, TYPE_ANY, left_obj, right_obj)) {
+            return (object_t*) ERR_OBJECT_PTR;
         };
         return exec_call(tree, cur_frame, left_obj, right_obj, is_debug);
     /* case OP_POS: */
         /* OP_POS would be discarded in tree parser */
     case OP_NEG:
         if (is_bad_type(op_token, TYPE_NUM, NO_OPRAND, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
-        tmp_obj = copy_object(left_obj);
-        tmp_obj.data.number.numer.sign = !tmp_obj.data.number.numer.sign;
-        return OBJ_OBJERR(tmp_obj);
+        tmp_obj = create_object(
+            left_obj->type,
+            left_obj->data
+        );
+        tmp_obj->data.number.numer.sign = !tmp_obj->data.number.numer.sign;
+        return tmp_obj;
     case OP_NOT:
         if (is_bad_type(op_token, TYPE_ANY, NO_OPRAND, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
-        return OBJ_OBJERR(((object_t) {
-            .type = TYPE_NUM,
-            .data = {
-                .number = to_bool(left_obj) ? ONE_NUMBER : ZERO_NUMBER
-            }
-        }));
+        return create_object(
+            TYPE_NUM,
+            (object_data_t) (to_bool(left_obj) ? ONE_NUMBER : ZERO_NUMBER)
+        );
     case OP_GETL:
         if (is_bad_type(op_token, TYPE_PAIR, NO_OPRAND, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
-        return OBJ_OBJERR(copy_object(left_obj->data.pair.left));
+        return copy_object(left_obj->data.pair.left);
     case OP_GETR:
         if (is_bad_type(op_token, TYPE_PAIR, NO_OPRAND, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
-        return OBJ_OBJERR(copy_object(left_obj->data.pair.right));
+        return copy_object(left_obj->data.pair.right);
     case OP_EXP:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
         if (right_obj->data.number.denom.size != 1
             || right_obj->data.number.denom.digit[0] != 1) {
@@ -224,29 +225,29 @@ exec_op(
                 op_token.pos.col,
                 "Exponent must be integer"
             );
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
-        return OBJ_OBJERR(((object_t) {
-            .type = TYPE_NUM,
-            .data = {.number = number_exp(
+        return  create_object(
+            TYPE_NUM,
+            (object_data_t) number_exp(
                 &left_obj->data.number,
                 &right_obj->data.number
-            )}
-        }));
+            )
+        );
     case OP_MUL:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
-        return OBJ_OBJERR(((object_t) {
-            .type = TYPE_NUM,
-            .data = {.number = number_mul(
+        return create_object(
+            TYPE_NUM,
+            (object_data_t) number_mul(
                 &left_obj->data.number,
                 &right_obj->data.number
-            )}
-        }));
+            )
+        );
     case OP_DIV:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
         if (right_obj->data.number.numer.size == 0) {
             print_runtime_error(
@@ -254,140 +255,137 @@ exec_op(
                 op_token.pos.col,
                 "Divided by zero"
             );
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
-        return OBJ_OBJERR(((object_t) {
-            .type = TYPE_NUM,
-            .data = {.number = number_div(
+        return create_object(
+            TYPE_NUM,
+            (object_data_t) number_div(
                 &left_obj->data.number,
                 &right_obj->data.number
-            )}
-        }));
+            )
+        );
     case OP_MOD:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
-        return OBJ_OBJERR(((object_t) {
-            .type = TYPE_NUM,
-            .data = {.number = number_mod(
+        return create_object(
+            TYPE_NUM,
+            (object_data_t) number_mod(
                 &left_obj->data.number,
                 &right_obj->data.number
-            )}
-        }));
+            )
+        );
     case OP_ADD:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
-        return OBJ_OBJERR(((object_t) {
-            .type = TYPE_NUM,
-            .data = {.number = number_add(
+        return create_object(
+            TYPE_NUM,
+            (object_data_t) number_add(
                 &left_obj->data.number,
                 &right_obj->data.number
-            )}
-        }));
+            )
+        );
     case OP_SUB:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
-        return OBJ_OBJERR(((object_t) {
-            .type = TYPE_NUM,
-            .data = {.number = number_sub(
+        return create_object(
+            TYPE_NUM,
+            (object_data_t) number_sub(
                 &left_obj->data.number,
                 &right_obj->data.number
-            )}
-        }));
+            )
+        );
     case OP_LT:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
-        return OBJ_OBJERR(((object_t) {
-            .type = TYPE_NUM,
-            .data = {.number = number_from_i32(
+        return create_object(
+            TYPE_NUM,
+            (object_data_t) number_from_i32(
                 number_lt(&left_obj->data.number, &right_obj->data.number)
-            )}
-        }));
+            )
+        );
     case OP_LE:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
-        return OBJ_OBJERR(((object_t) {
-            .type = TYPE_NUM,
-            .data = {.number = number_from_i32(
+        return create_object(
+            TYPE_NUM,
+            (object_data_t) number_from_i32(
                 !number_lt(&right_obj->data.number, &left_obj->data.number)
-            )}
-        }));
+            )
+        );
     case OP_GT:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
-        return OBJ_OBJERR(((object_t) {
-            .type = TYPE_NUM,
-            .data = {.number = number_from_i32(
+        return create_object(
+            TYPE_NUM,
+            (object_data_t) number_from_i32(
                 number_lt(&right_obj->data.number, &left_obj->data.number)
-            )}
-        }));
+            )
+        );
     case OP_GE:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
-        return OBJ_OBJERR(((object_t) {
-            .type = TYPE_NUM,
-            .data = {.number = number_from_i32(
+        return create_object(
+            TYPE_NUM,
+            (object_data_t) number_from_i32(
                 !number_lt(&left_obj->data.number, &right_obj->data.number)
-            )}
-        }));
+            )
+        );
     case OP_EQ:
-        return OBJ_OBJERR(((object_t) {
-            .type = TYPE_NUM,
-            .data = {.number = number_from_i32(object_eq(left_obj, right_obj))}
-        }));
+        return create_object(
+            TYPE_NUM,
+            (object_data_t) number_from_i32(object_eq(left_obj, right_obj))
+        );
     case OP_NE:
-        return OBJ_OBJERR(((object_t) {
-            .type = TYPE_NUM,
-            .data = {.number = number_from_i32(!object_eq(left_obj, right_obj))}
-        }));
+        return create_object(
+            TYPE_NUM,
+            (object_data_t) number_from_i32(!object_eq(left_obj, right_obj))
+        );
     case OP_AND:
         if (is_bad_type(op_token, TYPE_ANY, TYPE_ANY, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
-        return OBJ_OBJERR(((object_t) {
-            .type = TYPE_NUM,
-            .data = {.number = number_from_i32(
+        return create_object(
+            TYPE_NUM,
+            (object_data_t) number_from_i32(
                 to_bool(left_obj) && to_bool(right_obj)
-            )}
-        }));
+            )
+        );
     case OP_OR:
         if (is_bad_type(op_token, TYPE_ANY, TYPE_ANY, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
-        return OBJ_OBJERR(((object_t) {
-            .type = TYPE_NUM,
-            .data = {.number = number_from_i32(
+        return create_object(
+            TYPE_NUM,
+            (object_data_t) number_from_i32(
                 to_bool(left_obj) || to_bool(right_obj)
-            )}
-        }));
+            )
+        );
     case OP_PAIR:
         if (is_bad_type(op_token, TYPE_ANY, TYPE_ANY, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
-        tmp_obj = (object_t) {
-            .type = TYPE_PAIR,
-            .data = {.pair = {
-                .left = malloc(sizeof(object_t)),
-                .right = malloc(sizeof(object_t)),
-            }}
-        };
-        *tmp_obj.data.pair.left = copy_object(left_obj);
-        *tmp_obj.data.pair.right = copy_object(right_obj);
-        return OBJ_OBJERR(tmp_obj);
+        return create_object(
+            TYPE_PAIR,
+            (object_data_t) (pair_t) {
+                .left = copy_object(left_obj),
+                .right = copy_object(right_obj)
+            }
+        );
     case OP_FCALLR:
-        if (is_bad_type(op_token, TYPE_FUNC, TYPE_ANY, left_obj, right_obj)) {
-            return ERR_OBJERR;
+        if (is_bad_type(op_token, TYPE_CALL, TYPE_ANY, left_obj, right_obj)) {
+            return (object_t*) ERR_OBJECT_PTR;
         }
         return exec_call(tree, cur_frame, left_obj, right_obj, is_debug);
     case OP_CONDFCALL:
         if (is_bad_type(op_token, TYPE_ANY, TYPE_PAIR, left_obj, right_obj)) {
-            return ERR_OBJERR;
+            return (object_t*) ERR_OBJECT_PTR;
         }
         /* check inside the pair */
         {
@@ -398,10 +396,10 @@ exec_op(
                 .str = "the members in the conditional function caller"
             };
             if (is_bad_type(
-                tmp_op_token, TYPE_FUNC, TYPE_FUNC,
+                tmp_op_token, TYPE_CALL, TYPE_CALL,
                 right_obj->data.pair.left, right_obj->data.pair.right
             )) {
-                return ERR_OBJERR;
+                return (object_t*) ERR_OBJECT_PTR;
             }
 
         }
@@ -419,12 +417,12 @@ exec_op(
             op_token.pos.col,
             "exec_op: bad op name"
         );
-        return ERR_OBJERR;
+        return (object_t*) ERR_OBJECT_PTR;
     }
 }
 
 
-object_or_error_t
+object_t*
 eval_tree(
     const tree_t* tree,
     frame_t* cur_frame,
@@ -438,9 +436,7 @@ eval_tree(
     const int obj_table_offset = entry_index - tree_size + 1;
     
     dynarr_t token_index_stack; /* type: int */
-    object_t* obj_table;
-    unsigned char* is_from_frame; /* is the object shallow copied from frame */
-    unsigned char* is_evaled;
+    object_t** obj_table;
 
     token_t cur_token;
     int cur_index, left_index, right_index;
@@ -448,7 +444,7 @@ eval_tree(
     object_t* right_obj;
 
     int i, is_error = 0;
-    object_or_error_t tmp_obj_err;
+    object_t* returned_obj;
 
 #ifdef ENABLE_DEBUG
     if (is_debug) {
@@ -460,11 +456,7 @@ eval_tree(
 #endif
 
     /* obj_table store shallow copyed intermidiate results */
-    is_evaled = calloc(tree_size, sizeof(unsigned char));
-    is_from_frame = calloc(tree_size, sizeof(unsigned char));
-    obj_table = calloc(tree_size, sizeof(object_t));
-    #define _IS_EVALED(index) (is_evaled[index - obj_table_offset])
-    #define _IS_FROM_FRAME(index) (is_from_frame[index - obj_table_offset])
+    obj_table = calloc(tree_size, sizeof(object_t*));
     #define _OBJ_TABLE(index) (obj_table[index - obj_table_offset])
 
     /* begin evaluation */
@@ -486,10 +478,8 @@ eval_tree(
             fflush(stdout);
         }
 #endif
-        left_obj = (left_index == -1 || !_IS_EVALED(left_index))
-            ? NULL : &_OBJ_TABLE(left_index);
-        right_obj = (right_index == -1 || !_IS_EVALED(right_index))
-            ? NULL : &_OBJ_TABLE(right_index);
+        left_obj = (left_index == -1) ? NULL : _OBJ_TABLE(left_index);
+        right_obj = (right_index == -1) ? NULL : _OBJ_TABLE(right_index);
 
         if (cur_token.type == TOK_OP) {
             const token_t* left_token = (left_index == -1)
@@ -500,36 +490,41 @@ eval_tree(
             switch (cur_token.name) {
             /* function maker */
             case OP_FMAKE:
-                _OBJ_TABLE(cur_index).type = TYPE_FUNC;
-                (_OBJ_TABLE(cur_index)).data.callable = (callable_t) {
-                    .is_macro = 0,
-                    .builtin_name = NOT_BUILTIN_FUNC,
-                    .arg_name = -1,
-                    .index = left_index,
-                    /* owns a deep copy of the frame it created under */
-                    .init_time_frame = copy_frame(cur_frame)
-                };
+                _OBJ_TABLE(cur_index) = create_object(
+                    TYPE_CALL,
+                    (object_data_t) (callable_t) {
+                        .is_macro = 0,
+                        .builtin_name = NOT_BUILTIN_FUNC,
+                        .arg_name = -1,
+                        .index = left_index,
+                        /* owns a deep copy of the frame it created under */
+                        .init_time_frame = copy_frame(cur_frame)
+                    }
+                );
 #ifdef ENABLE_DEBUG
                 if (is_debug) {
-                    printf(" defined function:");
-                    print_object(&_OBJ_TABLE(cur_index), '\n');
+                    printf(" make function:");
+                    print_object(_OBJ_TABLE(cur_index), '\n');
                 }
 #endif
                 break;
             /* macro maker */
             case OP_MMAKE:
-                _OBJ_TABLE(cur_index).type = TYPE_FUNC;
-                (_OBJ_TABLE(cur_index)).data.callable = (callable_t) {
-                    .is_macro = 1,
-                    .builtin_name = NOT_BUILTIN_FUNC,
-                    .arg_name = -1,
-                    .index = left_index,
-                    .init_time_frame = NULL
-                };
+                _OBJ_TABLE(cur_index) = create_object(
+                    TYPE_CALL,
+                    (object_data_t) (callable_t) {
+                        .is_macro = 1,
+                        .builtin_name = NOT_BUILTIN_FUNC,
+                        .arg_name = -1,
+                        .index = left_index,
+                        /* owns a deep copy of the frame it created under */
+                        .init_time_frame = copy_frame(cur_frame)
+                    }
+                );
 #ifdef ENABLE_DEBUG
                 if (is_debug) {
-                    printf(" defined pure function:");
-                    print_object(&_OBJ_TABLE(cur_index), '\n');
+                    printf(" make macro:");
+                    print_object(_OBJ_TABLE(cur_index), '\n');
                 }
 #endif
                 break;
@@ -539,7 +534,7 @@ eval_tree(
                     append(&token_index_stack, &tree->rights[cur_index]);
                     continue;
                 }
-                if (right_obj->type != TYPE_FUNC) {
+                if (right_obj->type != TYPE_CALL) {
                     print_runtime_error(
                         cur_token.pos.line,
                         cur_token.pos.col,
@@ -548,11 +543,10 @@ eval_tree(
                     is_error = 1;
                     break;
                 }
-                /* move the right object to current and modify arg_name */
-                _OBJ_TABLE(cur_index) = *right_obj;
-                *right_obj = NULL_OBJECT;
-                _IS_FROM_FRAME(cur_index) = _IS_FROM_FRAME(right_index);
-                _OBJ_TABLE(cur_index).data.callable.arg_name = left_token->name;
+                /* move right to current and modify arg_name */
+                right_obj->data.callable.arg_name = left_token->name;
+                _OBJ_TABLE(cur_index) = right_obj;
+                _OBJ_TABLE(right_index) = NULL;
                 break;
             /* assignment */
             case OP_ASSIGN:
@@ -576,16 +570,16 @@ eval_tree(
                 }
 
                 /* set frame */
-                object_t* obj_on_frame =
-                    frame_set(cur_frame, left_token->name, right_obj);
+                frame_set(cur_frame, left_token->name, right_obj);
 #ifdef ENABLE_DEBUG
                 if (is_debug) {
                     printf("initialized identifier '%s' to ", left_token->str);
-                    print_object(obj_on_frame, '\n');
+                    print_object(right_obj, '\n');
                 }
 #endif
-                _OBJ_TABLE(cur_index) = *obj_on_frame;
-                _IS_FROM_FRAME(cur_index) = 1;
+                /* move right to current */
+                _OBJ_TABLE(cur_index) = right_obj;
+                _OBJ_TABLE(right_index) = NULL;
                 break;
 
             /* logic-and or logic-or */
@@ -607,15 +601,13 @@ eval_tree(
                         continue;
                     }
                     /* move right to current */
-                    _OBJ_TABLE(cur_index) = *right_obj;
-                    *right_obj = NULL_OBJECT;
-                    _IS_FROM_FRAME(cur_index) = _IS_FROM_FRAME(right_index);
+                    _OBJ_TABLE(cur_index) = right_obj;
+                    _OBJ_TABLE(right_index) = NULL;
                 }
                 else {
                     /* move left to current */
-                    _OBJ_TABLE(cur_index) = *left_obj;
-                    *left_obj = NULL_OBJECT;
-                    _IS_FROM_FRAME(cur_index) = _IS_FROM_FRAME(left_index);
+                    _OBJ_TABLE(cur_index) = left_obj;
+                    _OBJ_TABLE(left_index) = NULL;
                 }
                 break;
             /* expresion seperator */
@@ -626,9 +618,8 @@ eval_tree(
                     continue;
                 }
                 /* move right to current */
-                _OBJ_TABLE(cur_index) = *right_obj;
-                *right_obj = NULL_OBJECT;
-                _IS_FROM_FRAME(cur_index) = _IS_FROM_FRAME(right_index);
+                _OBJ_TABLE(cur_index) = right_obj;
+                _OBJ_TABLE(right_index) = NULL;
                 break;
             /* other operator */
             default:
@@ -641,10 +632,10 @@ eval_tree(
                     append(&token_index_stack, &left_index);
                     continue;
                 }
-                tmp_obj_err = exec_op(
+                returned_obj = exec_op(
                     tree, cur_frame, cur_token, left_obj, right_obj, is_debug
                 );
-                if (tmp_obj_err.is_error) {
+                if (returned_obj->is_error) {
                     sprintf(
                         ERR_MSG_BUF,
                         "operator \"%s\" returns with error",
@@ -667,11 +658,16 @@ eval_tree(
                 }
 #endif
                 /* end eval if error */
-                if (tmp_obj_err.is_error) {
+                if (returned_obj->is_error) {
                     is_error = 1;
                     break;
                 }
-                _OBJ_TABLE(cur_index) = tmp_obj_err.obj;
+                /* don't need to copy because return_obj is temporary */
+                _OBJ_TABLE(cur_index) = returned_obj;
+            }
+            // end switch
+            if (is_error) {
+                break; /* break the while loop */
             }
         }
         else if (cur_token.type == TOK_ID) {
@@ -689,8 +685,7 @@ eval_tree(
                 break;
             }
             /* copy object from frame */
-            _OBJ_TABLE(cur_index) = *o;
-            _IS_FROM_FRAME(cur_index) = 1;
+            _OBJ_TABLE(cur_index) = copy_object(o);
 #ifdef ENABLE_DEBUG
             if (is_debug) {
                 printf(
@@ -702,18 +697,20 @@ eval_tree(
 #endif
         }
         else if (cur_token.type == TOK_NUM) {
-            _OBJ_TABLE(cur_index).type = TYPE_NUM;
-            _OBJ_TABLE(cur_index).data.number = number_from_str(cur_token.str);
+            _OBJ_TABLE(cur_index) = create_object(
+                TYPE_NUM,
+                (object_data_t) number_from_str(cur_token.str)
+
+            );
         }
         else {
             printf("eval_tree: bad token type: %d\n", cur_token.type);
             exit(RUNTIME_ERR_CODE);
         }
-        _IS_EVALED(cur_index) = 1;
 #ifdef ENABLE_DEBUG
         if (is_debug) {
             printf("< (node %d) eval result: ", cur_index);
-            print_object(&_OBJ_TABLE(cur_index), '\n');
+            print_object(_OBJ_TABLE(cur_index), '\n');
             fflush(stdout);
         }
 #endif
@@ -727,10 +724,10 @@ eval_tree(
             printf("eval_tree return with error\n");
         }
 #endif
-        tmp_obj_err = ERR_OBJERR;
+        returned_obj = (object_t*) ERR_OBJECT_PTR;
     }
     else {
-        tmp_obj_err = OBJ_OBJERR(copy_object(&_OBJ_TABLE(entry_index)));
+        returned_obj = copy_object(_OBJ_TABLE(entry_index));
     }
 
     /* free things */
@@ -742,28 +739,23 @@ eval_tree(
     }
 #endif
     for (i = 0; i < tree_size; i++) {
-        if (!is_from_frame[i]
-            && obj_table[i].type != TYPE_NULL
-            && obj_table[i].type != TYPE_BUILTIN_FUNC
-        ) {
+        if (obj_table[i] != NULL) {
 #ifdef ENABLE_DEBUG
             if (is_debug) {
-                printf("free [%d]:", i); print_object(&obj_table[i], '\n');
+                printf("free [%d]:", i); print_object(obj_table[i], '\n');
                 fflush(stdout);
             }
 #endif
-            free_object(&obj_table[i]);
+            free_object(obj_table[i]);
         }
     }
     free(obj_table);
-    free(is_from_frame);
-    free(is_evaled);
 #ifdef ENABLE_DEBUG
     if (is_debug) {
         printf("eval_tree returned ");
-        print_object(&tmp_obj_err.obj, '\n');
+        print_object(returned_obj, '\n');
         fflush(stdout);
     }
 #endif
-    return tmp_obj_err;
+    return returned_obj;
 }
