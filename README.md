@@ -2,13 +2,17 @@
 
 A simple minimal interpreted functional programming language.
 
+The main idea is to build a minimal functional language that works on binary tree: it is parsed into a binary AST and has "Pair" as its only container data type.
+
 ## Usage
 
+Download this repo and run `make main` to build the program and then:
+
 ```
-./lreng {file_path} [-d]
+./lreng {code_file_path} [-d]
 ```
 
-The optional `-d` flag outputs debug information.
+The optional `-d` flag outputs debug information only when you build the program with `make debug`.
 
 ## Variable
 
@@ -90,7 +94,7 @@ The pair maker `,` is right-associative, so that it can be used to make linked l
 ```
 hello_world = 'H', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '\n', null;
 print = string => {
-    string && ( output(`string); print(~string) )
+    string && (output(`string); print(~string))
 };
 print(hello_world)
 ```
@@ -99,9 +103,9 @@ The `` `string `` is used to get data and `~string` is to get next.
 
 ### Function maker and argument binder
 
-The function makers `{ ... }`  and macro maker turns the wrapped expression into a function. The created function has no argument by default. Empty function is not allowed.
+The function makers `{ ... }` and macro maker turns the wrapped expression into a function. The created function has no argument by default. Empty function is not allowed.
 
-The argument binder `x => func` binds *one* argument identifier to a function.
+The argument binder `x => func` binds *one* argument identifier to a function. A function can have at most one argument.
 
 ### Macro maker
 
