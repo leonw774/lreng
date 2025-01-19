@@ -132,10 +132,7 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos) {
         );
         free(tok_str);
         if (op == -1) {
-            throw_syntax_error(
-                pos.line, pos.col,
-                "bad op name"
-            );
+            throw_syntax_error(pos, "bad op name");
         }
         /* if is a empty function call, add null */
         if (((token_t*) back(&cur_cargo->tokens))->name == OP_FCALL
@@ -153,11 +150,13 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos) {
     }
     else {
         int i, is_in_reserved_ids = 0;
-        if (cur_cargo->str.size >= 128) {
-            throw_syntax_error(
-                pos.line, pos.col,
-                "token length cannot exceed 127"
+        if (cur_cargo->str.size > MAX_TOKEN_STR_LEN) {
+            sprintf(
+                ERR_MSG_BUF,
+                "token length cannot exceed %d",
+                MAX_TOKEN_STR_LEN
             );
+            throw_syntax_error(pos, ERR_MSG_BUF);
         }
         for (i = 0; i < RESERVED_ID_NUM; i++) {
             if (strcmp(RESERVED_IDS[i], tok_str) == 0) {
@@ -259,11 +258,7 @@ ws_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     }
     else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
-        throw_syntax_error(
-            pos.line,
-            pos.col,
-            ERR_MSG_BUF
-        );
+        throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) {NULL, cur_cargo};
     }
 }
@@ -318,11 +313,7 @@ zero_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     }
     else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
-        throw_syntax_error(
-            pos.line,
-            pos.col,
-            ERR_MSG_BUF
-        );
+        throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) {NULL, cur_cargo};
     }
 }
@@ -345,11 +336,7 @@ num_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     }
     else if (IS_NUM(c)) {
         if (c == '.' && strchr(cur_cargo.str.data, '.')) {
-            throw_syntax_error(
-                pos.line,
-                pos.col,
-                "Second decimal dot in number"
-            );
+            throw_syntax_error(pos, "Second decimal dot in number");
         }
         append(&cur_cargo.str, &c);
         return (state_ret) {&num_state, cur_cargo};
@@ -361,11 +348,7 @@ num_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     }
     else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
-        throw_syntax_error(
-            pos.line,
-            pos.col,
-            ERR_MSG_BUF
-        );
+        throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) {NULL, cur_cargo};
     }
 }
@@ -397,11 +380,7 @@ hex_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     }
     else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
-        throw_syntax_error(
-            pos.line,
-            pos.col,
-            ERR_MSG_BUF
-        );
+        throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) {NULL, cur_cargo};
     }
 }
@@ -433,11 +412,7 @@ bin_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     }
     else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
-        throw_syntax_error(
-            pos.line,
-            pos.col,
-            ERR_MSG_BUF
-        );
+        throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) {NULL, cur_cargo};
     }
 }
@@ -455,11 +430,7 @@ ch_open_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     }
     else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
-        throw_syntax_error(
-            pos.line,
-            pos.col,
-            ERR_MSG_BUF
-        );
+        throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) {NULL, cur_cargo};
     }
 }
@@ -491,11 +462,7 @@ ch_esc_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     }
     else {
         sprintf(ERR_MSG_BUF, INVALID_ESCCHAR_MSG, c);
-        throw_syntax_error(
-            pos.line,
-            pos.col,
-            ERR_MSG_BUF
-        );
+        throw_syntax_error(pos, ERR_MSG_BUF);
     }
     append(&cur_cargo.str, &c);
     return (state_ret) {&ch_lit_state, cur_cargo};
@@ -508,11 +475,7 @@ ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     char c = linecol_read(pos_iter);
     if (c != '\'') {
         sprintf(ERR_MSG_BUF, "Expect a single quote, get '%c'", c);
-        throw_syntax_error(
-            pos.line,
-            pos.col,
-            ERR_MSG_BUF
-        );
+        throw_syntax_error(pos, ERR_MSG_BUF);
     }
 
     /* transfrom cargo str char into its ascii number */
@@ -542,11 +505,7 @@ ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     }
     else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_LIT_MSG, c);
-        throw_syntax_error(
-            pos.line,
-            pos.col,
-            ERR_MSG_BUF
-        );
+        throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) {NULL, cur_cargo};
     }
 }
@@ -578,11 +537,7 @@ id_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     }
     else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
-        throw_syntax_error(
-            pos.line,
-            pos.col,
-            ERR_MSG_BUF
-        );
+        throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) {NULL, cur_cargo};
     }
 }
@@ -641,11 +596,7 @@ op_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
     }
     else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
-        throw_syntax_error(
-            pos.line,
-            pos.col,
-            ERR_MSG_BUF
-        );
+        throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) {NULL, cur_cargo};
     }
 }

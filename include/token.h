@@ -27,6 +27,8 @@ typedef enum reserved_id_name {
 } reserved_id_name_enum;
 
 
+#define MAX_TOKEN_STR_LEN 128
+
 typedef struct token {
     const char* str;
     int name; /* the name of operator or id */

@@ -1,3 +1,5 @@
+#include "token.h"
+
 #ifndef ERRORMSG_H
 #define ERRORMSG_H
 
@@ -8,8 +10,8 @@
 #define OTHER_ERR_CODE 5
 
 extern char ERR_MSG_BUF[];
-extern void throw_syntax_error(int line, int col, const char* msg);
-extern void print_semantic_error(int line, int col, const char* msg);
-extern void print_runtime_error(int line, int col, const char* msg);
+extern void throw_syntax_error(linecol_t pos, const char* msg);
+extern void print_semantic_error(linecol_t pos, const char* msg);
+extern void print_runtime_error(linecol_t pos, const char* msg);
 
 #endif

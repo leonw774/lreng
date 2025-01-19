@@ -6,7 +6,9 @@ The main idea is to build a minimal functional language that works on binary tre
 
 ## Usage
 
-Download this repo and run `make main` to build the program and then:
+`gcc` and `make` is required to build the program, and optionally `emscripten` if you want to build the web playground.
+
+Download this repo and run `make main` and then:
 
 ```
 ./lreng {code_file_path} [-d]

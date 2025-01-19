@@ -48,7 +48,7 @@ is_bad_type(
             left_obj == NULL ? "" : OBJECT_TYPE_STR[left_obj->type],
             right_obj == NULL ? "" : OBJECT_TYPE_STR[right_obj->type]
         );
-        print_runtime_error(op_token.pos.line, op_token.pos.col, ERR_MSG_BUF);
+        print_runtime_error(op_token.pos, ERR_MSG_BUF);
         return 1;
     }
     return 0;
@@ -58,10 +58,12 @@ static inline object_t*
 exec_call(
     const tree_t* tree,
     const frame_t* cur_frame,
+    linecol_t token_pos,
     object_t* func_obj,
     object_t* arg_obj,
     const int is_debug
 ) {
+    object_t* returned_obj;
     /* if is builtin */
     if (func_obj->data.callable.builtin_name != -1) {
         object_t* (*func_ptr)(object_t*) =
@@ -69,7 +71,12 @@ exec_call(
         if (func_ptr == NULL) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return func_ptr(arg_obj);
+        ERR_MSG_BUF[0] = '\0';
+        returned_obj = func_ptr(arg_obj);
+        if (returned_obj->is_error && ERR_MSG_BUF[0] != '\0') {
+            print_runtime_error(token_pos, ERR_MSG_BUF);
+        }
+        return returned_obj;
     }
 
 #ifdef ENABLE_DEBUG
@@ -152,7 +159,7 @@ exec_call(
     }
 #endif
     /* eval from function's entry index */
-    object_t* res = eval_tree(
+    returned_obj = eval_tree(
         tree,
         call_frame,
         func_obj->data.callable.index,
@@ -165,7 +172,7 @@ exec_call(
         clear_stack(call_frame, 0);
         free(call_frame);
     }
-    return res;
+    return returned_obj;
 }
 
 static inline object_t*
@@ -183,7 +190,9 @@ exec_op(
         if (is_bad_type(op_token, TYPE_CALL, TYPE_ANY, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         };
-        return exec_call(tree, cur_frame, left_obj, right_obj, is_debug);
+        return exec_call(
+            tree, cur_frame, op_token.pos, left_obj, right_obj, is_debug
+        );
     /* case OP_POS: */
         /* OP_POS would be discarded in tree parser */
     case OP_NEG:
@@ -220,11 +229,7 @@ exec_op(
         }
         if (right_obj->data.number.denom.size != 1
             || right_obj->data.number.denom.digit[0] != 1) {
-            print_runtime_error(
-                op_token.pos.line,
-                op_token.pos.col,
-                "Exponent must be integer"
-            );
+            print_runtime_error(op_token.pos, "Exponent must be integer");
             return (object_t*) ERR_OBJECT_PTR;
         }
         return  create_object(
@@ -250,11 +255,7 @@ exec_op(
             return (object_t*) ERR_OBJECT_PTR;
         }
         if (right_obj->data.number.numer.size == 0) {
-            print_runtime_error(
-                op_token.pos.line,
-                op_token.pos.col,
-                "Divided by zero"
-            );
+            print_runtime_error(op_token.pos, "Divided by zero");
             return (object_t*) ERR_OBJECT_PTR;
         }
         return create_object(
@@ -382,7 +383,9 @@ exec_op(
         if (is_bad_type(op_token, TYPE_CALL, TYPE_ANY, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return exec_call(tree, cur_frame, left_obj, right_obj, is_debug);
+        return exec_call(
+            tree, cur_frame, op_token.pos, left_obj, right_obj, is_debug
+        );
     case OP_CONDFCALL:
         if (is_bad_type(op_token, TYPE_ANY, TYPE_PAIR, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
@@ -406,17 +409,14 @@ exec_op(
         return exec_call(
             tree,
             cur_frame,
+            op_token.pos,
             (to_bool(left_obj)
                 ? right_obj->data.pair.left : right_obj->data.pair.right),
             (object_t*) &RESERVED_OBJS[RESERVED_ID_NAME_NULL],
             is_debug
         );
     default:
-        print_runtime_error(
-            op_token.pos.line,
-            op_token.pos.col,
-            "exec_op: bad op name"
-        );
+        print_runtime_error(op_token.pos, "exec_op: bad op name");
         return (object_t*) ERR_OBJECT_PTR;
     }
 }
@@ -534,11 +534,21 @@ eval_tree(
                     append(&token_index_stack, &tree->rights[cur_index]);
                     continue;
                 }
-                if (right_obj->type != TYPE_CALL) {
+                if (
+                    right_obj->type != TYPE_CALL
+                    || right_obj->data.callable.is_macro
+                ) {
                     print_runtime_error(
-                        cur_token.pos.line,
-                        cur_token.pos.col,
+                        cur_token.pos,
                         "Right side of argument binder should be function"
+                    );
+                    is_error = 1;
+                    break;
+                }
+                if (right_obj->data.callable.arg_name != -1) {
+                    print_runtime_error(
+                        cur_token.pos,
+                        "Bind argument to a function that already has one"
                     );
                     is_error = 1;
                     break;
@@ -560,11 +570,7 @@ eval_tree(
                         "Repeated initialization of identifier '%s'",
                         left_token->str
                     );
-                    print_runtime_error(
-                        left_token->pos.line,
-                        left_token->pos.col,
-                        ERR_MSG_BUF
-                    );
+                    print_runtime_error(left_token->pos, ERR_MSG_BUF);
                     is_error = 1;
                     break;
                 }
@@ -641,20 +647,16 @@ eval_tree(
                         "operator \"%s\" returns with error",
                         OP_STRS[cur_token.name]
                     );
-                    print_runtime_error(
-                        cur_token.pos.line,
-                        cur_token.pos.col,
-                        ERR_MSG_BUF
-                    );
+                    print_runtime_error(cur_token.pos, ERR_MSG_BUF);
                 }
 #ifdef ENABLE_DEBUG
                 if (is_debug) {
                     printf(
-                        "^ (node %d) exec_op ",
+                        "^ (node %d) exec_op %s safely returned with ",
                         cur_index, OP_STRS[cur_token.name]
                     );
                     print_token(cur_token);
-                    printf(" safely returned\n");
+                    printf("\n");
                 }
 #endif
                 /* end eval if error */
@@ -678,9 +680,7 @@ eval_tree(
                     "Identifier '%s' used uninitialized",
                     cur_token.str
                 );
-                print_runtime_error(
-                    cur_token.pos.line, cur_token.pos.col, ERR_MSG_BUF
-                );
+                print_runtime_error(cur_token.pos, ERR_MSG_BUF);
                 is_error = 1;
                 break;
             }

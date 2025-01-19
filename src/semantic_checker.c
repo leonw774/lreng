@@ -63,11 +63,7 @@ semantic_checker(const tree_t tree, const int is_debug) {
                         "Left side of %s is not identifier.",
                         OP_STRS[cur_token_p->name]
                     );
-                    print_semantic_error(
-                        left_token->pos.line,
-                        left_token->pos.col,
-                        ERR_MSG_BUF
-                    );
+                    print_semantic_error(left_token->pos, ERR_MSG_BUF);
                 }
                 else if (frame_get(cur_frame, left_token->name)) {
                     is_passed = 0;
@@ -76,15 +72,38 @@ semantic_checker(const tree_t tree, const int is_debug) {
                         "Repeated initialization of identifier '%s'",
                         left_token->str
                     );
-                    print_semantic_error(
-                        left_token->pos.line,
-                        left_token->pos.col,
-                        ERR_MSG_BUF
-                    );
+                    print_semantic_error(left_token->pos, ERR_MSG_BUF);
                 }
                 else {
                     frame_set(cur_frame, left_token->name, &objnull);
                     id_usage[left_token->name] = (unsigned char) 1;
+                }
+            }
+            // check bind arguemt rule
+            else if (cur_token_p->name == OP_ARG) {
+                token_t* left_token =
+                    &((token_t*) tree.tokens.data)[tree.lefts[cur_index]];
+#ifdef ENABLE_DEBUG
+                if (is_debug) {
+                    printf(
+                        "Line %d, col %d, checking argument binder: ",
+                        cur_token_p->pos.line,
+                        cur_token_p->pos.col
+                    );
+                    print_token(*left_token);
+                    putchar(' ');
+                    print_token(*cur_token_p);
+                    putchar('\n');
+                }
+#endif
+                 if (left_token->type != TOK_ID) {
+                    is_passed = 0;
+                    sprintf(
+                        ERR_MSG_BUF,
+                        "Left side of %s is not identifier.",
+                        OP_STRS[cur_token_p->name]
+                    );
+                    print_semantic_error(left_token->pos, ERR_MSG_BUF);
                 }
             }
             /* walk into a function */

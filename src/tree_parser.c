@@ -58,11 +58,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
                     sprintf(
                         ERR_MSG_BUF, EXPECT_BINARY_MSG, OP_STRS[cur_token.name]
                     );
-                    throw_syntax_error(
-                        cur_token.pos.line,
-                        cur_token.pos.col,
-                        ERR_MSG_BUF
-                    );
+                    throw_syntax_error(cur_token.pos, ERR_MSG_BUF);
                 }
             }
             else {
@@ -70,11 +66,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
                     sprintf(
                         ERR_MSG_BUF, EXPECT_PREFIX_MSG, OP_STRS[cur_token.name]
                     );
-                    throw_syntax_error(
-                        cur_token.pos.line,
-                        cur_token.pos.col,
-                        ERR_MSG_BUF
-                    );
+                    throw_syntax_error(cur_token.pos, ERR_MSG_BUF);
                 }
                 expectation = PREFIXER;
             }
@@ -101,12 +93,10 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
         else if (cur_token.type == TOK_RB) {
             /* check expectation */
             if (expectation == PREFIXER) {
-                sprintf(ERR_MSG_BUF, EXPECT_PREFIX_MSG, cur_token.str);
-                throw_syntax_error(
-                    cur_token.pos.line,
-                    cur_token.pos.col,
-                    ERR_MSG_BUF
+                sprintf(
+                    ERR_MSG_BUF, EXPECT_PREFIX_MSG, OP_STRS[cur_token.name]
                 );
+                throw_syntax_error(cur_token.pos, ERR_MSG_BUF);
             }
             expectation = INFIXER;
 
@@ -125,8 +115,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
                 cur_op = cur_token.name;
             if (frame_top == NULL) {
                 throw_syntax_error(
-                    cur_token.pos.line,
-                    cur_token.pos.col,
+                    cur_token.pos,
                     "Unmatched closing bracket: Cannot find opening bracket"
                 );
             }
@@ -152,11 +141,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
                     "Unmatched closing bracket: Found '%s' to '%s'",
                     OP_STRS[top_op], OP_STRS[cur_op]
                 );
-                throw_syntax_error(
-                    cur_token.pos.line,
-                    cur_token.pos.col,
-                    ERR_MSG_BUF
-                );
+                throw_syntax_error(cur_token.pos, ERR_MSG_BUF);
             }
         }
         /* is other */
@@ -164,11 +149,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
             /* check expectation */
             if (expectation == INFIXER) {
                 sprintf(ERR_MSG_BUF, EXPECT_BINARY_MSG, cur_token.str);
-                throw_syntax_error(
-                    cur_token.pos.line,
-                    cur_token.pos.col,
-                    ERR_MSG_BUF
-                );
+                throw_syntax_error(cur_token.pos, ERR_MSG_BUF);
             }
             expectation = INFIXER;
             append(&output, &cur_token);
@@ -261,8 +242,7 @@ tree_parser(const dynarr_t tokens, const int is_debug) {
             }
             if (stack.size == 0) {
                 throw_syntax_error(
-                    cur_token->pos.line,
-                    cur_token->pos.col,
+                    cur_token->pos,
                     "Operator has too few operands"
                 );
             }
@@ -316,7 +296,7 @@ tree_parser(const dynarr_t tokens, const int is_debug) {
             "Bad syntax somewhere: %d tokens left in stack when parsing tree",
             stack.size
         );
-        throw_syntax_error(0, 0, ERR_MSG_BUF);
+        throw_syntax_error((linecol_t) {0, 0} , ERR_MSG_BUF);
     }
 
     /* root_index */

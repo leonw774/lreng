@@ -16,8 +16,9 @@ object_t*
 builtin_func_input(object_t* obj) {
     int c;
     if (obj->type != TYPE_NULL) {
-        print_runtime_error(
-            0, 0, "built-in function 'input': argument type should be null"
+        sprintf(
+            ERR_MSG_BUF,
+            "built-in function 'input': argument type should be null"
         );
         return (object_t*) ERR_OBJECT_PTR;
     }
@@ -32,8 +33,9 @@ object_t*
 builtin_func_output(object_t* obj) {
     /* check if obj is number */
     if (obj->type != TYPE_NUM) {
-        print_runtime_error(
-            0, 0, "built-in function 'output': argument is not a number but:"
+        sprintf(
+            ERR_MSG_BUF,
+            "built-in function 'output': argument is not a number"
         );
         print_object(obj, '\n');
         return (object_t*) ERR_OBJECT_PTR;
@@ -60,7 +62,6 @@ builtin_func_output(object_t* obj) {
             numer_str,
             denom_str
         );
-        print_runtime_error(0, 0, ERR_MSG_BUF);
         free(numer_str);
         free(denom_str);
         free_dynarr(&numer_dynarr);
