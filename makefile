@@ -48,7 +48,8 @@ web:
 	rm -r webplayground/lreng.* || true
 	emcc $(SHARED_SRC) $(MAIN_SRC) \
 		-I include/ -D IS_WASM -O3 -sSTACK_SIZE=1MB -o $(WEB_TARGET) \
-		-s "EXPORTED_RUNTIME_METHODS=['FS','callMain']" 
+		-s "EXPORTED_RUNTIME_METHODS=['FS','callMain']"
+	cp README.md webplayground/README.md
 
 clean_web:
 	rm -r webplayground/lreng.* || true

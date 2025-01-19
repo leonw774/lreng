@@ -126,9 +126,12 @@
             background-color: #144372;
         }
 
-        footer {
-            display: flex;
+        #repolink, #readme {
             font-size: 13px;
+        }
+
+        #readme h1 {
+            font-size: 20px;
         }
 
         /* Responsive Design */
@@ -166,9 +169,8 @@
         </div>
     </div>
     <hr />
-    <footer>
-        <div><a href="https://github.com/leonw774/lreng">This Github Repo</a></div>
-    </footer>
+    <div id="repolink"><a href="https://github.com/leonw774/lreng">This Github Repo</a></div><br />
+    <div id="readme"></div>
 
     <script src="codemirror/lib/codemirror.js"></script>
     <script>
@@ -179,7 +181,7 @@
             editor.setValue(`
 hello_world = 'H', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '\\n', null;
 print = string => {
-    string != null && ( output(\`string); print(~string) )
+    string != null && (output(\`string); print(~string))
 };
 print(hello_world)
             `.trim())
@@ -227,6 +229,18 @@ print(hello_world)
                 outputElement.textContent = "Program exits with error: " + JSON.stringify(error);
             }
         }
+    </script>
+
+    <script src="showdown/dist/showdown.min.js"></script>
+    <script>
+        async function showReadMe() {
+            const showdownConverter = new showdown.Converter({tables: true});
+            let readmeStr = await (await fetch("./README.md")).text();
+            readmeStr = readmeStr.replace("# ɭeŋ", "# README")
+            readmeStr = readmeStr.replace("&#124;&#124;", "||")
+            document.getElementById("readme").innerHTML = showdownConverter.makeHtml(readmeStr);
+        }
+        showReadMe();
     </script>
 </body>
 </html>

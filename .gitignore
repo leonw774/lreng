@@ -42,4 +42,5 @@ lreng.asm
 debug.txt
 memcheck_out.txt
 memcheck_result.txt
+webplayground/README.md
 webplayground/lreng.*

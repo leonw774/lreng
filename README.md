@@ -77,15 +77,15 @@ These operator do *not* short-circuit.
 
 The `&&` (CONDITION-AND) and  `||` (CONDITION-OR) are the logical operations that short-circuit. The `&&` has higher precedence than the `||`.
 
- `x`'s boolean  | `x && y` evaluates to | is `y` evaluated  |
-----------------|-----------------------|----------------------
- 1              | `y`                   | yes
- 0              | `x`                   | no
+| `x`'s boolean  | `x && y` evaluates to | is `y` evaluated  |
+|----------------|-----------------------|-------------------|
+| 1              | `y`                   | yes               |
+| 0              | `x`                   | no                |
 
- `x`'s boolean  | <code>x &#124;&#124; y</code> evaluates to | is `y` evaluated  
-----------------|-----------------------|----------------------
- 1              | `x`                   | no
- 0              | `y`                   | yes
+| `x`'s boolean  | <code>x &#124;&#124; y</code> evaluates to | is `y` evaluated |
+|----------------|-----------------------|-------------------|
+| 1              | `x`                   | no                |
+| 0              | `y`                   | yes               |
 
 For example, `x == 1 && 3` evaluates to `3` if `x` is `1` and otherwise evaluates to `0`. Notice that `x == 1 && 0 || -1` always evaluates to `-1` because `x == 1 && 0` evaluated to `0` no matter `x` equals `0` or not. So the idiom `cond && t || f` does not work extactly the same as `if cond then t else f` since `t` could be `0` or `null`. The equivalent of "if-then-else" is `cond && t; !cond || f` or using conditional pair caller and macros `cond ? [ t ], [ f ]`.
 
