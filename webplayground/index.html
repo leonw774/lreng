@@ -127,11 +127,33 @@
         }
 
         #repolink, #readme {
-            font-size: 13px;
+            font-size: 13px;    
         }
 
         #readme h1 {
             font-size: 20px;
+        }
+
+        #readme table {
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        
+        #readme tr {
+            border-bottom: solid 1px grey;
+        }
+        
+        #readme td, #readme th {
+            padding-left: 5px;
+            padding-right: 5px;
+        }
+
+        #readme pre {
+            border: 1px solid grey;
+        }
+
+        #readme p > code {
+            border: 1px solid grey;
         }
 
         /* Responsive Design */
@@ -234,7 +256,8 @@ print(hello_world)
     <script src="showdown/dist/showdown.min.js"></script>
     <script>
         async function showReadMe() {
-            const showdownConverter = new showdown.Converter({tables: true});
+            const showdownConverter = new showdown.Converter({
+                tables: true, ghCodeBlocks: true, });
             let readmeStr = await (await fetch("./README.md")).text();
             readmeStr = readmeStr.replace("# ɭeŋ", "# README")
             readmeStr = readmeStr.replace("&#124;&#124;", "||")
