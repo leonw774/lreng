@@ -47,7 +47,7 @@ Variable is global when it is not initialized in a callable. Scoped variables ar
 The `+`, `-`, `*`, `/`, `%` (modulo), `^` (exponent) only accept numbers.
 
 - The division is operated on rational numbers so there is *no* rounding happening.
-- The modulo of `a % b` returns the smallest non-negative rational number `r` such that `(a - r) / b` is an integer.
+- The modulo of `a % b` returns the rational number `r = a - b * floor(a / b)` (Floor division definition).
 - The exponent only allow *integer* power, since otherwise the result will not be rational.
 
 ### Assignment
