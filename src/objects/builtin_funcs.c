@@ -57,8 +57,7 @@ builtin_func_output(object_t* obj) {
         sprintf(
             ERR_MSG_BUF,
             "built-in function 'output': argument is not integer in [0, 255]"
-            ", but [Number] %s(%s, %s)",
-            n.numer.sign ? "-" : "",
+            ", but [Number] (%s, %s)",
             numer_str,
             denom_str
         );
