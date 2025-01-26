@@ -322,7 +322,7 @@ print_number_frac(number_t* x, char end) {
         return printed_bytes_count;
     }
     bigint_t abs_numer = x->numer;
-    abs_numer->sign = 0;
+    abs_numer.sign = 0;
     putchar('(');
     printed_bytes_count += print_bi_dec(&abs_numer, '\0');
     printf(", ");
