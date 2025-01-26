@@ -321,8 +321,10 @@ print_number_frac(number_t* x, char end) {
         printed_bytes_count += printf("0");
         return printed_bytes_count;
     }
+    bigint_t abs_numer = x->numer;
+    abs_numer->sign = 0;
     putchar('(');
-    printed_bytes_count += print_bi_dec(&x->numer, '\0');
+    printed_bytes_count += print_bi_dec(&abs_numer, '\0');
     printf(", ");
     printed_bytes_count += print_bi_dec(&x->denom, '\0');
     putchar(')');
