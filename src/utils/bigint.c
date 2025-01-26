@@ -106,7 +106,6 @@ BYTE_BIGINT(u32 b) {
 
 inline void
 new_bi(bigint_t* x, u32 size) {
-    /* x must be freed */
     x->shared = 0;
     x->nan = 0;
     x->size = size;
@@ -120,8 +119,7 @@ new_bi(bigint_t* x, u32 size) {
     }
 }
 
-/* this function do new and move
-   dst must be freed, src must not be freed */
+/* this function do new and move */
 inline void
 copy_bi(bigint_t* dst, const bigint_t* src) {
     if (src->nan) {
@@ -287,7 +285,6 @@ bi_lt(bigint_t* a, bigint_t* b) {
     }   
 }
 
-/* res must be freed, a and must not be freed */
 void
 bi_uadd(bigint_t* res, bigint_t* a, bigint_t* b) {
     u32 i, carry = 0, a_size = a->size, b_size = b->size;
@@ -326,7 +323,6 @@ bi_uadd(bigint_t* res, bigint_t* a, bigint_t* b) {
     bi_normalize(res);
 }
 
-/* res must be freed, a and must not be freed */
 void
 bi_usub(bigint_t* res, bigint_t* a, bigint_t* b) {
     u32 a_size = a->size, b_size = b->size;
@@ -387,8 +383,151 @@ bi_usub(bigint_t* res, bigint_t* a, bigint_t* b) {
     bi_normalize(res);
 }
 
-/* _u and _v must not be freed or zero (handled in bi_div or bi_mod)
-    q and r must be freed */
+void
+bi_umul(bigint_t* res, bigint_t* a, bigint_t* b) {
+    u64 i64m, a0, carry = 0;
+    u32 i, a_size = a->size, b_size = b->size;
+    
+    /* base conditions */
+    if (BIPTR_IS_ZERO(a) || BIPTR_IS_ZERO(b)) {
+        *res = ZERO_BIGINT;
+        return;
+    }
+    if (a_size == 1 && a->digit[0] == 1) {
+        copy_bi(res, b);
+        return;
+    }
+    if (b_size == 1 && b->digit[0] == 1) {
+        copy_bi(res, a);
+        return;
+    }
+    if (a_size== 1 && b_size == 1) {
+        i64m = (u64) a->digit[0] * b->digit[0];
+        new_bi(res, 2);
+        res->digit[0] = (u32) i64m & DIGIT_MASK;
+        res->digit[1] = (u32) (i64m >> BASE_SHIFT) & DIGIT_MASK;
+        bi_normalize(res);
+        return;
+    }
+    if (a_size == 1 || b_size == 1) {
+        /* ensure a_size <= b_size */
+        if (a_size > b_size) {
+            bigint_t* tmp;
+            u32 tmp_size;
+            tmp = a; a = b; b = tmp;
+            tmp_size = a_size; a_size = b_size; b_size = tmp_size;
+        }
+        new_bi(res, b_size + 1);
+        a0 = a->digit[0];
+        carry = 0;
+        for (i = 0; i < b_size; i++) {
+            carry += a0 * b->digit[i];
+            res->digit[i] = carry & DIGIT_MASK;
+            carry = carry >> BASE_SHIFT;
+        }
+        res->digit[i] = carry;
+        bi_normalize(res);
+        return;
+    }
+
+    /* karatsuba algorithm */
+    bigint_t a_high, a_low, b_high, b_low, z0, z1, z2, tmp1, tmp2;
+    u32 low_size;
+    u32* tmp_mem;
+
+    low_size = ((a_size > b_size) ? a_size : b_size) / 2;
+    /* split a and b */
+    if (a_size <= low_size) {
+        copy_bi(&a_low, a);
+        a_high = ZERO_BIGINT;
+    }
+    else {
+        new_bi(&a_low, low_size);
+        memcpy(a_low.digit, a->digit, low_size * sizeof(u32));
+        new_bi(&a_high, a_size - low_size);
+        memcpy(
+            a_high.digit,
+            a->digit + low_size,
+            (a_size - low_size) * sizeof(u32)
+        );
+    }
+    bi_normalize(&a_low);
+    bi_normalize(&a_high);
+    if (b_size <= low_size) {
+        copy_bi(&b_low, b);
+        b_high = ZERO_BIGINT;
+    }
+    else {
+        new_bi(&b_low, low_size);
+        memcpy(b_low.digit, b->digit, low_size * sizeof(u32));
+        new_bi(&b_high, b_size - low_size);
+        memcpy(
+            b_high.digit,
+            b->digit + low_size,
+            (b_size - low_size) * sizeof(u32)
+        );
+    }
+    bi_normalize(&b_low);
+    bi_normalize(&b_high);
+
+    /* z0 */
+    bi_umul(&z0, &a_low, &b_low);
+
+    /* z1' */
+    tmp1 = bi_add(&a_low, &a_high);
+    tmp2 = bi_add(&b_low, &b_high);
+    bi_umul(&z1, &tmp1, &tmp2);
+    free_bi(&tmp1);
+    free_bi(&tmp2);
+    free_bi(&a_low);
+    free_bi(&b_low);
+    
+    /* z2' */
+    bi_umul(&z2, &a_high, &b_high);
+    free_bi(&a_high);
+    free_bi(&b_high);
+
+    /* z1 = (z1' - z2' - z0) * b^split_size */
+    tmp1 = bi_sub(&z1, &z0);
+    free_bi(&z1);
+    z1 = bi_sub(&tmp1, &z2);
+    free_bi(&tmp1);
+    tmp_mem = calloc(z1.size + low_size, sizeof(u32));
+    memcpy(tmp_mem + low_size, z1.digit, z1.size * sizeof(u32));
+    if (z1.shared) {
+        z1.digit = tmp_mem;
+        z1.shared = 0;
+    }
+    else {
+        free(z1.digit);
+        z1.digit = tmp_mem;
+    }
+    z1.size = z1.size + low_size;
+
+    /* z2 = z2' * b^(2*split_size) */
+    if (z2.size != 0) {
+        tmp_mem = calloc(z2.size + low_size * 2, sizeof(u32));
+        memcpy(tmp_mem + (low_size * 2), z2.digit, z2.size * sizeof(u32));
+        if (z2.shared) {
+            z2.digit = tmp_mem;
+            z2.shared = 0;
+        }
+        else {
+            free(z2.digit);
+            z2.digit = tmp_mem;
+        }
+        z2.size = z2.size + (low_size * 2);
+    }
+
+    /* m = z0 + z1 + z2 */
+    tmp1 = bi_add(&z0, &z1);
+    *res = bi_add(&tmp1, &z2);
+    free_bi(&z0);
+    free_bi(&z1);
+    free_bi(&z2);
+    free_bi(&tmp1);
+}
+
 void
 bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
     bigint_t u, v;
@@ -660,156 +799,15 @@ bi_sub(bigint_t* a, bigint_t* b) {
     return c;
 }
 
-bigint_t
-bi_mul(bigint_t* a, bigint_t* b) {
+inline bigint_t
+bi_mul(bigint_t *a, bigint_t *b) {
     bigint_t m;
-    u64 i64m, a0, carry = 0;
-    u32 i, a_size = a->size, b_size = b->size;
-    
-    /* base conditions */
-    if (BIPTR_IS_ZERO(a) || BIPTR_IS_ZERO(b)) {
-        return ZERO_BIGINT;
-    }
-    if (a_size == 1 && a->digit[0] == 1) {
-        copy_bi(&m, b);
-        return m;
-    }
-    if (b_size == 1 && b->digit[0] == 1) {
-        copy_bi(&m, a);
-        return m;
-    }
-    if (a_size== 1 && b_size == 1) {
-        i64m = (u64) a->digit[0] * b->digit[0];
-        new_bi(&m, 2);
-        m.digit[0] = (u32) i64m & DIGIT_MASK;
-        m.digit[1] = (u32) (i64m >> BASE_SHIFT) & DIGIT_MASK;
-        bi_normalize(&m);
-        return m;
-    }
-    if (a_size == 1 || b_size == 1) {
-        /* ensure a_size <= b_size */
-        if (a_size > b_size) {
-            bigint_t* tmp;
-            u32 tmp_size;
-            tmp = a; a = b; b = tmp;
-            tmp_size = a_size; a_size = b_size; b_size = tmp_size;
-        }
-        new_bi(&m, b_size + 1);
-        a0 = a->digit[0];
-        carry = 0;
-        for (i = 0; i < b_size; i++) {
-            carry += a0 * b->digit[i];
-            m.digit[i] = carry & DIGIT_MASK;
-            carry = carry >> BASE_SHIFT;
-        }
-        m.digit[i] = carry;
-        bi_normalize(&m);
-        return m;
-    }
-
-    /* karatsuba algorithm */
-    bigint_t a_high, a_low, b_high, b_low, z0, z1, z2, tmp1, tmp2;
-    u32 low_size;
-    u32* tmp_mem;
-
-    low_size = ((a_size > b_size) ? a_size : b_size) / 2;
-    /* split a and b */
-    if (a_size <= low_size) {
-        copy_bi(&a_low, a);
-        a_high = ZERO_BIGINT;
-    }
-    else {
-        new_bi(&a_low, low_size);
-        memcpy(a_low.digit, a->digit, low_size * sizeof(u32));
-        new_bi(&a_high, a_size - low_size);
-        memcpy(
-            a_high.digit,
-            a->digit + low_size,
-            (a_size - low_size) * sizeof(u32)
-        );
-    }
-    bi_normalize(&a_low);
-    bi_normalize(&a_high);
-    if (b_size <= low_size) {
-        copy_bi(&b_low, b);
-        b_high = ZERO_BIGINT;
-    }
-    else {
-        new_bi(&b_low, low_size);
-        memcpy(b_low.digit, b->digit, low_size * sizeof(u32));
-        new_bi(&b_high, b_size - low_size);
-        memcpy(
-            b_high.digit,
-            b->digit + low_size,
-            (b_size - low_size) * sizeof(u32)
-        );
-    }
-    bi_normalize(&b_low);
-    bi_normalize(&b_high);
-
-    /* z0 */
-    z0 = bi_mul(&a_low, &b_low);
-
-    /* z1' */
-    tmp1 = bi_add(&a_low, &a_high);
-    tmp2 = bi_add(&b_low, &b_high);
-    z1 = bi_mul(&tmp1, &tmp2);
-    free_bi(&tmp1);
-    free_bi(&tmp2);
-    free_bi(&a_low);
-    free_bi(&b_low);
-    
-    /* z2' */
-    z2 = bi_mul(&a_high, &b_high);
-    free_bi(&a_high);
-    free_bi(&b_high);
-
-    /* z1 = (z1' - z2' - z0) * b^split_size */
-    tmp1 = bi_sub(&z1, &z0);
-    free_bi(&z1);
-    z1 = bi_sub(&tmp1, &z2);
-    free_bi(&tmp1);
-    tmp_mem = calloc(z1.size + low_size, sizeof(u32));
-    memcpy(tmp_mem + low_size, z1.digit, z1.size * sizeof(u32));
-    if (z1.shared) {
-        z1.digit = tmp_mem;
-        z1.shared = 0;
-    }
-    else {
-        free(z1.digit);
-        z1.digit = tmp_mem;
-    }
-    z1.size = z1.size + low_size;
-
-    /* z2 = z2' * b^(2*split_size) */
-    if (z2.size != 0) {
-        tmp_mem = calloc(z2.size + low_size * 2, sizeof(u32));
-        memcpy(tmp_mem + (low_size * 2), z2.digit, z2.size * sizeof(u32));
-        if (z2.shared) {
-            z2.digit = tmp_mem;
-            z2.shared = 0;
-        }
-        else {
-            free(z2.digit);
-            z2.digit = tmp_mem;
-        }
-        z2.size = z2.size + (low_size * 2);
-    }
-
-    /* m = z0 + z1 + z2 */
-    tmp1 = bi_add(&z0, &z1);
-    m = bi_add(&tmp1, &z2);
-    free_bi(&z0);
-    free_bi(&z1);
-    free_bi(&z2);
-    free_bi(&tmp1);
-
+    bi_umul(&m, a, b);
     if (a->sign != b->sign) {
         m.sign = 1;
     }
     return m;
 }
-
 
 inline bigint_t
 bi_div(bigint_t* a, bigint_t* b) {

@@ -135,8 +135,12 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos) {
             throw_syntax_error(pos, "bad op name");
         }
         /* if is a empty function call, add null */
-        if (((token_t*) back(&cur_cargo->tokens))->name == OP_FCALL
-            && type == TOK_RB) {
+        token_t* last_token = back(&cur_cargo->tokens);
+        if (
+            last_token != NULL
+            && last_token->name == OP_FCALL
+            && type == TOK_RB
+        ) {
             token_t null_tok = {
                 .str = RESERVED_IDS[RESERVED_ID_NAME_NULL],
                 .name = RESERVED_ID_NAME_NULL,
