@@ -873,7 +873,7 @@ bi_mod(bigint_t* a, bigint_t* b) {
         return ZERO_BIGINT;
     }
     if (a->sign != b->sign) {
-        bi_usub(&_r, &r, b);
+        bi_usub(&_r, b, &r);
         free_bi(&r);
         r = _r;
     }
