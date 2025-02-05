@@ -1,8 +1,8 @@
 # ɭeŋ
 
-A simple minimal interpreted functional programming language.
+A simple functional programming language.
 
-The main idea is to build a minimal functional language that works on binary tree: it is parsed into a binary AST and has "Pair" as its only container data type.
+The main idea is to build a minimal language that works on binary tree: it is parsed into a binary AST and has "Pair" as its only container data type.
 
 ## Usage
 
