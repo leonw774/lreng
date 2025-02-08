@@ -9,7 +9,10 @@
 object_t* (*BUILDTIN_FUNC_ARRAY[RESERVED_ID_NUM])(object_t*) = {
     NULL,
     &builtin_func_input,
-    &builtin_func_output
+    &builtin_func_output,
+    &builtin_func_is_number,
+    &builtin_func_is_callable,
+    &builtin_func_is_pair
 }; 
 
 object_t*
@@ -68,4 +71,28 @@ builtin_func_output(object_t* obj) {
         return (object_t*) ERR_OBJECT_PTR;
     }
     return (object_t*) NULL_OBJECT_PTR;
+}
+
+object_t*
+builtin_func_is_number(object_t* obj) {
+    return create_object(
+        TYPE_NUM,
+        (object_data_t) number_from_i32(obj->type == TYPE_NUM)
+    );
+}
+
+object_t*
+builtin_func_is_callable(object_t* obj) {
+    return create_object(
+        TYPE_NUM,
+        (object_data_t) number_from_i32(obj->type == TYPE_CALL)
+    );
+}
+
+object_t*
+builtin_func_is_pair(object_t* obj) {
+    return create_object(
+        TYPE_NUM,
+        (object_data_t) number_from_i32(obj->type == TYPE_PAIR)
+    );
 }

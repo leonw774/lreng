@@ -7,29 +7,8 @@
 #include "errormsg.h"
 #include "objects.h"
 
-const object_t* NULL_OBJECT_PTR = &RESERVED_OBJS[0];
 const object_t* ERR_OBJECT_PTR = &ERR_OBJECT;
 const object_t ERR_OBJECT = (object_t) {.is_error = 1, .type = TYPE_NULL};
-
-const object_t RESERVED_OBJS[RESERVED_ID_NUM] = {
-    (object_t) {.is_error = 0, .is_const = 1, .type = TYPE_NULL},
-    (object_t) {.is_error = 0, .is_const = 1, .type = TYPE_CALL,
-        .data.callable = {
-            .init_time_frame = NULL,
-            .index = -1,
-            .arg_name = -1,
-            .builtin_name = RESERVED_ID_NAME_INPUT
-        }
-    },
-    (object_t) {.is_error = 0, .is_const = 1, .type = TYPE_CALL,
-        .data.callable = {
-            .init_time_frame = NULL,
-            .index = -1,
-            .arg_name = -1,
-            .builtin_name = RESERVED_ID_NAME_OUTPUT
-        }
-    }
-};
 
 const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM + 1] = {
     "Null", "Number", "Pair", "Function",

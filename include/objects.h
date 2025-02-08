@@ -55,11 +55,9 @@ typedef struct object {
 #define object_data_size sizeof(object_data_t)
 #define object_struct_size sizeof(object_t)
 
-extern const object_t* NULL_OBJECT_PTR;
 extern const object_t* ERR_OBJECT_PTR;
 extern const object_t ERR_OBJECT;
 
-extern const object_t RESERVED_OBJS[RESERVED_ID_NUM];
 extern const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM + 1];
 
 extern object_t* create_object(object_type_enum type, object_data_t data);

@@ -17,16 +17,6 @@ typedef enum token_type {
     TOK_RB /* right bracket */
 } token_type_enum;
 
-
-#define RESERVED_ID_NUM 3
-extern const char* RESERVED_IDS[RESERVED_ID_NUM];
-typedef enum reserved_id_name {
-    RESERVED_ID_NAME_NULL,
-    RESERVED_ID_NAME_INPUT,
-    RESERVED_ID_NAME_OUTPUT
-} reserved_id_name_enum;
-
-
 #define MAX_TOKEN_STR_LEN 128
 
 typedef struct token {

@@ -6,6 +6,7 @@
 #include "tree.h"
 #include "objects.h"
 #include "frame.h"
+#include "reserved.h"
 
 int
 semantic_checker(const tree_t tree, const int is_debug) {

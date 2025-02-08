@@ -1,0 +1,21 @@
+a = null;
+b = 1;
+c = { null };
+d = b, c;
+output('0' + is_number(a));
+output('0' + is_number(b));
+output('0' + is_number(c));
+output('0' + is_number(d));
+output('\n');
+
+output('0' + is_callable(a));
+output('0' + is_callable(b));
+output('0' + is_callable(c));
+output('0' + is_callable(d));
+output('\n');
+
+output('0' + is_pair(a));
+output('0' + is_pair(b));
+output('0' + is_pair(c));
+output('0' + is_pair(d));
+output('\n')

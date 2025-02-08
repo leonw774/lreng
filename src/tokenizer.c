@@ -5,6 +5,7 @@
 #include "dynarr.h"
 #include "errormsg.h"
 #include "token.h"
+#include "reserved.h"
 #include "operators.h"
 
 /* operator constant and tools */

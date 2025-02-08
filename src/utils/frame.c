@@ -4,6 +4,7 @@
 #include "token.h"
 #include "objects.h"
 #include "frame.h"
+#include "reserved.h"
 
 inline frame_t*
 new_frame() {

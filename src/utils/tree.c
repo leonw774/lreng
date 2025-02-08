@@ -3,6 +3,7 @@
 #include "frame.h"
 #include "token.h"
 #include "tree.h"
+#include "reserved.h"
 
 inline void
 free_tree(tree_t* tree) {
