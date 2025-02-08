@@ -13,11 +13,15 @@ free_tree(tree_t* tree) {
             continue;
         }
         free_token_str(token);
+        if (token->type == TOK_NUM && tree->literals[i] != NULL) {
+            free_object(tree->literals[i]);
+        }
     }
     free_dynarr(&tree->tokens);
     free(tree->lefts);
     free(tree->rights);
     free(tree->sizes);
+    free(tree->literals);
     tree->root_index = -1;
 }
 

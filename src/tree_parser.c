@@ -277,6 +277,7 @@ tree_parser(const dynarr_t tokens, const int is_debug) {
         }
 #endif
     }
+
     /* check result */
     if (stack.size != 1) {
 #ifdef ENABLE_DEBUG
@@ -301,6 +302,17 @@ tree_parser(const dynarr_t tokens, const int is_debug) {
 
     /* root_index */
     tree.root_index = ((int*) stack.data)[0];
+
+    /* eval literal */
+    tree.literals = calloc(tree.tokens.size, sizeof(object_t*));
+    for (i = 0; i < tree.tokens.size; i++) {
+        token_t* cur_token = at(&tree.tokens, i);
+        if (cur_token->type == TOK_NUM) {
+            tree.literals[i] = create_object(TYPE_NUM, (object_data_t) {
+                .number = number_from_str(cur_token->str)
+            });
+        }
+    }
 
     /* free things */
     free_dynarr(&stack);

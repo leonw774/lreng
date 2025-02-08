@@ -697,11 +697,7 @@ eval_tree(
 #endif
         }
         else if (cur_token.type == TOK_NUM) {
-            _OBJ_TABLE(cur_index) = create_object(
-                TYPE_NUM,
-                (object_data_t) number_from_str(cur_token.str)
-
-            );
+            _OBJ_TABLE(cur_index) = copy_object(tree->literals[cur_index]);
         }
         else {
             printf("eval_tree: bad token type: %d\n", cur_token.type);
