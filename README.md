@@ -1,8 +1,8 @@
 # ɭeŋ
 
-A simple minimal interpreted functional programming language.
+A simple functional programming language.
 
-The main idea is to build a minimal functional language that works on binary tree: it is parsed into a binary AST and has "Pair" as its only container data type.
+The main idea is to build a minimal language that works on binary tree: it is parsed into a binary AST and has "Pair" as its only container data type.
 
 ## Usage
 
@@ -46,8 +46,8 @@ Variable is global when it is not initialized in a callable. Scoped variables ar
 
 The `+`, `-`, `*`, `/`, `%` (modulo), `^` (exponent) only accept numbers.
 
-- The division is operated on rational number so there is *no* rounding happening.
-- The modulo of `a` and `b` returns the smallest rational number `r` such that `a / (b - r)` is a integer.
+- The division is operated on rational numbers so there is *no* rounding happening.
+- The modulo of `a % b` returns the rational number `r = a - b * floor(a / b)` (Floor division definition).
 - The exponent only allow *integer* power, since otherwise the result will not be rational.
 
 ### Assignment
