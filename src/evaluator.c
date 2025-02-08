@@ -213,6 +213,22 @@ exec_op(
             TYPE_NUM,
             (object_data_t) (to_bool(left_obj) ? ONE_NUMBER : ZERO_NUMBER)
         );
+    case OP_CEIL:
+        if (is_bad_type(op_token, TYPE_NUM, NO_OPRAND, left_obj, right_obj)) {
+            return (object_t*) ERR_OBJECT_PTR;
+        }
+        return create_object(
+            TYPE_NUM,
+            (object_data_t) number_ceil(&left_obj->data.number)
+        );
+    case OP_FLOOR:
+        if (is_bad_type(op_token, TYPE_NUM, NO_OPRAND, left_obj, right_obj)) {
+            return (object_t*) ERR_OBJECT_PTR;
+        }
+        return create_object(
+            TYPE_NUM,
+            (object_data_t) number_floor(&left_obj->data.number)
+        );
     case OP_GETL:
         if (is_bad_type(op_token, TYPE_PAIR, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
@@ -629,7 +645,7 @@ eval_tree(
                 break;
             /* other operator */
             default:
-                if (IS_UNARY_OP[cur_token.name] && left_obj == NULL) {
+                if (is_unary_op(cur_token.name) && left_obj == NULL) {
                     append(&token_index_stack, &left_index);
                     continue;
                 }

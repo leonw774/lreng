@@ -811,6 +811,7 @@ bi_mul(bigint_t *a, bigint_t *b) {
 
 inline bigint_t
 bi_div(bigint_t* a, bigint_t* b) {
+    bigint_t q = ZERO_BIGINT, r = ZERO_BIGINT;
     if (BIPTR_IS_ZERO(b)) {
         printf("bi_div: divided by zero\n");
         return NAN_BIGINT();
@@ -818,9 +819,13 @@ bi_div(bigint_t* a, bigint_t* b) {
     if (BIPTR_IS_ZERO(a)) {
         return ZERO_BIGINT;
     }
-    /* if |b| == 1, return a */
+    /* if |b| == 1, just copy a */
     if (b->size == 1 && b->digit[0] == 1) {
-        return *a;
+        copy_bi(&q, a);
+        if (a->sign != b->sign) {
+            q.sign = 1;
+        }
+        return q;
     }
     /* a == b, return 1 */
     if (bi_eq(a, b)) {
@@ -831,7 +836,6 @@ bi_div(bigint_t* a, bigint_t* b) {
         || a->size < b->size) {
         return ZERO_BIGINT;
     }
-    bigint_t q = ZERO_BIGINT, r = ZERO_BIGINT;
     bi_udivmod(a, b, &q, &r);
     free_bi(&r);
     if (a->sign != b->sign) {

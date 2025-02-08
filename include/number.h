@@ -43,6 +43,8 @@ extern number_t number_mul(number_t* a, number_t* b);
 extern number_t number_div(number_t* a, number_t* b);
 extern number_t number_mod(number_t* a, number_t* b);
 extern number_t number_exp(number_t* a, number_t* b);
+extern number_t number_ceil(number_t* a);
+extern number_t number_floor(number_t* a);
 
 extern int print_number_frac(number_t* x, char end);
 extern int print_number_dec(number_t* x, int precision, char end);

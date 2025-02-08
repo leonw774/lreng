@@ -4,25 +4,26 @@
 #include "errormsg.h"
 #include "lreng.h"
 
-#define IS_PREFIXER(op) ( \
-    op == OP_LCURLY || op == OP_FMAKE || op == OP_LSQUARE || op == OP_MMAKE \
-    || op == OP_LPAREN || op == OP_POS || op == OP_NEG || op == OP_NOT \
-    || op == OP_GETL || op == OP_GETR \
-)
-
 #define EXPECT_PREFIX_MSG \
     "Expect unary operator, number, identifier, or open bracket. Get '%s'"
-#define EXPECT_BINARY_MSG \
+#define EXPECT_INFIX_MSG \
     "Expect binary operator or closing bracket. Get '%s'"
 
 /* is the precedence o1 < o2 ? */
-#define OP_PRECED_LT(o1, o2) \
-    (OP_PRECEDENCES[o1] < OP_PRECEDENCES[o2] \
-    || (OP_PRECEDENCES[o1] == OP_PRECEDENCES[o2] \
-        && strchr(R_ASSOCIATIVE_OPS, o2) == NULL) \
-    )
+unsigned char op_prec_lt(op_name_enum o1, op_name_enum o2) {
+    printf(
+        "op_prec_lt: %s %d  %s %d\n",
+        OP_STRS[o1],
+        get_op_precedence(o1),
+        OP_STRS[o2],
+        get_op_precedence(o2)
+    );
+    return (
+        get_op_precedence(o1) < get_op_precedence(o2)
+        || (get_op_precedence(o1) == get_op_precedence(o2) && !is_r_asso_op(o2))
+    );
+}
 
-#define IS_UNARY(o)
 
 /* return expression tokens in postfix */
 dynarr_t
@@ -53,10 +54,10 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
         /* is an operator or left bracket */
         if (cur_token.type == TOK_OP || cur_token.type == TOK_LB) {
             /* check expectation */
-            if (IS_PREFIXER(cur_token.name)) {
+            if (is_prefixable_op(cur_token.name)) {
                 if (expectation == INFIXER) {
                     sprintf(
-                        ERR_MSG_BUF, EXPECT_BINARY_MSG, OP_STRS[cur_token.name]
+                        ERR_MSG_BUF, EXPECT_INFIX_MSG, OP_STRS[cur_token.name]
                     );
                     throw_syntax_error(cur_token.pos, ERR_MSG_BUF);
                 }
@@ -79,9 +80,8 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
             /* pop stack until top is left bracket or precedence is not lower */
             token_t* frame_top = back(&op_stack);
             while (frame_top != NULL && frame_top->type != TOK_LB
-                && OP_PRECED_LT(
-                    frame_top->name, cur_token.name
-                )) {
+                && op_prec_lt(frame_top->name, cur_token.name)
+            ) {
                 append(&output, frame_top);
                 pop(&op_stack);
                 frame_top = back(&op_stack);
@@ -148,7 +148,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
         else {
             /* check expectation */
             if (expectation == INFIXER) {
-                sprintf(ERR_MSG_BUF, EXPECT_BINARY_MSG, cur_token.str);
+                sprintf(ERR_MSG_BUF, EXPECT_INFIX_MSG, cur_token.str);
                 throw_syntax_error(cur_token.pos, ERR_MSG_BUF);
             }
             expectation = INFIXER;
@@ -235,7 +235,7 @@ tree_parser(const dynarr_t tokens, const int is_debug) {
 #endif
         if (cur_token->type == TOK_OP) {
             int l_index, r_index = -1;
-            if (!IS_UNARY_OP[cur_token->name]) {
+            if (!is_unary_op(cur_token->name)) {
                 r_index = *(int*) back(&stack);
                 pop(&stack);
                 tree.rights[i] = r_index;

@@ -50,6 +50,10 @@ The `+`, `-`, `*`, `/`, `%` (modulo), `^` (exponent) only accept numbers.
 - The modulo of `a % b` returns the rational number `r = a - b * floor(a / b)` (Floor division definition).
 - The exponent only allow *integer* power, since otherwise the result will not be rational.
 
+### Ceiling and floor
+
+The ceiling `>>` and floor `<<` only accept number and do what normally do. They are quite useful since the there is no rounding with division and modulo. For example: `<<(8 / 3) == 2` is true.
+
 ### Assignment
 
 The assignment operator `x = expr` requires the left hand side `x` to be an uninitialized variable identifier. It initializes left hand side variable to the evaluated value of right hand side expression and the whole assignment expression evaluates to the assigned value.

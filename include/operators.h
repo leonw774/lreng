@@ -4,7 +4,8 @@
 typedef enum op_name {
     OP_LCURLY, OP_RCURLY, OP_FMAKE, OP_LSQUARE, OP_RSQUARE, OP_MMAKE,
     OP_LPAREN, OP_RPAREN, OP_FCALL,
-    OP_POS, OP_NEG, OP_NOT, OP_GETL, OP_GETR,
+    OP_MAP, OP_FILTER, OP_REDUCE,
+    OP_POS, OP_NEG, OP_NOT, OP_CEIL, OP_FLOOR, OP_GETL, OP_GETR,
     OP_EXP,
     OP_MUL, OP_DIV, OP_MOD,
     OP_ADD, OP_SUB,
@@ -25,11 +26,15 @@ typedef enum op_name {
 
 extern const char* const OP_STRS[];
 
-extern const unsigned char OP_PRECEDENCES[];
-
 extern const char OP_CHARS[];
 
-extern const unsigned char IS_UNARY_OP[];
+extern const int get_op_precedence(op_name_enum op);
+
+extern const unsigned char is_unary_op(op_name_enum op);
+
+extern const unsigned char is_prefixable_op(op_name_enum op);
+
+extern const unsigned char is_r_asso_op(op_name_enum op);
 
 extern const char R_ASSOCIATIVE_OPS[];
 

@@ -301,6 +301,38 @@ number_exp(number_t* a, number_t* b) {
     return res;
 }
 
+number_t
+number_ceil(number_t* a) {
+    number_t res = EMPTY_NUMBER;
+    bigint_t t1, one = BYTE_BIGINT(1);
+    if (a->numer.nan) {
+        return NAN_NUMBER;
+    }
+    if (a->numer.size == 0) {
+        return ZERO_NUMBER;
+    }
+    t1 = bi_div(&a->numer, &a->denom);
+    res.numer = bi_add(&t1, &one);
+    res.denom = BYTE_BIGINT(1);
+    free_bi(&t1);
+    free_bi(&one);
+    return res;
+}
+
+number_t
+number_floor(number_t* a) {
+    number_t res = EMPTY_NUMBER;
+    if (a->numer.nan) {
+        return NAN_NUMBER;
+    }
+    if (a->numer.size == 0) {
+        return ZERO_NUMBER;
+    }
+    res.numer = bi_div(&a->numer, &a->denom);
+    res.denom = BYTE_BIGINT(1);
+    return res;
+}
+
 
 void
 print_number_struct(number_t* x) {
