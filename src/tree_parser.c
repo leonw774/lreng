@@ -11,13 +11,11 @@
 
 /* is the precedence o1 < o2 ? */
 unsigned char op_prec_lt(op_name_enum o1, op_name_enum o2) {
-    printf(
+    /* printf(
         "op_prec_lt: %s %d  %s %d\n",
-        OP_STRS[o1],
-        get_op_precedence(o1),
-        OP_STRS[o2],
-        get_op_precedence(o2)
-    );
+        OP_STRS[o1], get_op_precedence(o1),
+        OP_STRS[o2], get_op_precedence(o2)
+    ); */
     return (
         get_op_precedence(o1) < get_op_precedence(o2)
         || (get_op_precedence(o1) == get_op_precedence(o2) && !is_r_asso_op(o2))

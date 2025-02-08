@@ -111,26 +111,26 @@ number_normalize(number_t* x) {
 
 inline int
 number_eq(number_t* a, number_t* b) {
-    /* a == b == 0 */
-    if (a->numer.size == 0 && b->numer.size == 0) {
-        return 1;
-    }
     /*  nan != anything */
     if (a->numer.nan || b->numer.nan) {
         return 0;
+    }
+    /* a == b == 0 */
+    if (a->numer.size == 0 && b->numer.size == 0) {
+        return 1;
     }
     return bi_eq(&a->numer, &b->numer) && bi_eq(&a->denom, &b->denom);
 }
 
 inline int
 number_lt(number_t* a, number_t* b) {
-    /* obvious cases */
-    if ((a->numer.sign != b->numer.sign)) {
-        return a->numer.sign;
-    }
     /* if one of them is nan: always false */
     if (a->numer.nan || b->numer.nan) {
         return 0;
+    }
+    /* obvious cases */
+    if ((a->numer.sign != b->numer.sign)) {
+        return a->numer.sign;
     }
 
     if (bi_eq(&a->denom, &b->denom)) {
@@ -242,6 +242,9 @@ inline number_t
 number_mod(number_t* a, number_t* b) {
     number_t res = EMPTY_NUMBER;
     bigint_t n, d, t1, t2;
+    if (a->numer.nan || b->numer.nan) {
+        return NAN_NUMBER;
+    }
     t1 = bi_mul(&a->numer, &b->denom);
     t2 = bi_mul(&b->numer, &a->denom);
     res.numer = bi_mod(&t1, &t2);
@@ -258,6 +261,9 @@ number_t
 number_exp(number_t* a, number_t* b) {
     number_t res, cur, t1, t2;
     bigint_t e, q = ZERO_BIGINT, r = ZERO_BIGINT, two = BYTE_BIGINT(2);
+    if (a->numer.nan || b->numer.nan) {
+        return NAN_NUMBER;
+    }
     if (b->denom.size != 1 || b->denom.digit[0] != 1) {
         free_bi(&two);
         return NAN_NUMBER;

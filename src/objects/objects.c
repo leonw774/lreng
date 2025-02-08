@@ -8,7 +8,11 @@
 #include "objects.h"
 
 const object_t* ERR_OBJECT_PTR = &ERR_OBJECT;
-const object_t ERR_OBJECT = (object_t) {.is_error = 1, .type = TYPE_NULL};
+const object_t ERR_OBJECT = (object_t) {
+    .is_error = 1,
+    .is_const = 1,
+    .type = TYPE_NULL
+};
 
 const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM + 1] = {
     "Null", "Number", "Pair", "Function",
@@ -48,8 +52,12 @@ free_object(object_t* obj) {
         free_number(&obj->data.number);
     }
     else if (obj->type == TYPE_PAIR) {
-        free_object(obj->data.pair.left);
-        free_object(obj->data.pair.right);
+        if (obj->data.pair.left != NULL) {
+            free_object(obj->data.pair.left);
+        }
+        if (obj->data.pair.right != NULL) {
+            free_object(obj->data.pair.right);
+        }
     }
     else if (obj->type == TYPE_CALL) {
         /* if is builtin function, it doesn't have frame */
@@ -82,9 +90,19 @@ print_object(object_t* obj, char end) {
     }
     else if (obj->type == TYPE_PAIR) {
         printed_bytes_count = printf("[Pair] (");
-        printed_bytes_count += print_object(obj->data.pair.left, '\0');
+        if (obj->data.pair.left == NULL) {
+            printed_bytes_count += printf("(empty)");
+        }
+        else {
+            printed_bytes_count += print_object(obj->data.pair.left, '\0');
+        }
         printed_bytes_count += printf(", ");
-        printed_bytes_count += print_object(obj->data.pair.right, '\0');
+        if (obj->data.pair.right == NULL) {
+            printed_bytes_count += printf("(empty)");
+        }
+        else {
+            printed_bytes_count += print_object(obj->data.pair.right, '\0');
+        }
         printed_bytes_count += printf(")");
     }
     else if (obj->type == TYPE_CALL) {

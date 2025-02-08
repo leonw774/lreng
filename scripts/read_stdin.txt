@@ -2,7 +2,7 @@ add = p => {
     `p + ~p
 };
 print = string => {
-    string != null && ( output(`string); print(~string) )
+    string != null && (output(`string); print(~string))
 };
 print('a', '=', null);
 a = input();

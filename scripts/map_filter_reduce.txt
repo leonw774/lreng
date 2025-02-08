@@ -1,0 +1,45 @@
+list_append = list_elem => {
+    list = `list_elem;
+    elem = ~list_elem;
+    list == null ? [
+        elem, null
+    ], [
+        ~list == null
+            && (`list, elem, null)
+            || (`list, list_append(~list, elem))
+    ]
+};
+format_int = i => {
+    i < 10 && ((i + '0'), null) || (
+        list_append(
+            format_int(<<(i / 10)),
+            ((i % 10) + '0')
+        )
+    )
+};
+print = string => {
+    (c => { c != null && output $ c }) $> string
+};
+print_tree_map = tree => {
+    tree == null ? [
+        print('n', 'u', 'l', 'l', null)
+    ], [
+        (x => {
+            x == null ? [
+                print('n', 'u', 'l', 'l', null)
+            ], [
+                (print $ format_int $ x)
+            ];
+            output(' ')
+        }) $> tree
+    ];
+    output('\n')
+};
+tree = (1, 2), (3, 4), (5, 6);
+f = x => { x * 2 };
+g1 = x => { x > 1 };
+g2 = x => { x > 2 & x < 5 };
+h = p => { `p + ~p };
+print_tree_map(f $> tree);
+print_tree_map(g1 $| tree);
+print_tree_map(g2 $| tree)

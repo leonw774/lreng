@@ -5,7 +5,7 @@
 const char* const OP_STRS[] = {
     "{", "}", "@", "[", "]", "@!",
     "(", ")", "()",
-    "$$", "$|", "$/",
+    "$>", "$|", "$/",
     "+", "-", "!", ">>", "<<", "`", "~",
     "^",
     "*", "/", "%",
@@ -22,6 +22,22 @@ const char* const OP_STRS[] = {
     "=", "?",
     ";"
 };
+
+/* if the left and right chars make up to an operator */
+unsigned char
+is_2char_op(char left, char right) {
+    if (right == '=') {
+        return left == '<' || left == '=' || left == '>' || left == '!';
+    }
+    if (left == '$') {
+        return right == '>' || right == '|' || right == '/';
+    }
+    return (left == '=' && right == '>')
+        || (left == '&' && right == '&')
+        || (left == '|' && right == '|')
+        || (left == '<' && right == '<')
+        || (left == '>' && right == '>');
+}
 
 const char OP_CHARS[] = "!$%&()*+,-./;<=>?[]^`{|}~";
 
@@ -121,19 +137,3 @@ const unsigned char is_r_asso_op(op_name_enum op) {
     }
     return 0;
 };
-
-/* if the left and right chars make up to an operator */
-unsigned char
-is_2char_op(char left, char right) {
-    if (right == '=') {
-        return left == '<' || left == '=' || left == '>' || left == '!';
-    }
-    if (left == '$') {
-        return right == '$' || right == '|' || right == '/';
-    }
-    return (left == '=' && right == '>')
-        || (left == '&' && right == '&')
-        || (left == '|' && right == '|')
-        || (left == '<' && right == '<')
-        || (left == '>' && right == '>');
-}

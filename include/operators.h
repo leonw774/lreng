@@ -24,6 +24,8 @@ typedef enum op_name {
 
 #define OPERATOR_COUNT OP_EXPRSEP + 1
 
+extern unsigned char is_2char_op(char left, char right);
+
 extern const char* const OP_STRS[];
 
 extern const char OP_CHARS[];
@@ -37,7 +39,5 @@ extern const unsigned char is_prefixable_op(op_name_enum op);
 extern const unsigned char is_r_asso_op(op_name_enum op);
 
 extern const char R_ASSOCIATIVE_OPS[];
-
-extern unsigned char is_2char_op(char left, char right);
 
 #endif

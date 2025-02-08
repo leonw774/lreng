@@ -175,6 +175,304 @@ exec_call(
     return returned_obj;
 }
 
+/* apply function recursively in postfix order and return a new pair */
+object_t*
+exec_map(
+    const tree_t* tree,
+    const frame_t* cur_frame,
+    linecol_t token_pos,
+    object_t* func_obj,
+    object_t* pair_obj,
+    const int is_debug
+) {
+#ifdef ENABLE_DEBUG
+    if (is_debug) {
+        printf("exec_map\n");
+        printf("func_obj="); print_object(func_obj, '\n');
+        printf("pair_obj="); print_object(pair_obj, '\n');
+    }
+#endif
+    int is_error = 0;
+    object_t* returned_obj = create_object(
+        TYPE_PAIR,
+        (object_data_t) {.pair = (pair_t) {NULL, NULL}}
+    );
+    dynarr_t arg_pair_stack, ret_pair_stack;
+    arg_pair_stack = new_dynarr(sizeof(object_t*));
+    ret_pair_stack = new_dynarr(sizeof(object_t*));
+    append(&arg_pair_stack, &pair_obj);
+    append(&ret_pair_stack, &returned_obj);
+    while(arg_pair_stack.size > 0) {
+        object_t* arg_pair_obj = *(object_t**) back(&arg_pair_stack);
+        object_t* ret_pair_obj = *(object_t**) back(&ret_pair_stack);
+        /* check */
+        if (
+            arg_pair_obj->data.pair.left == NULL
+            || arg_pair_obj->data.pair.right == NULL
+        ) {
+#ifdef ENABLE_DEBUG
+            if (is_debug) {
+                printf("exec_map: bad pair - left or right is empty: ");
+                print_object(arg_pair_obj, '\n');
+            }
+#endif
+            is_error = 1;
+            break;
+        }
+        /* left */
+        if (arg_pair_obj->data.pair.left->type == TYPE_PAIR) {
+            if (ret_pair_obj->data.pair.left == NULL) {
+                ret_pair_obj->data.pair.left = create_object(
+                    TYPE_PAIR,
+                    (object_data_t) {.pair = (pair_t) {NULL, NULL}}
+                );
+                append(&arg_pair_stack, &arg_pair_obj->data.pair.left);
+                append(&ret_pair_stack, &ret_pair_obj->data.pair.left);
+                continue;
+            }
+        }
+        else if (ret_pair_obj->data.pair.left == NULL) {
+            object_t* left_ret_obj = exec_call(
+                tree, cur_frame, token_pos, func_obj,
+                arg_pair_obj->data.pair.left, is_debug
+            );
+            if (left_ret_obj->is_error) {
+#ifdef ENABLE_DEBUG
+                if (is_debug) {
+                    printf("exec_map: a left child return with error: ");
+                    print_object(left_ret_obj, '\n');
+                }
+#endif
+                is_error = 1;
+                break;
+            }
+            ret_pair_obj->data.pair.left = left_ret_obj;
+        }
+        /* right */
+        if (arg_pair_obj->data.pair.right->type == TYPE_PAIR) {
+            if (ret_pair_obj->data.pair.right == NULL) {
+                ret_pair_obj->data.pair.right = create_object(
+                    TYPE_PAIR,
+                    (object_data_t) {.pair = (pair_t) {NULL, NULL}}
+                );
+                append(&arg_pair_stack, &arg_pair_obj->data.pair.right);
+                append(&ret_pair_stack, &ret_pair_obj->data.pair.right);
+                continue;
+            }
+        }
+        else if (ret_pair_obj->data.pair.right == NULL) {
+            object_t* right_ret_obj = exec_call(
+                tree, cur_frame, token_pos, func_obj,
+                arg_pair_obj->data.pair.right, is_debug
+            );
+            if (right_ret_obj->is_error) {
+#ifdef ENABLE_DEBUG
+                if (is_debug) {
+                    printf("exec_map: a right child return with error: ");
+                    print_object(right_ret_obj, '\n');
+                }
+#endif
+                is_error = 1;
+                break;
+            }
+            ret_pair_obj->data.pair.right = right_ret_obj;
+        }
+
+        pop(&arg_pair_stack);
+        pop(&ret_pair_stack);
+    }
+    if (is_error) {
+        free_object(returned_obj);
+        returned_obj = (object_t*) ERR_OBJECT_PTR;
+    }
+    free_dynarr(&arg_pair_stack);
+    free_dynarr(&ret_pair_stack);
+    return returned_obj;
+}
+
+/* apply function recursively in postfix order to the children. if the return
+   value is true, keep the child, otherwise, set it to NULL.
+   if a pair's two children's return value is all false, the pair itself becomes
+   NULL as well. */
+object_t*
+exec_filter(
+    const tree_t* tree,
+    const frame_t* cur_frame,
+    linecol_t token_pos,
+    object_t* func_obj,
+    object_t* pair_obj,
+    const int is_debug
+) {
+#ifdef ENABLE_DEBUG
+    if (is_debug) {
+        printf("exec_filter\n");
+        printf("func_obj="); print_object(func_obj, '\n');
+        printf("pair_obj="); print_object(pair_obj, '\n');
+    }
+#endif
+    int is_error = 0;
+    object_t* returned_obj = create_object(
+        TYPE_PAIR,
+        (object_data_t) {.pair = (pair_t) {NULL, NULL}}
+    );
+    dynarr_t arg_pair_stack, ret_pair_stack;
+    arg_pair_stack = new_dynarr(sizeof(object_t*));
+    ret_pair_stack = new_dynarr(sizeof(object_t*));
+    append(&arg_pair_stack, &pair_obj);
+    append(&ret_pair_stack, &returned_obj);
+    while(arg_pair_stack.size > 0) {
+        object_t* arg_pair_obj = *(object_t**) back(&arg_pair_stack);
+        object_t* ret_pair_obj = *(object_t**) back(&ret_pair_stack);
+        /* check */
+        if (
+            arg_pair_obj->data.pair.left == NULL
+            || arg_pair_obj->data.pair.right == NULL
+        ) {
+#ifdef ENABLE_DEBUG
+            if (is_debug) {
+                printf("exec_filter: bad pair - left or right is empty: ");
+                print_object(arg_pair_obj, '\n');
+            }
+#endif
+            is_error = 1;
+            break;
+        }
+        /* left */
+        if (arg_pair_obj->data.pair.left->type == TYPE_PAIR) {
+            if (ret_pair_obj->data.pair.left == NULL) {
+                ret_pair_obj->data.pair.left = create_object(
+                    TYPE_PAIR,
+                    (object_data_t) {.pair = (pair_t) {NULL, NULL}}
+                );
+                append(&arg_pair_stack, &arg_pair_obj->data.pair.left);
+                append(&ret_pair_stack, &ret_pair_obj->data.pair.left);
+                continue;
+            }
+            /* the child's children are all null, make it also null */
+            object_t* temp_left = ret_pair_obj->data.pair.left;
+            if (
+                temp_left->type == TYPE_PAIR
+                && temp_left->data.pair.left->type == TYPE_NULL
+                && temp_left->data.pair.right->type == TYPE_NULL
+            ) {
+                free_object(temp_left);
+                ret_pair_obj->data.pair.left = (object_t*) NULL_OBJECT_PTR;
+            }
+        }
+        else if (ret_pair_obj->data.pair.left == NULL) {
+            object_t* left_ret_obj = exec_call(
+                tree, cur_frame, token_pos, func_obj,
+                arg_pair_obj->data.pair.left, is_debug
+            );
+            if (left_ret_obj->is_error) {
+#ifdef ENABLE_DEBUG
+                if (is_debug) {
+                    printf("exec_filter: a left child return with error: ");
+                    print_object(left_ret_obj, '\n');
+                }
+#endif
+                is_error = 1;
+                free_object(left_ret_obj);
+                break;
+            }
+            if (to_bool(left_ret_obj)) {
+                ret_pair_obj->data.pair.left = copy_object(
+                    arg_pair_obj->data.pair.left
+                );
+            }
+            else {
+                ret_pair_obj->data.pair.left = (object_t*) NULL_OBJECT_PTR;
+            }
+            free_object(left_ret_obj);
+        }
+        /* right */
+        if (arg_pair_obj->data.pair.right->type == TYPE_PAIR) {
+            if (ret_pair_obj->data.pair.right == NULL) {
+                ret_pair_obj->data.pair.right = create_object(
+                    TYPE_PAIR,
+                    (object_data_t) {.pair = (pair_t) {NULL, NULL}}
+                );
+                append(&arg_pair_stack, &arg_pair_obj->data.pair.right);
+                append(&ret_pair_stack, &ret_pair_obj->data.pair.right);
+                continue;
+            }
+            /* the child's children are all null, make it also null */
+            object_t* temp_right = ret_pair_obj->data.pair.right;
+            if (
+                temp_right->type == TYPE_PAIR
+                && temp_right->data.pair.left->type == TYPE_NULL
+                && temp_right->data.pair.right->type == TYPE_NULL
+            ) {
+                free_object(temp_right);
+                ret_pair_obj->data.pair.right = (object_t*) NULL_OBJECT_PTR;
+            }
+        }
+        else if (ret_pair_obj->data.pair.right == NULL) {
+            object_t* right_ret_obj = exec_call(
+                tree, cur_frame, token_pos, func_obj,
+                arg_pair_obj->data.pair.right, is_debug
+            );
+            if (right_ret_obj->is_error) {
+#ifdef ENABLE_DEBUG
+                if (is_debug) {
+                    printf("exec_filter: a right child return with error: ");
+                    print_object(right_ret_obj, '\n');
+                }
+#endif
+                is_error = 1;
+                free_object(right_ret_obj);
+                break;
+            }
+            if (to_bool(right_ret_obj)) {
+                ret_pair_obj->data.pair.right = copy_object(
+                    arg_pair_obj->data.pair.right
+                );
+            }
+            else {
+                ret_pair_obj->data.pair.right = (object_t*) NULL_OBJECT_PTR;
+            }
+            free_object(right_ret_obj);
+        }
+
+        pop(&arg_pair_stack);
+        pop(&ret_pair_stack);
+    }
+    if (is_error) {
+        free_object(returned_obj);
+        returned_obj = (object_t*) ERR_OBJECT_PTR;
+    }
+    if (
+        returned_obj->data.pair.left->type == TYPE_NULL
+        && returned_obj->data.pair.right->type == TYPE_NULL
+    ) {
+        free_object(returned_obj);
+        returned_obj = (object_t*) NULL_OBJECT_PTR;
+    }
+    free_dynarr(&arg_pair_stack);
+    free_dynarr(&ret_pair_stack);
+    return returned_obj;
+}
+
+object_t*
+exec_reduce(
+    const tree_t* tree,
+    const frame_t* cur_frame,
+    linecol_t token_pos,
+    object_t* func_obj,
+    object_t* pair_obj,
+    const int is_debug
+) {
+#ifdef ENABLE_DEBUG
+    if (is_debug) {
+        printf("exec_reduce\n");
+        printf("func_obj="); print_object(func_obj, '\n');
+        printf("pair_obj="); print_object(pair_obj, '\n');
+    }
+#endif
+    printf("exec_reduce: not implemented yet\n");
+    return (object_t*) ERR_OBJECT_PTR;
+}
+
 static inline object_t*
 exec_op(
     const tree_t* tree,
@@ -191,6 +489,27 @@ exec_op(
             return (object_t*) ERR_OBJECT_PTR;
         };
         return exec_call(
+            tree, cur_frame, op_token.pos, left_obj, right_obj, is_debug
+        );
+    case OP_MAP:
+        if (is_bad_type(op_token, TYPE_CALL, TYPE_PAIR, left_obj, right_obj)) {
+            return (object_t*) ERR_OBJECT_PTR;
+        }
+        return exec_map(
+            tree, cur_frame, op_token.pos, left_obj, right_obj, is_debug
+        );
+    case OP_FILTER:
+        if (is_bad_type(op_token, TYPE_CALL, TYPE_PAIR, left_obj, right_obj)) {
+            return (object_t*) ERR_OBJECT_PTR;
+        }
+        return exec_filter(
+            tree, cur_frame, op_token.pos, left_obj, right_obj, is_debug
+        );
+    case OP_REDUCE:
+        if (is_bad_type(op_token, TYPE_CALL, TYPE_PAIR, left_obj, right_obj)) {
+            return (object_t*) ERR_OBJECT_PTR;
+        }
+        return exec_reduce(
             tree, cur_frame, op_token.pos, left_obj, right_obj, is_debug
         );
     /* case OP_POS: */
@@ -668,11 +987,9 @@ eval_tree(
 #ifdef ENABLE_DEBUG
                 if (is_debug) {
                     printf(
-                        "^ (node %d) exec_op %s safely returned with ",
+                        "^ (node %d) exec_op %s returned\n",
                         cur_index, OP_STRS[cur_token.name]
                     );
-                    print_token(cur_token);
-                    printf("\n");
                 }
 #endif
                 /* end eval if error */
