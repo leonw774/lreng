@@ -82,7 +82,10 @@ free_object(object_t* obj) {
 inline int
 print_object(object_t* obj, char end) {
     int printed_bytes_count = 0;
-    if (obj->type == TYPE_NULL) {
+    if (obj->is_error) {
+        printed_bytes_count = printf("[Error]");
+    }
+    else if (obj->type == TYPE_NULL) {
         printed_bytes_count = printf("[Null]");
     }
     else if (obj->type == TYPE_NUM) {
@@ -138,7 +141,8 @@ object_eq(object_t* a, object_t* b) {
     else if (a->type == TYPE_CALL) {
         callable_t *a_func = &a->data.callable, *b_func = &b->data.callable;
         return (
-            a_func->arg_name == b_func->arg_name
+            a_func->is_macro == b_func->is_macro
+            && a_func->arg_name == b_func->arg_name
             && a_func->builtin_name == b_func->builtin_name
             && a_func->init_time_frame == b_func->init_time_frame
             && a_func->index == b_func->index

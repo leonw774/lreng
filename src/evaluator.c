@@ -290,6 +290,9 @@ exec_map(
     return returned_obj;
 }
 
+
+object_t* merge_filter_result();
+
 /* apply function recursively in postfix order to the children. if the return
    value is true, keep the child, otherwise, set it to NULL.
    if a pair's two children's return value is all false, the pair itself becomes
@@ -315,9 +318,8 @@ exec_filter(
         TYPE_PAIR,
         (object_data_t) {.pair = (pair_t) {NULL, NULL}}
     );
-    dynarr_t arg_pair_stack, ret_pair_stack;
-    arg_pair_stack = new_dynarr(sizeof(object_t*));
-    ret_pair_stack = new_dynarr(sizeof(object_t*));
+    dynarr_t arg_pair_stack = new_dynarr(sizeof(object_t*));
+    dynarr_t ret_pair_stack = new_dynarr(sizeof(object_t*));
     append(&arg_pair_stack, &pair_obj);
     append(&ret_pair_stack, &returned_obj);
     while(arg_pair_stack.size > 0) {
@@ -337,6 +339,7 @@ exec_filter(
             is_error = 1;
             break;
         }
+        /* use is_error field to indecate a child is removed */
         /* left */
         if (arg_pair_obj->data.pair.left->type == TYPE_PAIR) {
             if (ret_pair_obj->data.pair.left == NULL) {
@@ -347,16 +350,6 @@ exec_filter(
                 append(&arg_pair_stack, &arg_pair_obj->data.pair.left);
                 append(&ret_pair_stack, &ret_pair_obj->data.pair.left);
                 continue;
-            }
-            /* the child's children are all null, make it also null */
-            object_t* temp_left = ret_pair_obj->data.pair.left;
-            if (
-                temp_left->type == TYPE_PAIR
-                && temp_left->data.pair.left->type == TYPE_NULL
-                && temp_left->data.pair.right->type == TYPE_NULL
-            ) {
-                free_object(temp_left);
-                ret_pair_obj->data.pair.left = (object_t*) NULL_OBJECT_PTR;
             }
         }
         else if (ret_pair_obj->data.pair.left == NULL) {
@@ -381,7 +374,8 @@ exec_filter(
                 );
             }
             else {
-                ret_pair_obj->data.pair.left = (object_t*) NULL_OBJECT_PTR;
+                /* removed */
+                ret_pair_obj->data.pair.left = (object_t*) ERR_OBJECT_PTR;
             }
             free_object(left_ret_obj);
         }
@@ -395,16 +389,6 @@ exec_filter(
                 append(&arg_pair_stack, &arg_pair_obj->data.pair.right);
                 append(&ret_pair_stack, &ret_pair_obj->data.pair.right);
                 continue;
-            }
-            /* the child's children are all null, make it also null */
-            object_t* temp_right = ret_pair_obj->data.pair.right;
-            if (
-                temp_right->type == TYPE_PAIR
-                && temp_right->data.pair.left->type == TYPE_NULL
-                && temp_right->data.pair.right->type == TYPE_NULL
-            ) {
-                free_object(temp_right);
-                ret_pair_obj->data.pair.right = (object_t*) NULL_OBJECT_PTR;
             }
         }
         else if (ret_pair_obj->data.pair.right == NULL) {
@@ -429,30 +413,74 @@ exec_filter(
                 );
             }
             else {
-                ret_pair_obj->data.pair.right = (object_t*) NULL_OBJECT_PTR;
+                /* removed */
+                ret_pair_obj->data.pair.right = (object_t*) ERR_OBJECT_PTR;
             }
             free_object(right_ret_obj);
         }
+        /* merge */
+        if (
+            ret_pair_obj->data.pair.left->is_error 
+            && ret_pair_obj->data.pair.right->is_error
+        ) {
+#ifdef ENABLE_DEBUG
+            if (is_debug) {
+                printf("exec_filter: ret_pair_obj removed\n");
+            }
+#endif
+            *ret_pair_obj = *((object_t*) ERR_OBJECT_PTR);
+        }
+        else if (ret_pair_obj->data.pair.left->is_error) {
+#ifdef ENABLE_DEBUG
+            if (is_debug) {
+                printf("exec_filter: ret_pair_obj replaced by right\n");
+            }
+#endif
+            object_t* ret_right = ret_pair_obj->data.pair.right;
+            *ret_pair_obj = *ret_right;
+            free_object(ret_right);
+        }
+        else if (ret_pair_obj->data.pair.right->is_error) {
+#ifdef ENABLE_DEBUG
+            if (is_debug) {
+                printf("exec_filter: ret_pair_obj replaced by left\n");
+            }
+#endif
+            object_t* ret_left = ret_pair_obj->data.pair.left;
+            *ret_pair_obj = *ret_left;
+            free_object(ret_left);
+        }
+#ifdef ENABLE_DEBUG
+        if (is_debug) {
+            printf("exec_filter: pair_obj=");
+            print_object(arg_pair_obj, '\n');
+            printf("exec_filter: ret_obj=");
+            print_object(ret_pair_obj, '\n');
+        }
+#endif
 
         pop(&arg_pair_stack);
         pop(&ret_pair_stack);
     }
-    if (is_error) {
-        free_object(returned_obj);
-        returned_obj = (object_t*) ERR_OBJECT_PTR;
-    }
-    if (
-        returned_obj->data.pair.left->type == TYPE_NULL
-        && returned_obj->data.pair.right->type == TYPE_NULL
-    ) {
-        free_object(returned_obj);
-        returned_obj = (object_t*) NULL_OBJECT_PTR;
-    }
     free_dynarr(&arg_pair_stack);
     free_dynarr(&ret_pair_stack);
+    if (is_error) {
+        free_object(returned_obj);
+#ifdef ENABLE_DEBUG
+        if (is_debug) {
+            printf("exec_filter: error\n");
+        }
+#endif
+        returned_obj = (object_t*) ERR_OBJECT_PTR;
+    }
+    else if (returned_obj->is_error) {
+        /* root is removed: return null object */
+        returned_obj = (object_t*) NULL_OBJECT_PTR;
+    }
     return returned_obj;
 }
 
+/* apply function (taking a pair) recursively in postfix order to the pair */
 object_t*
 exec_reduce(
     const tree_t* tree,
@@ -469,8 +497,99 @@ exec_reduce(
         printf("pair_obj="); print_object(pair_obj, '\n');
     }
 #endif
-    printf("exec_reduce: not implemented yet\n");
-    return (object_t*) ERR_OBJECT_PTR;
+   int is_error = 0;
+    object_t* returned_obj = create_object(
+        TYPE_PAIR,
+        (object_data_t) {.pair = (pair_t) {NULL, NULL}}
+    );
+    dynarr_t arg_pair_stack, ret_pair_stack;
+    arg_pair_stack = new_dynarr(sizeof(object_t*));
+    ret_pair_stack = new_dynarr(sizeof(object_t*));
+    append(&arg_pair_stack, &pair_obj);
+    append(&ret_pair_stack, &returned_obj);
+    while(arg_pair_stack.size > 0) {
+        object_t* arg_pair_obj = *(object_t**) back(&arg_pair_stack);
+        object_t* ret_pair_obj = *(object_t**) back(&ret_pair_stack);
+        /* check */
+        if (
+            arg_pair_obj->data.pair.left == NULL
+            || arg_pair_obj->data.pair.right == NULL
+        ) {
+#ifdef ENABLE_DEBUG
+            if (is_debug) {
+                printf("exec_reduce: bad pair - left or right is empty: ");
+                print_object(arg_pair_obj, '\n');
+            }
+#endif
+            is_error = 1;
+            break;
+        }
+        /* left */
+        if (arg_pair_obj->data.pair.left->type == TYPE_PAIR) {
+            if (ret_pair_obj->data.pair.left == NULL) {
+                ret_pair_obj->data.pair.left = create_object(
+                    TYPE_PAIR,
+                    (object_data_t) {.pair = (pair_t) {NULL, NULL}}
+                );
+                append(&arg_pair_stack, &arg_pair_obj->data.pair.left);
+                append(&ret_pair_stack, &ret_pair_obj->data.pair.left);
+                continue;
+            }
+        }
+        else if (ret_pair_obj->data.pair.left == NULL) {
+            ret_pair_obj->data.pair.left = copy_object(
+                arg_pair_obj->data.pair.left
+            );
+        }
+        /* right */
+        if (arg_pair_obj->data.pair.right->type == TYPE_PAIR) {
+            if (ret_pair_obj->data.pair.right == NULL) {
+                ret_pair_obj->data.pair.right = create_object(
+                    TYPE_PAIR,
+                    (object_data_t) {.pair = (pair_t) {NULL, NULL}}
+                );
+                append(&arg_pair_stack, &arg_pair_obj->data.pair.right);
+                append(&ret_pair_stack, &ret_pair_obj->data.pair.right);
+                continue;
+            }
+        }
+        else if (ret_pair_obj->data.pair.right == NULL) {
+            ret_pair_obj->data.pair.right = copy_object(
+                arg_pair_obj->data.pair.right
+            );
+        }
+        /* do reduce */
+        object_t* reduce_ret_obj = exec_call(
+            tree, cur_frame, token_pos, func_obj, ret_pair_obj, is_debug
+        );
+        if (reduce_ret_obj->is_error) {
+#ifdef ENABLE_DEBUG
+            if (is_debug) {
+                printf("exec_reduce: a child return with error: ");
+                print_object(reduce_ret_obj, '\n');
+            }
+#endif
+            is_error = 1;
+            free_object(reduce_ret_obj);
+            free_object(ret_pair_obj);
+            break;
+        }
+        free_object(ret_pair_obj->data.pair.left);
+        free_object(ret_pair_obj->data.pair.right);
+        /* copy reduce return obj to ret_pair_obj and free it immediately */
+        *ret_pair_obj = *reduce_ret_obj;
+        free_object(reduce_ret_obj);
+
+        pop(&arg_pair_stack);
+        pop(&ret_pair_stack);
+    }
+    if (is_error) {
+        free_object(returned_obj);
+        returned_obj = (object_t*) ERR_OBJECT_PTR;
+    }
+    free_dynarr(&arg_pair_stack);
+    free_dynarr(&ret_pair_stack);
+    return returned_obj;
 }
 
 static inline object_t*

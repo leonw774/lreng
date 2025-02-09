@@ -1,8 +1,7 @@
 # ɭeŋ
 
-A simple functional programming language.
+Lreng is a simple intepreted programming language. The main idea is to build a minimal language that works on binary tree: it is parsed into a binary AST and has "Pair" as its only container data type. It has strong, dynamic typing and supports first-class citizen anonymous function and closure.
 
-The main idea is to build a minimal language that works on binary tree: it is parsed into a binary AST and has "Pair" as its only container data type.
 
 ## Usage
 
@@ -11,10 +10,11 @@ The main idea is to build a minimal language that works on binary tree: it is pa
 Download this repo and run `make main` and then:
 
 ```
-./lreng {code_file_path} [-d]
+./lreng [-d] {code_file_path}
 ```
 
 The optional `-d` flag outputs debug information only when you build the program with `make debug`.
+
 
 ## Variable
 
@@ -32,7 +32,7 @@ There are 4 types:
   - You can represent the code of printable and escapable ASCII characters. For example, `'A'` evaluates to `65`, `'\\'` is `92`, and `'\n'` is `10`
 - Pair: Store the reference to two data, tagged `left` and `right`;
 - Callable: A expression that can be called or jumped to.
-  - Function: A callable that can pass in at most one argument.
+  - Function: A callable that own a stack and can pass in at most one argument.
   - Macro: A callable that does not have its own stack and cannot pass in argument.
 
 ### Global and Scoped
@@ -52,7 +52,7 @@ The `+`, `-`, `*`, `/`, `%` (modulo), `^` (exponent) only accept numbers.
 
 ### Ceiling and floor
 
-The ceiling `>>` and floor `<<` only accept number and do what normally do. They are quite useful since the there is no rounding with division and modulo. For example: `<<(8 / 3) == 2` is true.
+The ceiling `>>` and floor `<<` operators only accept number and do what they normally do. They are quite useful since the there is no rounding with division and modulo. For example: `<<(8 / 3)` is `2`.
 
 ### Assignment
 
@@ -62,7 +62,8 @@ The assignment operator `x = expr` requires the left hand side `x` to be an unin
 
 The comparison operators compare two objects by their values. The `>`, `<`, `>=`, `<=` can only compare numbers. The `==`, `!=` can compare all data types.
 
-For pair objects, `==` and `!=` compares their referenced objects recursively. 
+- For pair objects, `==` and `!=` compares their referenced objects recursively.
+- For callable objects, `==` and `!=` compares their referenced code position, frame, and argument identifier.
 
 The comparison operators return number `1` if the result is true, otherwise `0`.
 
@@ -70,10 +71,10 @@ The comparison operators return number `1` if the result is true, otherwise `0`.
 
 The logic operators `!` (NOT), `&` (AND) and `|` (OR) return `0` and `1` like comparison operators.
 
-They will implicitly cast its operands into boolean number `0` and `1`.
-- Number becomes `1` if it is not 0.
+There is an implicit boolean function that casts any object into boolean number `0` and `1`.
+- Number becomes `1` if it is not zero.
 - Null becomes `0`.
-- Pair and function become `1`.
+- Pair and callable become `1`.
 
 These operator do *not* short-circuit.
 
@@ -92,6 +93,10 @@ The `&&` (CONDITION-AND) and  `||` (CONDITION-OR) are the logical operations tha
 | 0              | `y`                   | yes               |
 
 For example, `x == 1 && 3` evaluates to `3` if `x` is `1` and otherwise evaluates to `0`. Notice that `x == 1 && 0 || -1` always evaluates to `-1` because `x == 1 && 0` evaluated to `0` no matter `x` equals `0` or not. So the idiom `cond && t || f` does not work extactly the same as `if cond then t else f` since `t` could be `0` or `null`. The equivalent of "if-then-else" is `cond && t; !cond || f` or using conditional pair caller and macros `cond ? [ t ], [ f ]`.
+
+### Expression connector
+
+The expression connector is `;`. It connects two expressions into one and evaluates to the right hand side value.
 
 ### Pair maker, left getter and right getter
 
@@ -129,9 +134,49 @@ The syntax `foo()` is valid and will be parsed as `foo(null)`.
 
 The `?` operator is designed to do proper conditional expression evaluation. The syntax is `cond ? callable_pair`. If `cond` is true, the `` `callable_pair `` is called, otherwise, the `~callable_pair` is called. The passed argument is always null.
 
-### Expression connector
+### Map, filter, and reduce
 
-The expression connector is `;`. It connects two expressions into one and evaluates to the right hand side value.
+The map `f $> x`, filter `f $| x`, and reduce `f $/ x` operators apply callable recursively to a pair. 
+
+#### Map
+
+The map operation is defined as:
+```
+map(f, x) =
+    Pair(map(f, left(x)), map(f, right(x))), if x is a Pair
+    f(x)                                   , otherwise
+```
+
+#### Filter
+
+The filter operation is defined as:
+```
+filter(f, x) =
+    x
+        , if x is not a Pair and boolean of f(x) == True
+    empty
+        , if x is not a Pair and boolean of f(x) == False
+    merge(filter(f, left(x)), filter(f, right(x)))
+        , if x is a Pair
+```
+where the merge function is:
+```
+merge(x, y) =
+    empty     , if x == empty and y == empty
+    x         , if x != empty and y == empty
+    y         , if x == empty and y != empty
+    Pair(x, y), otherwise
+```
+If the final result is `empty`, it becomes `null`.
+
+#### Reduce
+
+The reduce operation is defined as:
+```
+reduce(f, x) =
+    x                                         , if x is not a Pair
+    f(reduce(f, left(x)), reduce(f, right(x))), otherwise
+```
 
 ## Expression
 
@@ -188,5 +233,3 @@ a+b=a
 ```
 
 - Type checker functions: `is_number`, `is_callable`, and `is_pair`. They return number `1` or `0` when true or false. Null type has only `null` so just use `x == nul`.
-
-- Map function `map(func, )`

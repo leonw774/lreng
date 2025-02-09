@@ -20,10 +20,8 @@ format_int = i => {
 print = string => {
     (c => { c != null && output $ c }) $> string
 };
-print_tree_map = tree => {
-    tree == null ? [
-        print('n', 'u', 'l', 'l', null)
-    ], [
+print_tree = tree => {
+    is_pair(tree) ? [
         (x => {
             x == null ? [
                 print('n', 'u', 'l', 'l', null)
@@ -32,6 +30,10 @@ print_tree_map = tree => {
             ];
             output(' ')
         }) $> tree
+    ], [
+        tree == null && print('n', 'u', 'l', 'l', null);
+        is_callable(tree) && print('c', 'a', 'l', 'l', null);
+        is_number(tree) && print $ format_int $ <<tree
     ];
     output('\n')
 };
@@ -40,6 +42,7 @@ f = x => { x * 2 };
 g1 = x => { x > 1 };
 g2 = x => { x > 2 & x < 5 };
 h = p => { `p + ~p };
-print_tree_map(f $> tree);
-print_tree_map(g1 $| tree);
-print_tree_map(g2 $| tree)
+print_tree(f $> tree);
+print_tree(g1 $| tree);
+print_tree(g2 $| tree);
+print_tree(h $/ tree)
