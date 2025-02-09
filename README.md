@@ -1,11 +1,11 @@
 # ɭeŋ
 
-Lreng is a simple intepreted programming language. The main idea is to build a minimal language that works on binary tree: it is parsed into a binary AST and has "Pair" as its only container data type. It has strong, dynamic typing and supports first-class citizen anonymous function and closure.
+Lreng is a simple interpreted programming language. The main idea is to build a minimal language that works on binary tree: it is parsed into a binary AST and has "Pair" as its only container data type. It has strong, dynamic typing and supports first-class citizen anonymous function and closure.
 
 
 ## Usage
 
-`gcc` and `make` is required to build the program, and optionally `emscripten` if you want to build the web playground.
+`gcc` and `make` are required to build the program, and optionally `emscripten` if you want to build the web playground.
 
 Download this repo and run `make main` and then:
 
@@ -28,7 +28,7 @@ There are 4 types:
 - Null: The unit type. Has key word `null`.
 - Number: Numbers in lreng are all rational numbers 
   - You can represent numbers in decimal with point: `3.14159`
-  - You can represent integers in binary and heximal: `0b110011`, `0xc0de`
+  - You can represent integers in binary and hexadecimal: `0b110011`, `0xc0de`
   - You can represent the code of printable and escapable ASCII characters. For example, `'A'` evaluates to `65`, `'\\'` is `92`, and `'\n'` is `10`
 - Pair: Store the reference to two data, tagged `left` and `right`;
 - Callable: A expression that can be called or jumped to.
@@ -92,7 +92,11 @@ The `&&` (CONDITION-AND) and  `||` (CONDITION-OR) are the logical operations tha
 | 1              | `x`                   | no                |
 | 0              | `y`                   | yes               |
 
-For example, `x == 1 && 3` evaluates to `3` if `x` is `1` and otherwise evaluates to `0`. Notice that `x == 1 && 0 || -1` always evaluates to `-1` because `x == 1 && 0` evaluated to `0` no matter `x` equals `0` or not. So the idiom `cond && t || f` does not work extactly the same as `if cond then t else f` since `t` could be `0` or `null`. The equivalent of "if-then-else" is `cond && t; !cond || f` or using conditional pair caller and macros `cond ? [ t ], [ f ]`.
+For example:
+- `x == 1 && 3` evaluates to `3` if `x` is `1`, otherwise it evaluates to `0`.
+- `x == 1 && 0 || -1` always evaluates to `-1` because `x == 1 && 0` evaluates to `0` regardless of `x`.
+
+The idiom `cond && t || f` does not work exactly the same as `if cond then t else f` since `t` could be `0` or `null`. The equivalent of "if-then-else" is `cond && t; !cond || f` or using conditional pair caller and macros `cond ? [ t ], [ f ]`.
 
 ### Expression connector
 
@@ -220,7 +224,7 @@ output $ bar2(2) + '0'; # 7
 output $ '\n'
 ```
 
-## Built-in functions
+- Input function `input()` gets a byte from the `stdin` as a number. It returns a number in the range `1` to `255` (inclusive) if there is data to read in stdin, otherwise it returns `null`. You can execute the example program with the command `echo '!@' | ./lreng scripts/read_stdin.txt`. It would output:
 
 - Output function `output(i)` writes a number `i` as one byte to the `stdout`. The acceptable value are integers in range `0` to `255` (inclusive). Any other value will cause runtime error. It always returns `null`.
 
