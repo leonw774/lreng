@@ -157,6 +157,7 @@
         #readme p > code {
             border: 1px solid grey;
             background-color: #bbb4;
+            padding: 0 2px;
         }
 
         /* Responsive Design */
@@ -194,14 +195,18 @@
         </div>
     </div>
     <hr />
-    <div id="repolink"><a href="https://github.com/leonw774/lreng">This Github Repo</a></div><br />
+    <div id="repolink">
+        <a href="https://github.com/leonw774/lreng">This Github Repo</a>
+    </div>
     <div id="readme"></div>
 
     <script src="codemirror/lib/codemirror.js"></script>
     <script>
-        let editor = CodeMirror.fromTextArea(document.getElementById("file-content"), {
-            lineNumbers: true
-        });
+        let editor = CodeMirror.fromTextArea(
+            document.getElementById("file-content"), {
+                lineNumbers: true
+            }
+        );
         function putHelloWorld() {
             editor.setValue(`
 hello_world = 'H', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '\\n', null;
@@ -221,9 +226,12 @@ print(hello_world)
         let stdinIndex = 0;
         const outputElement = document.getElementById('stdout');
         Module.FS.init(
-            () => stdinStream[stdinIndex++] || null, // Read from stdin
-            char => outputElement.textContent += String.fromCharCode(char), // Write to stdout
-            char => outputElement.textContent += String.fromCharCode(char)  // Write to stderr
+            // Read from stdin
+            () => stdinStream[stdinIndex++] || null,
+            // Write to stdout
+            char => outputElement.textContent += String.fromCharCode(char),
+            // Write to stderr
+            char => outputElement.textContent += String.fromCharCode(char)
         );
 
         async function runProgram() {
@@ -251,7 +259,9 @@ print(hello_world)
                 await Module.callMain(["input.txt"]);
             }
             catch (error) {
-                outputElement.textContent = "Program exits with error: " + JSON.stringify(error);
+                outputElement.textContent = (    
+                    "Program exits with error: " + JSON.stringify(error)
+                );
             }
         }
     </script>
@@ -260,11 +270,16 @@ print(hello_world)
     <script>
         async function showReadMe() {
             const showdownConverter = new showdown.Converter({
-                tables: true, ghCodeBlocks: true, });
+                tables: true,
+                ghCodeBlocks: true,
+                disableForced4SpacesIndentedSublists: true
+            });
             let readmeStr = await (await fetch("./README.md")).text();
             readmeStr = readmeStr.replace("# ɭeŋ", "# README")
             readmeStr = readmeStr.replace("&#124;&#124;", "||")
-            document.getElementById("readme").innerHTML = showdownConverter.makeHtml(readmeStr);
+            document.getElementById("readme").innerHTML = showdownConverter.makeHtml(
+                readmeStr
+            );
         }
         showReadMe();
     </script>
