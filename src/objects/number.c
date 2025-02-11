@@ -307,6 +307,12 @@ number_exp(number_t* a, number_t* b) {
     return res;
 }
 
+/*
+    because bigint division is truncate division
+    * for in positive is floor (1.5 -> 1)
+    * for negative is ceiling (-1.5 -> -1)
+*/
+
 number_t
 number_ceil(number_t* a) {
     number_t res = EMPTY_NUMBER;
@@ -317,25 +323,41 @@ number_ceil(number_t* a) {
     if (a->numer.size == 0) {
         return ZERO_NUMBER;
     }
-    t1 = bi_div(&a->numer, &a->denom);
-    res.numer = bi_add(&t1, &one);
-    res.denom = BYTE_BIGINT(1);
-    free_bi(&t1);
-    free_bi(&one);
+    if (a->numer.sign) {
+        // bigint division is truncate division -
+        res.numer = bi_div(&a->numer, &a->denom);
+        res.denom = BYTE_BIGINT(1);
+    }
+    else {
+        t1 = bi_div(&a->numer, &a->denom);
+        res.numer = bi_add(&t1, &one);
+        res.denom = one;
+        free_bi(&t1);
+    }
     return res;
 }
 
 number_t
 number_floor(number_t* a) {
     number_t res = EMPTY_NUMBER;
+    bigint_t t1, one = BYTE_BIGINT(1);
     if (a->numer.nan) {
         return NAN_NUMBER;
     }
     if (a->numer.size == 0) {
         return ZERO_NUMBER;
     }
-    res.numer = bi_div(&a->numer, &a->denom);
-    res.denom = BYTE_BIGINT(1);
+    if (a->numer.sign) {
+        
+        t1 = bi_div(&a->numer, &a->denom);
+        res.numer = bi_add(&t1, &one);
+        res.denom = one;
+        free_bi(&t1);
+    }
+    else {
+        res.numer = bi_div(&a->numer, &a->denom);
+        res.denom = BYTE_BIGINT(1);
+    }
     return res;
 }
 

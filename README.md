@@ -18,7 +18,7 @@ The optional `-d` flag outputs debug information only when you build the program
 
 ## Variable
 
-Variable identifiers should match regex `[_A-Za-z][_A-Za-z0-9]+`.
+Variable identifiers should match regex `[_A-Za-z][_A-Za-z0-9]*`.
 
 All variables are immutable.
 
