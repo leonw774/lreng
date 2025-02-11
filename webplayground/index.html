@@ -196,7 +196,7 @@
     </div>
     <hr />
     <div id="repolink">
-        <a href="https://github.com/leonw774/lreng">This Github Repo</a>
+        <a href="https://github.com/leonw774/lreng">Github Repo</a>
     </div>
     <div id="readme"></div>
 
@@ -275,7 +275,7 @@ print(hello_world)
                 disableForced4SpacesIndentedSublists: true
             });
             let readmeStr = await (await fetch("./README.md")).text();
-            readmeStr = readmeStr.replace("# ɭeŋ", "# README")
+            readmeStr = readmeStr.replace("# ɭeŋ", "")
             readmeStr = readmeStr.replace("&#124;&#124;", "||")
             document.getElementById("readme").innerHTML = showdownConverter.makeHtml(
                 readmeStr
