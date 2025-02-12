@@ -350,7 +350,7 @@ number_floor(number_t* a) {
     if (a->numer.sign) {
         
         t1 = bi_div(&a->numer, &a->denom);
-        res.numer = bi_add(&t1, &one);
+        res.numer = bi_sub(&t1, &one);
         res.denom = one;
         free_bi(&t1);
     }
