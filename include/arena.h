@@ -26,7 +26,6 @@ typedef struct arena {
         .ptr = NULL \
     }; \
     void arena_##name##_init(unsigned long cap) { \
-        printf("cap %d\n", cap); \
         arena_##name = (arena_t) { \
             .cap = cap, \
             .size = 0, \
