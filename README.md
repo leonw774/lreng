@@ -224,16 +224,17 @@ output $ bar2(2) + '0'; # 7
 output $ '\n'
 ```
 
-- Input function `input()` gets a byte from the `stdin` as a number. It returns a number in the range `1` to `255` (inclusive) if there is data to read in stdin, otherwise it returns `null`. You can execute the example program with the command `echo '!@' | ./lreng scripts/read_stdin.txt`. It would output:
+## Built-in functions
 
-- Output function `output(i)` writes a number `i` as one byte to the `stdout`. The acceptable value are integers in range `0` to `255` (inclusive). Any other value will cause runtime error. It always returns `null`.
-
-- Input function `input()` get a byte from the `stdin` as a number. It return a number in range `1` to `255` (inclusive) if there are data to read in stdin, otherwise it blocks the program and wait for the input to come. You can execute the example program with the command `echo '!@' | ./lreng scripts/read_stdin.txt`. It would output:
+- Input function `input()` gets a byte from the `stdin` as a number. It returns a number in the range `1` to `255` (inclusive) if there is data to read in stdin, otherwise it blocks the program and wait for the input to come. You can execute the example program with the command `echo '!@' | ./lreng scripts/read_stdin.txt`. It would output:
 
 ```
 a=!
 b=@
 a+b=a
 ```
+
+- Output function `output(i)` writes a number `i` as one byte to the `stdout`. The acceptable value are integers in range `0` to `255` (inclusive). Any other value will cause runtime error. It always returns `null`.
+
 
 - Type checker functions: `is_number`, `is_callable`, and `is_pair`. They return number `1` or `0` when true or false. Null type has only `null` so just use `x == nul`.
