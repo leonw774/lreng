@@ -302,6 +302,7 @@ tree_parser(const dynarr_t tokens, const int is_debug) {
     tree.root_index = ((int*) stack.data)[0];
 
     /* eval literal */
+    /* TODO: extend this to a function and also find pair literal */
     tree.literals = calloc(tree.tokens.size, sizeof(object_t*));
     for (i = 0; i < tree.tokens.size; i++) {
         token_t* cur_token = at(&tree.tokens, i);

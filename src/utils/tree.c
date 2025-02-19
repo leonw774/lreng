@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "arena.h"
 #include "frame.h"
 #include "token.h"
 #include "tree.h"
@@ -13,11 +14,11 @@ free_tree(tree_t* tree) {
         if (token->type == TOK_ID && token->name < RESERVED_ID_NUM) {
             continue;
         }
-        free_token_str(token);
         if (token->type == TOK_NUM && tree->literals[i] != NULL) {
             free_object(tree->literals[i]);
         }
     }
+    arena_token_str_free();
     free_dynarr(&tree->tokens);
     free(tree->lefts);
     free(tree->rights);

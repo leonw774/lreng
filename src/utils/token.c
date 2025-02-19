@@ -3,14 +3,6 @@
 #include "reserved.h"
 #include "token.h"
 
-void
-free_token_str(token_t* token) {
-    if ((token->type == TOK_ID || token->type == TOK_NUM) && token->str) {
-        free((char*) token->str);
-        token->str = NULL;
-    }
-}
-
 int
 print_token(token_t token) {
     const char* token_str;

@@ -4,7 +4,7 @@
 
 dynarr_t tokenize(
     const char* src,
-    const int src_len,
+    const unsigned long src_len,
     const int is_debug
 );
 

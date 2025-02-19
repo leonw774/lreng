@@ -4,6 +4,8 @@
 #include "dynarr.h"
 #include "bigint.h"
 
+/* some part of these codes are taken or rewriten from CPython */
+
 #define BIPTR_IS_ZERO(x) (x->size == 0)
 
 static inline int
@@ -721,6 +723,9 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
     /* normalize the result */
     bi_normalize(r);
     bi_normalize(q);
+    /* free u & v */
+    free_bi(&u);
+    free_bi(&v);
     /* printf("r "); print_bi(r, '\n');
     printf("q "); print_bi(r, '\n'); */
 }
@@ -968,6 +973,7 @@ bi_to_dec_str(bigint_t* x) {
         for (i = reversed_digits.size - 1; i >= 0; i--) {
             append(&string, at(&reversed_digits, i));
         }
+        free_dynarr(&reversed_digits);
         free_bi(&y);
         free_bi(&ten);
         free_bi(&q);

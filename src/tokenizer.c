@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "arena.h"
 #include "dynarr.h"
 #include "errormsg.h"
 #include "token.h"
@@ -172,6 +173,14 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos) {
         if (is_in_reserved_ids) {
             free(tok_str);
             tok_str = (char*) RESERVED_IDS[i];
+        }
+        else {
+            /* move to token str arena */
+            int tok_str_len = strlen(tok_str);
+            char* arena_token_str = arena_token_str_malloc(strlen(tok_str));
+            memcpy(arena_token_str, tok_str, tok_str_len);
+            free(tok_str);
+            tok_str = arena_token_str;
         }
         if (!tok_str) {
             printf("harvest: empty cargo.str\n");
@@ -608,7 +617,7 @@ op_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
 
 /* define the state machine: return a dynarr_t of tokens */
 dynarr_t
-tokenize(const char* src, const int src_len, const int is_debug) {
+tokenize(const char* src, const unsigned long src_len, const int is_debug) {
     linecol_t pos = {1, 0}; /* start at line 1 col 1 */
     linecol_iterator_t pos_iter = {src, src_len, 0, pos};
     cargo cur_cargo;
@@ -616,6 +625,8 @@ tokenize(const char* src, const int src_len, const int is_debug) {
     int i, j, prev_tokens_count = 0;
     cur_cargo.tokens = new_dynarr(sizeof(token_t));
     cur_cargo.str = new_dynarr(sizeof(char));
+
+    arena_token_str_init(src_len);
 
 #ifdef ENABLE_DEBUG
     if (is_debug) {
@@ -672,20 +683,21 @@ tokenize(const char* src, const int src_len, const int is_debug) {
 #endif
     /* give identifier names */
     /* init name str map with keywords */
+    /* TODO: rewrite this with prefix-tree */
     dynarr_t name_str_map = new_dynarr(sizeof(char*));
     for (i = 0; i < RESERVED_ID_NUM; i++) {
         append(&name_str_map, &RESERVED_IDS[i]);
     }
     for (i = 0; i < cur_cargo.tokens.size; i++) {
-        token_t cur_token = ((token_t*) cur_cargo.tokens.data)[i];
-        if (cur_token.type != TOK_ID) {
+        token_t* cur_token = at(&cur_cargo.tokens, i);
+        if (cur_token->type != TOK_ID) {
             continue;
         }
-        const char* cur_token_str = cur_token.str;
+        const char* cur_token_str = cur_token->str;
         int given_name = name_str_map.size;
         for (j = 0; j < name_str_map.size; j++) {
             char* str = ((char**) name_str_map.data)[j];
-            if (strcmp(str, cur_token_str) == 0) {
+            if (cur_token_str && strcmp(str, cur_token_str) == 0) {
                 given_name = j;
                 break;
             }
