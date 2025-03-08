@@ -142,38 +142,39 @@ The `?` operator is designed to do proper conditional expression evaluation. The
 
 The map `f $> x`, filter `f $| x`, and reduce `f $/ x` operators apply callable recursively to a pair. 
 
-#### Map
+**Map**
 
 The map operation is defined as:
 ```
 map(f, x) =
-    Pair(map(f, left(x)), map(f, right(x))), if x is a Pair
-    f(x)                                   , otherwise
+    Pair(map(f, left(x)), map(f, right(x))) , if x is a Pair
+    f(x)                                    , otherwise
 ```
 
-#### Filter
+**Filter**
 
 The filter operation is defined as:
 ```
 filter(f, x) =
-    x
-        , if x is not a Pair and boolean of f(x) == True
-    empty
-        , if x is not a Pair and boolean of f(x) == False
-    merge(filter(f, left(x)), filter(f, right(x)))
-        , if x is a Pair
+    x                     , if x is not a Pair and boolean of f(x) == True
+    empty                 , if x is not a Pair and boolean of f(x) == False
+    merge(                , if x is a Pair
+      filter(f, left(x)),
+      filter(f, right(x))
+    )
+        
 ```
 where the merge function is:
 ```
 merge(x, y) =
-    empty     , if x == empty and y == empty
-    x         , if x != empty and y == empty
-    y         , if x == empty and y != empty
-    Pair(x, y), otherwise
+    empty      , if x == empty and y == empty
+    x          , if x != empty and y == empty
+    y          , if x == empty and y != empty
+    Pair(x, y) , otherwise
 ```
 If the final result is `empty`, it becomes `null`.
 
-#### Reduce
+**Reduce**
 
 The reduce operation is defined as:
 ```
@@ -226,13 +227,13 @@ output $ '\n'
 
 ## Built-in functions
 
-- Input function `input()` gets a byte from the `stdin` as a number. It returns a number in the range `1` to `255` (inclusive) if there is data to read in stdin, otherwise it blocks the program and wait for the input to come. You can execute the example program with the command `echo '!@' | ./lreng scripts/read_stdin.txt`. It would output:
+- Input function `input()` gets a byte from the `stdin` as a number. It returns a number in the range `1` to `255` (inclusive) if there is data to read in stdin, otherwise it blocks the program and wait for the input to come. You can execute the example program with the command `echo '!@' | ./lreng scripts/read_stdin.txt`. It would output
 
-```
-a=!
-b=@
-a+b=a
-```
+    ```
+    a=!
+    b=@
+    a+b=a
+    ```
 
 - Output function `output(i)` writes a number `i` as one byte to the `stdout`. The acceptable value are integers in range `0` to `255` (inclusive). Any other value will cause runtime error. It always returns `null`.
 
