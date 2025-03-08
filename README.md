@@ -179,8 +179,8 @@ If the final result is `empty`, it becomes `null`.
 The reduce operation is defined as:
 ```
 reduce(f, x) =
-    x                                         , if x is not a Pair
-    f(reduce(f, left(x)), reduce(f, right(x))), otherwise
+    x                                          , if x is not a Pair
+    f(reduce(f, left(x)), reduce(f, right(x))) , otherwise
 ```
 
 ## Expression

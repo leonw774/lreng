@@ -24,12 +24,14 @@ typedef struct number {
 
 #define number_struct_size sizeof(number_t)
 
-#define EMPTY_NUMBER ((number_t) {.numer = ZERO_BIGINT, .denom = ZERO_BIGINT})
+#define EMPTY_NUMBER ((number_t) { .numer = ZERO_BIGINT, .denom = ZERO_BIGINT })
 #define ZERO_NUMBER EMPTY_NUMBER
-#define ONE_NUMBER ((number_t) { \
-    .numer = BYTE_BIGINT(1), .denom = BYTE_BIGINT(1) \
-})
-#define NAN_NUMBER ((number_t) {.numer = NAN_BIGINT(), .denom = NAN_BIGINT()})
+#define ONE_NUMBER                                                             \
+    ((number_t) {                                                              \
+        .numer = BYTE_BIGINT(1),                                               \
+        .denom = BYTE_BIGINT(1),                                               \
+    })
+#define NAN_NUMBER ((number_t) { .numer = NAN_BIGINT(), .denom = NAN_BIGINT() })
 
 extern void number_copy(number_t* dst, const number_t* src);
 extern void number_free(number_t* x);
@@ -46,8 +48,8 @@ extern number_t number_exp(number_t* a, number_t* b);
 extern number_t number_ceil(number_t* a);
 extern number_t number_floor(number_t* a);
 
-extern int number_print_frac(number_t* x, char end);
-extern int number_print_dec(number_t* x, int precision, char end);
+extern int number_print_frac(const number_t* x, char end);
+extern int number_print_dec(const number_t* x, int precision, char end);
 extern number_t number_from_str(const char* str);
 extern number_t number_from_i32(i32 n);
 

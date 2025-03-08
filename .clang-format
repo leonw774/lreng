@@ -1,0 +1,14 @@
+BasedOnStyle: WebKit
+ColumnLimit: 80
+
+AlwaysBreakAfterDefinitionReturnType: TopLevel
+
+BinPackArguments: true
+AllowAllArgumentsOnNextLine: true
+BinPackParameters: true
+AllowAllParametersOfDeclarationOnNextLine: true
+BinPackBracedLists: false
+BinPackLongBracedList: true
+
+AlignAfterOpenBracket: BlockIndent
+Cpp11BracedListStyle: false

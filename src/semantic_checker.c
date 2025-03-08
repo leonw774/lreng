@@ -1,20 +1,21 @@
+#include "dynarr.h"
+#include "errormsg.h"
+#include "frame.h"
+#include "objects.h"
+#include "operators.h"
+#include "reserved.h"
+#include "tree.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "operators.h"
-#include "errormsg.h"
-#include "dynarr.h"
-#include "tree.h"
-#include "objects.h"
-#include "frame.h"
-#include "reserved.h"
 
 int
-check_semantic(const tree_t tree, const int is_debug) {
+check_semantic(const tree_t tree, const int is_debug)
+{
     int i, is_passed = 1;
-    unsigned char* id_usage = calloc(
-        tree.max_id_name + 1, sizeof(unsigned char));
+    unsigned char* id_usage
+        = calloc(tree.max_id_name + 1, sizeof(unsigned char));
     for (i = 0; i < RESERVED_ID_NUM; i++) {
-        id_usage[i] = (unsigned char) 1;
+        id_usage[i] = (unsigned char)1;
     }
 
     frame_t* cur_frame = frame_new();
@@ -31,9 +32,9 @@ check_semantic(const tree_t tree, const int is_debug) {
 #endif
     append(&func_depth_stack, &cur_depth);
     while (cur_token_p != NULL) {
-        cur_index = *((int*) back(&tree_iter.index_stack));
-        cur_depth = *((int*) back(&tree_iter.depth_stack));
-        cur_func_depth = *((int*) back(&func_depth_stack));
+        cur_index = *((int*)back(&tree_iter.index_stack));
+        cur_depth = *((int*)back(&tree_iter.depth_stack));
+        cur_func_depth = *((int*)back(&func_depth_stack));
         if (cur_token_p->type == TOK_OP) {
             if (cur_depth <= cur_func_depth) {
                 /* we left a function */
@@ -42,14 +43,13 @@ check_semantic(const tree_t tree, const int is_debug) {
             }
             /* check assign rule */
             if (cur_token_p->name == OP_ASSIGN) {
-                token_t* left_token =
-                    &((token_t*) tree.tokens.data)[tree.lefts[cur_index]];
+                token_t* left_token
+                    = &((token_t*)tree.tokens.data)[tree.lefts[cur_index]];
 #ifdef ENABLE_DEBUG_LOG
                 if (is_debug) {
                     printf(
                         "Line %d, col %d, checking identifier initialization: ",
-                        cur_token_p->pos.line,
-                        cur_token_p->pos.col
+                        cur_token_p->pos.line, cur_token_p->pos.col
                     );
                     token_print(*left_token);
                     putchar(' ');
@@ -60,13 +60,11 @@ check_semantic(const tree_t tree, const int is_debug) {
                 if (left_token->type != TOK_ID) {
                     is_passed = 0;
                     sprintf(
-                        ERR_MSG_BUF,
-                        "Left side of %s is not identifier.",
+                        ERR_MSG_BUF, "Left side of %s is not identifier.",
                         OP_STRS[cur_token_p->name]
                     );
                     print_semantic_error(left_token->pos, ERR_MSG_BUF);
-                }
-                else if (frame_get(cur_frame, left_token->name)) {
+                } else if (frame_get(cur_frame, left_token->name)) {
                     is_passed = 0;
                     sprintf(
                         ERR_MSG_BUF,
@@ -74,22 +72,19 @@ check_semantic(const tree_t tree, const int is_debug) {
                         left_token->str
                     );
                     print_semantic_error(left_token->pos, ERR_MSG_BUF);
-                }
-                else {
+                } else {
                     frame_set(cur_frame, left_token->name, &objnull);
-                    id_usage[left_token->name] = (unsigned char) 1;
+                    id_usage[left_token->name] = (unsigned char)1;
                 }
             }
             // check bind arguemt rule
             else if (cur_token_p->name == OP_ARG) {
-                token_t* left_token =
-                    &((token_t*) tree.tokens.data)[tree.lefts[cur_index]];
+                token_t* left_token = at(&tree.tokens, tree.lefts[cur_index]);
 #ifdef ENABLE_DEBUG_LOG
                 if (is_debug) {
                     printf(
                         "Line %d, col %d, checking argument binder: ",
-                        cur_token_p->pos.line,
-                        cur_token_p->pos.col
+                        cur_token_p->pos.line, cur_token_p->pos.col
                     );
                     token_print(*left_token);
                     putchar(' ');
@@ -97,11 +92,10 @@ check_semantic(const tree_t tree, const int is_debug) {
                     putchar('\n');
                 }
 #endif
-                 if (left_token->type != TOK_ID) {
+                if (left_token->type != TOK_ID) {
                     is_passed = 0;
                     sprintf(
-                        ERR_MSG_BUF,
-                        "Left side of %s is not identifier.",
+                        ERR_MSG_BUF, "Left side of %s is not identifier.",
                         OP_STRS[cur_token_p->name]
                     );
                     print_semantic_error(left_token->pos, ERR_MSG_BUF);
@@ -112,23 +106,20 @@ check_semantic(const tree_t tree, const int is_debug) {
                 stack_push(cur_frame, cur_index);
                 append(&func_depth_stack, &cur_depth);
             }
-        }
-        else if (cur_token_p->type == TOK_ID) {
+        } else if (cur_token_p->type == TOK_ID) {
 #ifdef ENABLE_DEBUG_LOG
             if (is_debug) {
                 printf(
                     "Line %d, col %d, checking identifier usage: ",
-                    cur_token_p->pos.line,
-                    cur_token_p->pos.col
+                    cur_token_p->pos.line, cur_token_p->pos.col
                 );
                 token_print(*cur_token_p);
                 putchar('\n');
                 fflush(stdout);
             }
 #endif
-            id_usage[cur_token_p->name] = (unsigned char) 1;
+            id_usage[cur_token_p->name] = (unsigned char)1;
         }
-
         tree_iter_next(&tree_iter);
         cur_token_p = tree_iter_get(&tree_iter);
     }

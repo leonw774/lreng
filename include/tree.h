@@ -1,5 +1,5 @@
-#include "token.h"
 #include "dynarr.h"
+#include "token.h"
 
 #ifndef TREE_H
 #define TREE_H
@@ -9,7 +9,7 @@ typedef struct object object_t;
 typedef struct tree {
     dynarr_t tokens; /* type: token_t */
     object_t** literals;
-    int* lefts;/* index of left child, -1 of none */
+    int* lefts; /* index of left child, -1 of none */
     int* rights; /* index of right child, -1 of none */
     int* sizes; /* number of nodes under a node */
     int root_index; /* index of the root node */

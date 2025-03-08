@@ -1,22 +1,23 @@
+#include "lreng.h"
+#include "dynarr.h"
+#include "errormsg.h"
+#include "objects.h"
+#include "tree.h"
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <getopt.h>
-#include "dynarr.h"
-#include "tree.h"
-#include "errormsg.h"
-#include "objects.h"
-#include "lreng.h"
 
 int
-main(int argc, char** argv) {
+main(int argc, char** argv)
+{
     const char* usage = "Usage: lreng [-d] {file_path}\n";
     int is_debug = 0;
     char* file_path = NULL;
     FILE* in_fp = NULL;
     unsigned long long fsize = 0;
     char* src = NULL;
-    
+
     int opt_c;
     while ((opt_c = getopt(argc, argv, "d")) != -1) {
         switch (opt_c) {
@@ -36,8 +37,7 @@ main(int argc, char** argv) {
         puts(usage);
 #endif
         return 1;
-    }
-    else {
+    } else {
         file_path = argv[optind];
     }
 
@@ -53,7 +53,7 @@ main(int argc, char** argv) {
         return 0;
     }
     rewind(in_fp);
-    src = (char*) malloc(fsize + 1);
+    src = (char*)malloc(fsize + 1);
     if (src == NULL) {
         fputs("memory error\n", stderr);
         return OS_ERR_CODE;
@@ -62,29 +62,28 @@ main(int argc, char** argv) {
     src[fsize] = '\0';
     fclose(in_fp);
 #ifdef IS_PROFILE
-int i;
-for (i = 0; i < 10; i++) {
+#ifndef PROFILE_REPEAT_NUM
+#define PROFILE_REPEAT_NUM 10
 #endif
-    dynarr_t tokens = tokenize(src, fsize, is_debug);
-    tree_t syntax_tree = tree_parse(tokens, is_debug);
-    int is_good_semantic = check_semantic(syntax_tree, is_debug);
-    if (!is_good_semantic) {
-        return SEMANTIC_ERR_CODE;
-    }
-    frame_t* top_frame = frame_new();
-    object_t* final_return_object = eval(
-        &syntax_tree,
-        top_frame,
-        syntax_tree.root_index,
-        is_debug
-    );
-    object_free(final_return_object);
-    frame_free(top_frame);
-    free(top_frame);
-    tree_free(&syntax_tree);
-    dynarr_free(&tokens);
+    int i;
+    for (i = 0; i < PROFILE_REPEAT_NUM; i++) {
+#endif
+        dynarr_t tokens = tokenize(src, fsize, is_debug);
+        tree_t syntax_tree = tree_parse(tokens, is_debug);
+        int is_good_semantic = check_semantic(syntax_tree, is_debug);
+        if (!is_good_semantic) {
+            return SEMANTIC_ERR_CODE;
+        }
+        frame_t* top_frame = frame_new();
+        object_t* final_return_object
+            = eval(&syntax_tree, top_frame, syntax_tree.root_index, is_debug);
+        object_free(final_return_object);
+        frame_free(top_frame);
+        free(top_frame);
+        tree_free(&syntax_tree);
+        dynarr_free(&tokens);
 #ifdef IS_PROFILE
-}
+    }
 #endif
     free(src);
 #ifdef IS_WASM

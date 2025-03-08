@@ -12,11 +12,11 @@
 
 static inline int
 is_bad_type(
-    token_t op_token,
-    int left_type,
-    int right_type,
-    object_t* left_obj,
-    object_t* right_obj
+    const token_t op_token,
+    const int left_type,
+    const int right_type,
+    const object_t* left_obj,
+    const object_t* right_obj
 ) {
     int left_passed, right_passed;
     if (left_type == NO_OPRAND) {
@@ -58,25 +58,25 @@ static inline object_t*
 exec_call(
     const tree_t* tree,
     const frame_t* cur_frame,
-    linecol_t token_pos,
-    object_t* func_obj,
-    object_t* arg_obj,
+    const linecol_t token_pos,
+    const object_t* func,
+    object_t* arg,
     const int is_debug
 ) {
-    object_t* returned_obj;
+    object_t* return_obj;
     /* if is builtin */
-    if (func_obj->data.callable.builtin_name != -1) {
+    if (func->data.callable.builtin_name != -1) {
         object_t* (*func_ptr)(object_t*) =
-            BUILDTIN_FUNC_ARRAY[func_obj->data.callable.builtin_name];
+            BUILDTIN_FUNC_ARRAY[func->data.callable.builtin_name];
         if (func_ptr == NULL) {
             return (object_t*) ERR_OBJECT_PTR;
         }
         ERR_MSG_BUF[0] = '\0';
-        returned_obj = func_ptr(arg_obj);
-        if (returned_obj->is_error && ERR_MSG_BUF[0] != '\0') {
+        return_obj = func_ptr(arg);
+        if (return_obj->is_error && ERR_MSG_BUF[0] != '\0') {
             print_runtime_error(token_pos, ERR_MSG_BUF);
         }
-        return returned_obj;
+        return return_obj;
     }
 
 #ifdef ENABLE_DEBUG_LOG
@@ -85,57 +85,58 @@ exec_call(
     }
 #endif
     frame_t* call_frame;
-    if (func_obj->data.callable.is_macro) {
+    if (func->data.callable.is_macro) {
         call_frame = (frame_t*) cur_frame;
     }
     else {
-        #define f_init_frame func_obj->data.callable.init_time_frame
-        int i, cur_index = -1, init_index = -1, is_forked = 0;
         call_frame = calloc(1, sizeof(frame_t));
         call_frame->global_pairs = cur_frame->global_pairs;
-
+        
+        /* if is direct recursion, copy the current stack except the last */
         if (
-            cur_frame->stack.size > 0
-            && *(int*) back(&cur_frame->indexs) == func_obj->data.callable.index
+            cur_frame->stack.size > 0 
+            && *(int*) back(&cur_frame->indexs) == func->data.callable.index
         ) {
-            // if is recursion, copy the current stack except the last
             call_frame->indexs = dynarr_copy(&cur_frame->indexs);
             pop(&call_frame->indexs);
             call_frame->stack = dynarr_copy(&cur_frame->stack);
             pop(&call_frame->stack);
         }
+        /* if the i-th stack of init-time frame and current frame is the same,
+           call-frame's i-th stack = current frame's i-th stack. but once the
+           entry_index is different they are in different closure path, so only
+           the rest of init-time-frame stack is used
+        */
         else {
-            /* if the i-th stack of init-time frame and current frame is the
-            same, call-frame's i-th stack = current frame's i-th stack. but once
-            the entry_index is different they are in different closure path, so
-            only the rest of init-time-frame stack is used */
+            int i, cur_frame_index = -1, init_frame_index = -1, is_forked = 0;
+            const frame_t* f_init_frame = func->data.callable.init_time_frame;
             stack_new(call_frame);
             for (i = 0; i < f_init_frame->stack.size; i++) {
-                init_index = *(int*) at(&f_init_frame->indexs, i);
-                cur_index = -1;
+                dynarr_t* src_pairs = NULL;
+                init_frame_index = *(int*) at(&f_init_frame->indexs, i);
+                cur_frame_index = -1;
                 if (i < cur_frame->stack.size) {
-                    cur_index = *(int*) at(&cur_frame->indexs, i);
+                    cur_frame_index = *(int*) at(&cur_frame->indexs, i);
                 }
                 /* push the entry_index */
-                append(&call_frame->indexs, &init_index);
+                append(&call_frame->indexs, &init_frame_index);
 
-                dynarr_t* src_pairs = NULL;
-                if (!is_forked && cur_index == init_index) {
+                if (!is_forked && cur_frame_index == init_frame_index) {
                     src_pairs = (dynarr_t*) at(&cur_frame->stack, i);
-    #ifdef ENABLE_DEBUG_LOG
+#ifdef ENABLE_DEBUG_LOG
                     if (is_debug) {
                         printf("exec_call: stack[%d] use current\n", i);
                     }
-    #endif
+#endif
                 }
                 else {
                     is_forked = 1;
                     src_pairs = (dynarr_t*) at(&f_init_frame->stack, i);
-    #ifdef ENABLE_DEBUG_LOG
+#ifdef ENABLE_DEBUG_LOG
                     if (is_debug) {
                         printf("exec_call: stack[%d] use init-time\n", i);
                     }
-    #endif
+#endif
                 }
                 /* push the shallow copy of source pairs */
                 append(&call_frame->stack, src_pairs);
@@ -143,36 +144,79 @@ exec_call(
         }
 
         /* push new stack to call_frame and set argument */
-        stack_push(call_frame, func_obj->data.callable.index);
-        if (func_obj->data.callable.arg_name != -1) {
-            frame_set(call_frame, func_obj->data.callable.arg_name, arg_obj);
+        stack_push(call_frame, func->data.callable.index);
+        if (func->data.callable.arg_name != -1) {
+            frame_set(call_frame, func->data.callable.arg_name, arg);
         }
-        #undef func_init_time_frame
     }
 
 #ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         printf("exec_call: call_frame=%p\nfunc_obj=", call_frame);
-        object_print(func_obj, '\n');
-        printf("arg_obj=");
-        object_print(arg_obj, '\n');
+        object_print(func, '\n');
+        printf("arg=");
+        object_print(arg, '\n');
     }
 #endif
     /* eval from function's entry index */
-    returned_obj = eval(
-        tree,
-        call_frame,
-        func_obj->data.callable.index,
-        is_debug
+    return_obj = eval(
+        tree, call_frame, func->data.callable.index, is_debug
     );
-    if (!func_obj->data.callable.is_macro) {
+    if (!func->data.callable.is_macro) {
         /* free the object own by this function call */
         stack_pop(call_frame);
         /* free the rest of stack but not free bollowed pairs */
         stack_clear(call_frame, 0);
         free(call_frame);
     }
-    return returned_obj;
+    return return_obj;
+}
+
+enum pair_traverse_code_enum {
+    NEW_LEAF,
+    VISITED_LEAF,
+    NEW_PAIR,
+    VISITED_PAIR,
+    ERROR,
+};
+
+int
+map_process(
+    const tree_t* tree,
+    const frame_t* cur_frame,
+    const linecol_t token_pos,
+    const object_t* func,
+    object_t* arg,
+    object_t** res,
+    const int is_debug
+) {
+    if (arg->type == TYPE_PAIR) {
+        if (*res == NULL) {
+            *res = object_create(
+                TYPE_PAIR, (object_data_t) {.pair = (pair_t) {NULL, NULL}}
+            );
+            return NEW_PAIR;
+        }
+        return VISITED_PAIR;
+    }
+    if (*res == NULL) {
+        object_t* result = exec_call(
+            tree, cur_frame, token_pos, func, arg, is_debug
+        );
+        if (result->is_error) {
+            #ifdef ENABLE_DEBUG_LOG
+            if (is_debug) {
+                printf("exec_map: a child return with error: ");
+                object_print(result, '\n');
+            }
+            #endif
+            object_free(result);
+            return ERROR;
+        }
+        *res = result;
+        return NEW_LEAF;
+    }
+    return VISITED_LEAF;
 }
 
 /* apply function recursively in postfix order and return a new pair */
@@ -180,118 +224,101 @@ object_t*
 exec_map(
     const tree_t* tree,
     const frame_t* cur_frame,
-    linecol_t token_pos,
-    object_t* func_obj,
-    object_t* pair_obj,
+    const linecol_t token_pos,
+    object_t* func,
+    object_t* pair,
     const int is_debug
 ) {
 #ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         printf("exec_map\n");
-        printf("func_obj="); object_print(func_obj, '\n');
-        printf("pair_obj="); object_print(pair_obj, '\n');
+        printf("func="); object_print(func, '\n');
+        printf("pair="); object_print(pair, '\n');
     }
 #endif
     int is_error = 0;
-    object_t* returned_obj = object_create(
-        TYPE_PAIR,
-        (object_data_t) {.pair = (pair_t) {NULL, NULL}}
+    object_t* return_obj = object_create(
+        TYPE_PAIR, (object_data_t) {.pair = (pair_t) {NULL, NULL}}
     );
     dynarr_t arg_pair_stack, res_pair_stack;
     arg_pair_stack = dynarr_new(sizeof(object_t*));
     res_pair_stack = dynarr_new(sizeof(object_t*));
-    append(&arg_pair_stack, &pair_obj);
-    append(&res_pair_stack, &returned_obj);
-    while(arg_pair_stack.size > 0) {
-        object_t* arg_pair_obj = *(object_t**) back(&arg_pair_stack);
-        object_t* res_pair_obj = *(object_t**) back(&res_pair_stack);
+    append(&arg_pair_stack, &pair);
+    append(&res_pair_stack, &return_obj);
+    while (arg_pair_stack.size > 0) {
+        object_t* arg_pair = *(object_t**) back(&arg_pair_stack);
+        object_t* res_pair = *(object_t**) back(&res_pair_stack);
+        object_t* arg_left = arg_pair->data.pair.left;
+        object_t* arg_right = arg_pair->data.pair.right;
+        object_t** res_left = &res_pair->data.pair.left;
+        object_t** res_right = &res_pair->data.pair.right;
+        int process_enum;
+
         /* check */
-        if (
-            arg_pair_obj->data.pair.left == NULL
-            || arg_pair_obj->data.pair.right == NULL
-        ) {
+        if (arg_left == NULL || arg_right == NULL) {
 #ifdef ENABLE_DEBUG_LOG
             if (is_debug) {
                 printf("exec_map: bad pair - left or right is empty: ");
-                object_print(arg_pair_obj, '\n');
+                object_print(arg_pair, '\n');
             }
 #endif
             is_error = 1;
             break;
         }
         /* left */
-        if (arg_pair_obj->data.pair.left->type == TYPE_PAIR) {
-            if (res_pair_obj->data.pair.left == NULL) {
-                res_pair_obj->data.pair.left = object_create(
-                    TYPE_PAIR,
-                    (object_data_t) {.pair = (pair_t) {NULL, NULL}}
-                );
-                append(&arg_pair_stack, &arg_pair_obj->data.pair.left);
-                append(&res_pair_stack, &res_pair_obj->data.pair.left);
-                continue;
-            }
-        }
-        else if (res_pair_obj->data.pair.left == NULL) {
-            object_t* left_ret_obj = exec_call(
-                tree, cur_frame, token_pos, func_obj,
-                arg_pair_obj->data.pair.left, is_debug
-            );
-            if (left_ret_obj->is_error) {
+        process_enum = map_process(
+            tree, cur_frame, token_pos, func, arg_left, res_left, is_debug
+        );
+        if (process_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
-                if (is_debug) {
-                    printf("exec_map: a left child return with error: ");
-                    object_print(left_ret_obj, '\n');
-                }
-#endif
-                is_error = 1;
-                break;
+            if (is_debug) {
+                printf("exec_map: a left child return with error: ");
+                object_print(*res_left, '\n');
             }
-            res_pair_obj->data.pair.left = left_ret_obj;
+#endif
+            is_error = 1;
+            break;
+        }
+        else if (process_enum == NEW_PAIR) {
+            append(&arg_pair_stack, &arg_left);
+            append(&res_pair_stack, res_left);
+            continue;
         }
         /* right */
-        if (arg_pair_obj->data.pair.right->type == TYPE_PAIR) {
-            if (res_pair_obj->data.pair.right == NULL) {
-                res_pair_obj->data.pair.right = object_create(
-                    TYPE_PAIR,
-                    (object_data_t) {.pair = (pair_t) {NULL, NULL}}
-                );
-                append(&arg_pair_stack, &arg_pair_obj->data.pair.right);
-                append(&res_pair_stack, &res_pair_obj->data.pair.right);
-                continue;
-            }
-        }
-        else if (res_pair_obj->data.pair.right == NULL) {
-            object_t* right_ret_obj = exec_call(
-                tree, cur_frame, token_pos, func_obj,
-                arg_pair_obj->data.pair.right, is_debug
-            );
-            if (right_ret_obj->is_error) {
+        process_enum = map_process(
+            tree, cur_frame, token_pos, func, arg_right, res_right, is_debug
+        );
+        if (process_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
-                if (is_debug) {
-                    printf("exec_map: a right child return with error: ");
-                    object_print(right_ret_obj, '\n');
-                }
-#endif
-                is_error = 1;
-                break;
+            if (is_debug) {
+                printf("exec_map: a right child return with error: ");
+                object_print(*res_right, '\n');
             }
-            res_pair_obj->data.pair.right = right_ret_obj;
+#endif
+            is_error = 1;
+            break;
+        }
+        else if (process_enum == NEW_PAIR) {
+            append(&arg_pair_stack, &arg_right);
+            append(&res_pair_stack, res_right);
+            continue;
         }
 
         pop(&arg_pair_stack);
         pop(&res_pair_stack);
     }
     if (is_error) {
-        object_free(returned_obj);
-        returned_obj = (object_t*) ERR_OBJECT_PTR;
+        object_free(return_obj);
+        return_obj = (object_t*) ERR_OBJECT_PTR;
     }
     dynarr_free(&arg_pair_stack);
     dynarr_free(&res_pair_stack);
-    return returned_obj;
+    return return_obj;
 }
 
 
-object_t* filter_merge(object_t* pair_to_merge, const int is_debug) {
+object_t*
+filter_merge(object_t* pair_to_merge, const int is_debug) {
     if (pair_to_merge->type != TYPE_PAIR) {
         return pair_to_merge;
     }
@@ -333,6 +360,47 @@ object_t* filter_merge(object_t* pair_to_merge, const int is_debug) {
     return pair_to_merge;
 }
 
+int
+filter_process(
+    const tree_t* tree,
+    const frame_t* cur_frame,
+    const linecol_t token_pos,
+    const object_t* func,
+    object_t* arg,
+    object_t** res,
+    const int is_debug
+) {
+    if (arg->type == TYPE_PAIR) {
+        if (*res == NULL) {
+            *res = object_create(
+                TYPE_PAIR, (object_data_t) {.pair = (pair_t) {NULL, NULL}}
+            );
+            return NEW_PAIR;
+        }
+        return VISITED_PAIR;
+    }
+    if (*res == NULL) {
+        object_t* result = exec_call(
+            tree, cur_frame, token_pos, func, arg, is_debug
+        );
+        if (result->is_error) {
+            object_free(result);
+            return ERROR;
+        }
+        if (object_to_bool(result)) {
+            /* keep */
+            *res = object_copy(arg);
+        }
+        else {
+            /* removed */
+            *res = (object_t*) ERR_OBJECT_PTR;
+        }
+        object_free(result);
+        return NEW_LEAF;
+    }
+    return VISITED_LEAF;
+}
+
 /* apply function recursively in postfix order to the children. if the return
    value is true, keep the child, otherwise, set it to NULL.
    if a pair's two children's return value is all false, the pair itself becomes
@@ -341,138 +409,97 @@ object_t*
 exec_filter(
     const tree_t* tree,
     const frame_t* cur_frame,
-    linecol_t token_pos,
-    object_t* func_obj,
-    object_t* pair_obj,
+    const linecol_t token_pos,
+    object_t* func,
+    object_t* pair,
     const int is_debug
 ) {
 #ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         printf("exec_filter\n");
-        printf("func_obj="); object_print(func_obj, '\n');
-        printf("pair_obj="); object_print(pair_obj, '\n');
+        printf("func="); object_print(func, '\n');
+        printf("pair="); object_print(pair, '\n');
     }
 #endif
     int is_error = 0;
-    object_t* returned_obj = object_create(
+    object_t* result = object_create(
         TYPE_PAIR,
         (object_data_t) {.pair = (pair_t) {NULL, NULL}}
     );
     dynarr_t arg_pair_stack = dynarr_new(sizeof(object_t*));
     dynarr_t res_pair_stack = dynarr_new(sizeof(object_t*));
-    append(&arg_pair_stack, &pair_obj);
-    append(&res_pair_stack, &returned_obj);
+    append(&arg_pair_stack, &pair);
+    append(&res_pair_stack, &result);
 
-    while(arg_pair_stack.size > 0) {
-        object_t* arg_pair_obj = *(object_t**) back(&arg_pair_stack);
-        object_t* res_pair_obj = *(object_t**) back(&res_pair_stack);
+    while (arg_pair_stack.size > 0) {
+        object_t* arg_pair = *(object_t**) back(&arg_pair_stack);
+        object_t* res_pair = *(object_t**) back(&res_pair_stack);
+        object_t* arg_left = arg_pair->data.pair.left;
+        object_t* arg_right = arg_pair->data.pair.right;
+        object_t** res_left = &res_pair->data.pair.left;
+        object_t** res_right = &res_pair->data.pair.right;
+        int process_enum;
 
+        /* use ERROR_OBJ to indecate a child is removed */
         /* check */
-        if (
-            arg_pair_obj->data.pair.left == NULL
-            || arg_pair_obj->data.pair.right == NULL
-        ) {
+        if (arg_left == NULL || arg_right == NULL) {
 #ifdef ENABLE_DEBUG_LOG
             if (is_debug) {
                 printf("exec_filter: bad pair - left or right is empty: ");
-                object_print(arg_pair_obj, '\n');
+                object_print(arg_pair, '\n');
             }
 #endif
             is_error = 1;
             break;
         }
-
-        /* use ERROR_OBJ to indecate a child is removed */
         /* left */
-        if (arg_pair_obj->data.pair.left->type == TYPE_PAIR) {
-            if (res_pair_obj->data.pair.left == NULL) {
-                res_pair_obj->data.pair.left = object_create(
-                    TYPE_PAIR,
-                    (object_data_t) {.pair = (pair_t) {NULL, NULL}}
-                );
-                append(&arg_pair_stack, &arg_pair_obj->data.pair.left);
-                append(&res_pair_stack, &res_pair_obj->data.pair.left);
-                continue;
-            }
-        }
-        else if (res_pair_obj->data.pair.left == NULL) {
-            object_t* left_ret_obj = exec_call(
-                tree, cur_frame, token_pos, func_obj,
-                arg_pair_obj->data.pair.left, is_debug
-            );
-            if (left_ret_obj->is_error) {
+        process_enum = filter_process(
+            tree, cur_frame, token_pos, func, arg_left, res_left, is_debug
+        );
+        if (process_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
-                if (is_debug) {
-                    printf("exec_filter: a left child return with error: ");
-                    object_print(left_ret_obj, '\n');
-                }
+            if (is_debug) {
+                printf("exec_filter: a left child return with error: ");
+                object_print(result, '\n');
+            }
 #endif
-                is_error = 1;
-                object_free(left_ret_obj);
-                break;
-            }
-            if (object_to_bool(left_ret_obj)) {
-                res_pair_obj->data.pair.left = object_copy(
-                    arg_pair_obj->data.pair.left
-                );
-            }
-            else {
-                /* removed */
-                res_pair_obj->data.pair.left = (object_t*) ERR_OBJECT_PTR;
-            }
-            object_free(left_ret_obj);
+            is_error = 1;
+            break;
+        }
+        else if (process_enum == NEW_PAIR) {
+            append(&arg_pair_stack, &arg_left);
+            append(&res_pair_stack, res_left);
+            continue;
         }
         /* right */
-        if (arg_pair_obj->data.pair.right->type == TYPE_PAIR) {
-            if (res_pair_obj->data.pair.right == NULL) {
-                res_pair_obj->data.pair.right = object_create(
-                    TYPE_PAIR,
-                    (object_data_t) {.pair = (pair_t) {NULL, NULL}}
-                );
-                append(&arg_pair_stack, &arg_pair_obj->data.pair.right);
-                append(&res_pair_stack, &res_pair_obj->data.pair.right);
-                continue;
-            }
-        }
-        else if (res_pair_obj->data.pair.right == NULL) {
-            object_t* right_ret_obj = exec_call(
-                tree, cur_frame, token_pos, func_obj,
-                arg_pair_obj->data.pair.right, is_debug
-            );
-            if (right_ret_obj->is_error) {
+        process_enum = filter_process(
+            tree, cur_frame, token_pos, func, arg_right, res_right, is_debug
+        );
+        if (process_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
-                if (is_debug) {
-                    printf("exec_filter: a right child return with error: ");
-                    object_print(right_ret_obj, '\n');
-                }
+            if (is_debug) {
+                printf("exec_filter: a right child return with error: ");
+                object_print(result, '\n');
+            }
 #endif
-                is_error = 1;
-                object_free(right_ret_obj);
-                break;
-            }
-            if (object_to_bool(right_ret_obj)) {
-                res_pair_obj->data.pair.right = object_copy(
-                    arg_pair_obj->data.pair.right
-                );
-            }
-            else {
-                /* removed */
-                res_pair_obj->data.pair.right = (object_t*) ERR_OBJECT_PTR;
-            }
-            object_free(right_ret_obj);
+            is_error = 1;
+            break;
+        }
+        else if (process_enum == NEW_PAIR) {
+            append(&arg_pair_stack, &arg_right);
+            append(&res_pair_stack, res_right);
+            continue;
         }
         /* merge */
-        res_pair_obj->data.pair.left =
-            filter_merge(res_pair_obj->data.pair.left, is_debug);
-        res_pair_obj->data.pair.right =
-            filter_merge(res_pair_obj->data.pair.right, is_debug);
+        *res_left = filter_merge(*res_left, is_debug);
+        *res_right = filter_merge(*res_right, is_debug);
         
 #ifdef ENABLE_DEBUG_LOG
         if (is_debug) {
-            printf("exec_filter: pair_obj=");
-            object_print(arg_pair_obj, '\n');
+            printf("exec_filter: pair=");
+            object_print(arg_pair, '\n');
             printf("exec_filter: res_obj=");
-            object_print(res_pair_obj, '\n');
+            object_print(res_pair, '\n');
         }
 #endif
 
@@ -483,27 +510,29 @@ exec_filter(
     dynarr_free(&res_pair_stack);
 
     if (is_error) {
-        object_free(returned_obj);
 #ifdef ENABLE_DEBUG_LOG
         if (is_debug) {
             printf("exec_filter: error\n");
         }
 #endif
-        returned_obj = (object_t*) ERR_OBJECT_PTR;
+        object_free(result);
+        result = (object_t*) ERR_OBJECT_PTR;
     }
 
     /* final merge */
-    if (returned_obj->type == TYPE_PAIR) {
-        returned_obj->data.pair.left =
-            filter_merge(returned_obj->data.pair.left, is_debug);
-        returned_obj->data.pair.right =
-            filter_merge(returned_obj->data.pair.right, is_debug);
+    if (result->type == TYPE_PAIR) {
+        result->data.pair.left = filter_merge(
+            result->data.pair.left, is_debug
+        );
+        result->data.pair.right = filter_merge(
+            result->data.pair.right, is_debug
+        );
     }
     /* if root is removed: return null object */
-    if (returned_obj->is_error) {
-        returned_obj = (object_t*) NULL_OBJECT_PTR;
+    if (result->is_error) {
+        result = (object_t*) NULL_OBJECT_PTR;
     }
-    return returned_obj;
+    return result;
 }
 
 /* apply function (taking a pair) recursively in postfix order to the pair */
@@ -512,81 +541,77 @@ exec_reduce(
     const tree_t* tree,
     const frame_t* cur_frame,
     linecol_t token_pos,
-    object_t* func_obj,
-    object_t* pair_obj,
+    object_t* func,
+    object_t* pair,
     const int is_debug
 ) {
 #ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         printf("exec_reduce\n");
-        printf("func_obj="); object_print(func_obj, '\n');
-        printf("pair_obj="); object_print(pair_obj, '\n');
+        printf("func="); object_print(func, '\n');
+        printf("pair="); object_print(pair, '\n');
     }
 #endif
    int is_error = 0;
-    object_t* returned_obj = object_create(
+    object_t* return_obj = object_create(
         TYPE_PAIR,
         (object_data_t) {.pair = (pair_t) {NULL, NULL}}
     );
     dynarr_t arg_pair_stack, res_pair_stack;
     arg_pair_stack = dynarr_new(sizeof(object_t*));
     res_pair_stack = dynarr_new(sizeof(object_t*));
-    append(&arg_pair_stack, &pair_obj);
-    append(&res_pair_stack, &returned_obj);
-    while(arg_pair_stack.size > 0) {
-        object_t* arg_pair_obj = *(object_t**) back(&arg_pair_stack);
-        object_t* res_pair_obj = *(object_t**) back(&res_pair_stack);
+    append(&arg_pair_stack, &pair);
+    append(&res_pair_stack, &return_obj);
+    while (arg_pair_stack.size > 0) {
+        object_t* arg_pair = *(object_t**) back(&arg_pair_stack);
+        object_t* res_pair = *(object_t**) back(&res_pair_stack);
+        object_t* arg_left = arg_pair->data.pair.left;
+        object_t* arg_right = arg_pair->data.pair.right;
+
         /* check */
-        if (
-            arg_pair_obj->data.pair.left == NULL
-            || arg_pair_obj->data.pair.right == NULL
-        ) {
+        if (arg_left == NULL || arg_right == NULL) {
 #ifdef ENABLE_DEBUG_LOG
             if (is_debug) {
                 printf("exec_reduce: bad pair - left or right is empty: ");
-                object_print(arg_pair_obj, '\n');
+                object_print(arg_pair, '\n');
             }
 #endif
             is_error = 1;
             break;
         }
         /* left */
-        if (arg_pair_obj->data.pair.left->type == TYPE_PAIR) {
-            if (res_pair_obj->data.pair.left == NULL) {
-                res_pair_obj->data.pair.left = object_create(
+        if (arg_left->type == TYPE_PAIR) {
+            if (res_pair->data.pair.left == NULL) {
+                res_pair->data.pair.left = object_create(
                     TYPE_PAIR,
                     (object_data_t) {.pair = (pair_t) {NULL, NULL}}
                 );
-                append(&arg_pair_stack, &arg_pair_obj->data.pair.left);
-                append(&res_pair_stack, &res_pair_obj->data.pair.left);
+                append(&arg_pair_stack, &arg_left);
+                append(&res_pair_stack, &res_pair->data.pair.left);
                 continue;
             }
         }
-        else if (res_pair_obj->data.pair.left == NULL) {
-            res_pair_obj->data.pair.left = object_copy(
-                arg_pair_obj->data.pair.left
-            );
+        else if (res_pair->data.pair.left == NULL) {
+            res_pair->data.pair.left = object_copy(arg_left);
         }
         /* right */
-        if (arg_pair_obj->data.pair.right->type == TYPE_PAIR) {
-            if (res_pair_obj->data.pair.right == NULL) {
-                res_pair_obj->data.pair.right = object_create(
+        if (arg_right->type == TYPE_PAIR) {
+            if (res_pair->data.pair.right == NULL) {
+                res_pair->data.pair.right = object_create(
                     TYPE_PAIR,
                     (object_data_t) {.pair = (pair_t) {NULL, NULL}}
                 );
-                append(&arg_pair_stack, &arg_pair_obj->data.pair.right);
-                append(&res_pair_stack, &res_pair_obj->data.pair.right);
+                append(&arg_pair_stack, &arg_right);
+                append(&res_pair_stack, &res_pair->data.pair.right);
                 continue;
             }
         }
-        else if (res_pair_obj->data.pair.right == NULL) {
-            res_pair_obj->data.pair.right = object_copy(
-                arg_pair_obj->data.pair.right
-            );
+        else if (res_pair->data.pair.right == NULL) {
+            res_pair->data.pair.right = object_copy(arg_right);
         }
         /* do reduce */
         object_t* reduce_ret_obj = exec_call(
-            tree, cur_frame, token_pos, func_obj, res_pair_obj, is_debug
+            tree, cur_frame, token_pos, func, res_pair, is_debug
         );
         if (reduce_ret_obj->is_error) {
 #ifdef ENABLE_DEBUG_LOG
@@ -597,25 +622,25 @@ exec_reduce(
 #endif
             is_error = 1;
             object_free(reduce_ret_obj);
-            object_free(res_pair_obj);
+            object_free(res_pair);
             break;
         }
-        object_free(res_pair_obj->data.pair.left);
-        object_free(res_pair_obj->data.pair.right);
-        /* copy reduce return obj to res_pair_obj and free it immediately */
-        *res_pair_obj = *reduce_ret_obj;
+        object_free(res_pair->data.pair.left);
+        object_free(res_pair->data.pair.right);
+        /* copy reduce return obj to res_pair and free it immediately */
+        *res_pair = *reduce_ret_obj;
         object_free(reduce_ret_obj);
 
         pop(&arg_pair_stack);
         pop(&res_pair_stack);
     }
     if (is_error) {
-        object_free(returned_obj);
-        returned_obj = (object_t*) ERR_OBJECT_PTR;
+        object_free(return_obj);
+        return_obj = (object_t*) ERR_OBJECT_PTR;
     }
     dynarr_free(&arg_pair_stack);
     dynarr_free(&res_pair_stack);
-    return returned_obj;
+    return return_obj;
 }
 
 static inline object_t*
@@ -924,7 +949,7 @@ eval(
     object_t* right_obj;
 
     int i, is_error = 0;
-    object_t* returned_obj;
+    object_t* return_obj;
 
 #ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
@@ -962,8 +987,13 @@ eval(
         right_obj = (right_index == -1) ? NULL : _OBJ_TABLE(right_index);
 
         if (cur_token.type == TOK_OP) {
-            const token_t* left_token =
-                (left_index == -1) ? NULL : &global_tokens[left_index];
+            const token_t* left_token;
+            if (left_index == -1) {
+                left_token = NULL;
+            }
+            else {
+                left_token = &global_tokens[left_index];
+            }
 
             switch (cur_token.name) {
             /* function maker */
@@ -1119,10 +1149,10 @@ eval(
                     append(&token_index_stack, &left_index);
                     continue;
                 }
-                returned_obj = exec_op(
+                return_obj = exec_op(
                     tree, cur_frame, cur_token, left_obj, right_obj, is_debug
                 );
-                if (returned_obj->is_error) {
+                if (return_obj->is_error) {
                     sprintf(
                         ERR_MSG_BUF,
                         "operator \"%s\" returns with error",
@@ -1139,12 +1169,12 @@ eval(
                 }
 #endif
                 /* end eval if error */
-                if (returned_obj->is_error) {
+                if (return_obj->is_error) {
                     is_error = 1;
                     break;
                 }
                 /* don't need to copy cause it is created or newed in exec_op */
-                _OBJ_TABLE(cur_index) = returned_obj;
+                _OBJ_TABLE(cur_index) = return_obj;
             }
             // end switch
             if (is_error) {
@@ -1200,10 +1230,10 @@ eval(
             printf("eval return with error\n");
         }
 #endif
-        returned_obj = (object_t*) ERR_OBJECT_PTR;
+        return_obj = (object_t*) ERR_OBJECT_PTR;
     }
     else {
-        returned_obj = object_copy(_OBJ_TABLE(entry_index));
+        return_obj = object_copy(_OBJ_TABLE(entry_index));
     }
 
     /* free things */
@@ -1230,9 +1260,9 @@ eval(
 #ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         printf("eval returned ");
-        object_print(returned_obj, '\n');
+        object_print(return_obj, '\n');
         fflush(stdout);
     }
 #endif
-    return returned_obj;
+    return return_obj;
 }

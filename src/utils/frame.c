@@ -1,22 +1,25 @@
+#include "frame.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "token.h"
+
 #include "objects.h"
-#include "frame.h"
 #include "reserved.h"
+#include "token.h"
 
 inline frame_t*
-frame_new() {
+frame_new()
+{
     int i;
     frame_t* f = calloc(1, sizeof(frame_t));
-    f->global_pairs = dynarr_new(sizeof(name_objptr_pair_t));
+    f->global_pairs = dynarr_new(sizeof(name_objptr_t));
     stack_new(f);
     /* add reserved ids to global frame */
     for (i = 0; i < RESERVED_ID_NUM; i++) {
-        name_objptr_pair_t pair = {
+        name_objptr_t pair = {
             .name = i,
-            .objptr = (object_t*) &RESERVED_OBJS[i]
+            .objptr = (object_t*)&RESERVED_OBJS[i],
         };
         append(&f->global_pairs, &pair);
     }
@@ -25,9 +28,11 @@ frame_new() {
 }
 
 /* deep copy call stack
-   shallow copy global pairs */
-inline frame_t* 
-frame_copy(const frame_t* f) {
+   shallow copy global pairs
+*/
+inline frame_t*
+frame_copy(const frame_t* f)
+{
     int i, j;
     frame_t* clone_frame = calloc(1, sizeof(frame_t));
 
@@ -39,14 +44,14 @@ frame_copy(const frame_t* f) {
     dynarr_t* dst_pairs;
     stack_new(clone_frame);
     for (i = 0; i < f->stack.size; i++) {
-        stack_push(clone_frame, *(int*) at(&f->indexs, i));
+        stack_push(clone_frame, *(int*)at(&f->indexs, i));
         src_pairs = at(&f->stack, i);
         dst_pairs = at(&clone_frame->stack, i);
         for (j = 0; j < src_pairs->size; j++) {
-            name_objptr_pair_t src_pair = *(name_objptr_pair_t*) at(src_pairs, j);
-            name_objptr_pair_t dst_pair = {
+            name_objptr_t src_pair = *(name_objptr_t*)at(src_pairs, j);
+            name_objptr_t dst_pair = {
                 .name = src_pair.name,
-                .objptr = object_copy(src_pair.objptr)
+                .objptr = object_copy(src_pair.objptr),
             };
             append(dst_pairs, &dst_pair);
         }
@@ -57,20 +62,22 @@ frame_copy(const frame_t* f) {
 
 /* free global and clear stack and free pairs */
 inline void
-frame_free(frame_t* f) {
+frame_free(frame_t* f)
+{
 #ifdef ENABLE_DEBUG_LOG_MORE
     printf("frame_free: %p\n", f);
 #endif
     int i;
     for (i = 0; i < f->global_pairs.size; i++) {
-        object_free(((name_objptr_pair_t*) at(&f->global_pairs, i))->objptr);
+        object_free(((name_objptr_t*)at(&f->global_pairs, i))->objptr);
     }
     dynarr_free(&f->global_pairs);
     stack_clear(f, 1);
 }
 
 inline void
-stack_new(frame_t* f) {
+stack_new(frame_t* f)
+{
 #ifdef ENABLE_DEBUG_LOG_MORE
     printf("stack_new: %p\n", f);
 #endif
@@ -80,18 +87,20 @@ stack_new(frame_t* f) {
 
 /* push new stack_start_index */
 inline void
-stack_push(frame_t* f, const int entry_index) {
+stack_push(frame_t* f, const int entry_index)
+{
 #ifdef ENABLE_DEBUG_LOG_MORE
     printf("stack_push: %p\n", f);
 #endif
     append(&f->indexs, &entry_index);
-    dynarr_t new_pairs = dynarr_new(sizeof(name_objptr_pair_t));
+    dynarr_t new_pairs = dynarr_new(sizeof(name_objptr_t));
     append(&f->stack, &new_pairs);
 }
 
 /* free objects in last pairs and pop the stack */
 inline void
-stack_pop(frame_t* f) {
+stack_pop(frame_t* f)
+{
 #ifdef ENABLE_DEBUG_LOG_MORE
     printf("stack_pop: %p\n", f);
 #endif
@@ -101,7 +110,7 @@ stack_pop(frame_t* f) {
     }
     dynarr_t* last_pairs = back(&f->stack);
     for (i = 0; i < last_pairs->size; i++) {
-        object_free(((name_objptr_pair_t*) last_pairs->data)[i].objptr);
+        object_free(((name_objptr_t*)last_pairs->data)[i].objptr);
     }
     dynarr_free(last_pairs);
     pop(&f->stack);
@@ -110,14 +119,15 @@ stack_pop(frame_t* f) {
 
 /* free call stack but not the global */
 inline void
-stack_clear(frame_t* f, const int can_free_pairs) {
+stack_clear(frame_t* f, const int can_free_pairs)
+{
     int i, j;
     dynarr_free(&f->indexs);
     if (can_free_pairs) {
         for (i = 0; i < f->stack.size; i++) {
             dynarr_t* pairs = at(&f->stack, i);
             for (j = 0; j < pairs->size; j++) {
-                object_free(((name_objptr_pair_t*) pairs->data)[j].objptr);
+                object_free(((name_objptr_t*)pairs->data)[j].objptr);
             }
             dynarr_free(pairs);
         }
@@ -126,51 +136,51 @@ stack_clear(frame_t* f, const int can_free_pairs) {
 }
 
 inline object_t*
-frame_get(const frame_t* f, const int name) {
+frame_get(const frame_t* f, const int name)
+{
     /* search stack from top to bottom */
     int i, j;
     for (i = f->stack.size - 1; i >= 0; i--) {
         dynarr_t* pairs = at(&f->stack, i);
         for (j = 0; j < pairs->size; j++) {
-            if (name == ((name_objptr_pair_t*) at(pairs, j))->name) {
-                return ((name_objptr_pair_t*) at(pairs, j))->objptr;
+            if (name == ((name_objptr_t*)at(pairs, j))->name) {
+                return ((name_objptr_t*)at(pairs, j))->objptr;
             }
         }
     }
     /* search in global */
     for (j = 0; j < f->global_pairs.size; j++) {
-        if (name == ((name_objptr_pair_t*) at(&f->global_pairs, j))->name) {
-            return ((name_objptr_pair_t*) at(&f->global_pairs, j))->objptr;
+        if (name == ((name_objptr_t*)at(&f->global_pairs, j))->name) {
+            return ((name_objptr_t*)at(&f->global_pairs, j))->objptr;
         }
     }
     return NULL;
 }
 
 inline void
-frame_set(frame_t* f, const int name, object_t* obj) {
+frame_set(frame_t* f, const int name, object_t* obj)
+{
     int i;
     object_t* found_object = NULL;
     dynarr_t* pairs;
     if (f->indexs.size == 0) {
         pairs = &f->global_pairs;
-    }
-    else {
+    } else {
         pairs = back(&f->stack);
     }
     for (i = 0; i < pairs->size; i++) {
-        if (name == ((name_objptr_pair_t*) pairs->data)[i].name) {
-            found_object = ((name_objptr_pair_t*) pairs->data)[i].objptr;
+        if (name == ((name_objptr_t*)pairs->data)[i].name) {
+            found_object = ((name_objptr_t*)pairs->data)[i].objptr;
             break;
         }
     }
     if (found_object == NULL) {
-        name_objptr_pair_t new_pair = {
+        name_objptr_t new_pair = {
             .name = name,
-            .objptr = object_copy(obj)
+            .objptr = object_copy(obj),
         };
         append(pairs, &new_pair);
-    }
-    else {
+    } else {
         object_free(found_object);
         found_object = object_copy(obj);
     }

@@ -1,17 +1,17 @@
+#include "number.h"
+#include "dynarr.h"
+#include "errormsg.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "errormsg.h"
-#include "dynarr.h"
-#include "number.h"
 
 inline void
-number_copy(number_t* dst, const number_t* src) {
+number_copy(number_t* dst, const number_t* src)
+{
     if (src->numer.nan) {
         dst->numer = NAN_BIGINT();
         dst->denom = NAN_BIGINT();
-    }
-    else if (src->numer.size == 0) {
+    } else if (src->numer.size == 0) {
         dst->numer = ZERO_BIGINT;
         dst->denom = BYTE_BIGINT(1);
     }
@@ -20,13 +20,15 @@ number_copy(number_t* dst, const number_t* src) {
 }
 
 inline void
-number_free(number_t* x) {
+number_free(number_t* x)
+{
     bi_free(&x->numer);
     bi_free(&x->denom);
 }
 
 void
-number_normalize(number_t* x) {
+number_normalize(number_t* x)
+{
     int sign = 0;
     bigint_t a, b, t1 = ZERO_BIGINT, t2 = ZERO_BIGINT, one = BYTE_BIGINT(1);
 
@@ -46,7 +48,7 @@ number_normalize(number_t* x) {
         *x = ZERO_NUMBER;
         return;
     }
-    /* n == 1 or d = 1 */ 
+    /* n == 1 or d = 1 */
     if (bi_eq(&x->numer, &one) || bi_eq(&x->denom, &one)) {
         return;
     }
@@ -65,13 +67,13 @@ number_normalize(number_t* x) {
         x->denom = BYTE_BIGINT(1);
         return;
     }
-    
+
     /* normalize the sign */
     if (x->numer.sign != x->denom.sign) {
         sign = 1;
     }
     x->numer.sign = x->denom.sign = 0;
-    
+
     /* euclidian algorithm */
     bi_copy(&a, &x->numer);
     bi_copy(&b, &x->denom);
@@ -83,7 +85,7 @@ number_normalize(number_t* x) {
         bi_free(&a);
         bi_copy(&a, &b); /* a = t1 */
         bi_free(&b);
-        bi_copy(&b, &t2);  /* b = t2 */
+        bi_copy(&b, &t2); /* b = t2 */
         /* printf("a "); print_bi(&a, '\n');
         printf("b "); print_bi(&b, '\n'); */
     }
@@ -99,8 +101,7 @@ number_normalize(number_t* x) {
         bi_free(&x->denom);
         x->denom = t2;
         /* dont need to free t1 and t2 because they are own by x now */
-    }
-    else {
+    } else {
         bi_free(&t1);
         bi_free(&t2);
     }
@@ -110,7 +111,8 @@ number_normalize(number_t* x) {
 }
 
 inline int
-number_eq(number_t* a, number_t* b) {
+number_eq(number_t* a, number_t* b)
+{
     /*  nan != anything */
     if (a->numer.nan || b->numer.nan) {
         return 0;
@@ -123,7 +125,8 @@ number_eq(number_t* a, number_t* b) {
 }
 
 inline int
-number_lt(number_t* a, number_t* b) {
+number_lt(number_t* a, number_t* b)
+{
     /* if one of them is nan: always false */
     if (a->numer.nan || b->numer.nan) {
         return 0;
@@ -139,17 +142,16 @@ number_lt(number_t* a, number_t* b) {
     if (bi_eq(&a->numer, &b->numer)) {
         return bi_lt(&b->denom, &a->denom);
     }
-    bigint_t l = bi_mul(&a->numer, &b->denom),
-        r = bi_mul(&b->numer, &a->denom);
+    bigint_t l = bi_mul(&a->numer, &b->denom), r = bi_mul(&b->numer, &a->denom);
     int res = bi_lt(&l, &r);
     bi_free(&l);
     bi_free(&r);
     return res;
 }
 
-
 inline number_t
-number_add(number_t* a, number_t* b) {
+number_add(number_t* a, number_t* b)
+{
     number_t res = EMPTY_NUMBER;
     bigint_t t1, t2;
     if (a->numer.nan || b->numer.nan) {
@@ -177,7 +179,8 @@ number_add(number_t* a, number_t* b) {
 }
 
 inline number_t
-number_sub(number_t* a, number_t* b) {
+number_sub(number_t* a, number_t* b)
+{
     number_t res = EMPTY_NUMBER;
     bigint_t t1, t2;
     if (a->numer.nan || b->numer.nan) {
@@ -206,7 +209,8 @@ number_sub(number_t* a, number_t* b) {
 }
 
 inline number_t
-number_mul(number_t* a, number_t* b) {
+number_mul(number_t* a, number_t* b)
+{
     number_t res = EMPTY_NUMBER;
     if (a->numer.nan || b->numer.nan) {
         return NAN_NUMBER;
@@ -221,7 +225,8 @@ number_mul(number_t* a, number_t* b) {
 }
 
 inline number_t
-number_div(number_t* a, number_t* b) {
+number_div(number_t* a, number_t* b)
+{
     number_t res = EMPTY_NUMBER;
     if (a->numer.nan || b->numer.nan) {
         return NAN_NUMBER;
@@ -239,7 +244,8 @@ number_div(number_t* a, number_t* b) {
 }
 
 inline number_t
-number_mod(number_t* a, number_t* b) {
+number_mod(number_t* a, number_t* b)
+{
     number_t res = EMPTY_NUMBER;
     bigint_t t1, t2;
     if (a->numer.nan || b->numer.nan) {
@@ -258,7 +264,8 @@ number_mod(number_t* a, number_t* b) {
 /* the exponent b can only be integer because
    rational exponent can result in irrational number */
 number_t
-number_exp(number_t* a, number_t* b) {
+number_exp(number_t* a, number_t* b)
+{
     number_t res, cur, t1;
     bigint_t e, q = ZERO_BIGINT, r = ZERO_BIGINT, two = BYTE_BIGINT(2);
     if (a->numer.nan || b->numer.nan) {
@@ -314,7 +321,8 @@ number_exp(number_t* a, number_t* b) {
 */
 
 number_t
-number_ceil(number_t* a) {
+number_ceil(number_t* a)
+{
     number_t res = EMPTY_NUMBER;
     bigint_t t1, one = BYTE_BIGINT(1);
     if (a->numer.nan) {
@@ -327,8 +335,7 @@ number_ceil(number_t* a) {
         // bigint division is truncate division -
         res.numer = bi_div(&a->numer, &a->denom);
         res.denom = BYTE_BIGINT(1);
-    }
-    else {
+    } else {
         t1 = bi_div(&a->numer, &a->denom);
         res.numer = bi_add(&t1, &one);
         res.denom = one;
@@ -338,7 +345,8 @@ number_ceil(number_t* a) {
 }
 
 number_t
-number_floor(number_t* a) {
+number_floor(number_t* a)
+{
     number_t res = EMPTY_NUMBER;
     bigint_t t1, one = BYTE_BIGINT(1);
     if (a->numer.nan) {
@@ -348,29 +356,31 @@ number_floor(number_t* a) {
         return ZERO_NUMBER;
     }
     if (a->numer.sign) {
-        
+
         t1 = bi_div(&a->numer, &a->denom);
         res.numer = bi_sub(&t1, &one);
         res.denom = one;
         bi_free(&t1);
-    }
-    else {
+    } else {
         res.numer = bi_div(&a->numer, &a->denom);
         res.denom = BYTE_BIGINT(1);
     }
     return res;
 }
 
-
 void
-print_number_struct(number_t* x) {
+print_number_struct(number_t* x)
+{
     printf("[Number]");
-    printf("\tnumer="); print_bi(&x->numer, '\n');
-    printf("\tdenom="); print_bi(&x->denom, '\n');
+    printf("\tnumer=");
+    print_bi(&x->numer, '\n');
+    printf("\tdenom=");
+    print_bi(&x->denom, '\n');
 }
 
 int
-number_print_frac(number_t* x, char end) {
+number_print_frac(const number_t* x, char end)
+{
     int printed_bytes_count = 0;
     printed_bytes_count += printf("[Number] ");
     if (x->numer.nan) {
@@ -393,7 +403,8 @@ number_print_frac(number_t* x, char end) {
 }
 
 int
-number_print_dec(number_t* x, int precision, char end) {
+number_print_dec(const number_t* x, int precision, char end)
+{
     int printed_bytes_count = 0;
     int i, n_exp, d_exp, m;
     dynarr_t n_str, d_str, res_str;
@@ -401,7 +412,7 @@ number_print_dec(number_t* x, int precision, char end) {
     char dot = '.' - '0';
     bigint_t ten_to_abs_e;
     number_t _x, t = EMPTY_NUMBER, q = EMPTY_NUMBER, r = EMPTY_NUMBER,
-        ten = number_from_i32(10), ten_to_e = EMPTY_NUMBER;
+                 ten = number_from_i32(10), ten_to_e = EMPTY_NUMBER;
 
     if (x->numer.nan) {
         return printf("[Number] NaN");
@@ -433,8 +444,7 @@ number_print_dec(number_t* x, int precision, char end) {
     if (m < 0) {
         ten_to_e.numer = BYTE_BIGINT(1);
         ten_to_e.denom = ten_to_abs_e;
-    }
-    else {
+    } else {
         ten_to_e.numer = ten_to_abs_e;
         ten_to_e.denom = BYTE_BIGINT(1);
     }
@@ -489,7 +499,8 @@ number_print_dec(number_t* x, int precision, char end) {
 }
 
 number_t
-number_from_str(const char* str) {
+number_from_str(const char* str)
+{
     number_t n = EMPTY_NUMBER;
     size_t str_length = strlen(str);
     u32 i, j, dot_pos = str_length, is_less_one = 0;
@@ -502,17 +513,15 @@ number_from_str(const char* str) {
             n.numer = bi_from_str(str);
             n.denom = BYTE_BIGINT(1);
             return n;
-        }
-        else if (str[1] == '.') {
+        } else if (str[1] == '.') {
             is_less_one = 1;
-        }
-        else {
+        } else {
             printf("number_from_str: bad format\n");
             return NAN_NUMBER;
         }
     }
 
-    char* str_no_dot = (char*) malloc(str_length + 1);
+    char* str_no_dot = (char*)malloc(str_length + 1);
     i = j = 0;
     for (i = 0; i < str_length; i++) {
         if (is_less_one && i == 0) {
@@ -521,8 +530,7 @@ number_from_str(const char* str) {
         if (str[i] != '.') {
             str_no_dot[j] = str[i];
             j++;
-        }
-        else {
+        } else {
             dot_pos = i + 1;
         }
     }
@@ -538,7 +546,8 @@ number_from_str(const char* str) {
 }
 
 number_t
-number_from_i32(i32 i) {
+number_from_i32(i32 i)
+{
     number_t n = EMPTY_NUMBER;
     u32 j, sign = 0;
     if (i == 0) {
@@ -551,20 +560,17 @@ number_from_i32(i32 i) {
     if (i < 0) {
         sign = 1;
         /* cast to 64-bit first to prevent overflow at -2^31 */
-        j = -((i64) i);
-    }
-    else {
+        j = -((i64)i);
+    } else {
         j = i;
     }
     if (j >= DIGIT_BASE) {
         bi_new(&n.numer, 2);
         n.numer.digit[0] = j & DIGIT_MASK;
         n.numer.digit[1] = 1;
-    }
-    else if (sign == 0 && j <= 256) {
+    } else if (sign == 0 && j <= 256) {
         n.numer = BYTE_BIGINT(j);
-    }
-    else {
+    } else {
         bi_new(&n.numer, 1);
         n.numer.digit[0] = j;
     }

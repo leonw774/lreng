@@ -9,7 +9,7 @@
 #define DYN_ARR_INIT_CAP 2
 
 typedef struct dynarr {
-    unsigned short elem_size; 
+    unsigned short elem_size;
     unsigned short size;
     unsigned short cap;
     void* data;
@@ -23,7 +23,8 @@ typedef struct dynarr {
 
 /* create a new empty dynamic array */
 static inline dynarr_t
-dynarr_new(int elem_size) {
+dynarr_new(int elem_size)
+{
     dynarr_t x;
     x.data = calloc(elem_size, DYN_ARR_INIT_CAP);
     x.elem_size = elem_size;
@@ -33,22 +34,25 @@ dynarr_new(int elem_size) {
 };
 
 static inline void
-dynarr_free(dynarr_t* x) {
+dynarr_free(dynarr_t* x)
+{
     if (x->data != NULL) {
         free(x->data);
         x->data = NULL;
-    } 
+    }
     x->size = x->cap = 0;
 };
 
 static inline void
-dynarr_reset(dynarr_t* x) {
+dynarr_reset(dynarr_t* x)
+{
     dynarr_free(x);
     *x = dynarr_new(x->elem_size);
 }
 
 static inline dynarr_t
-dynarr_copy(const dynarr_t* x) {
+dynarr_copy(const dynarr_t* x)
+{
     dynarr_t y;
     y = *x;
     y.data = calloc(y.cap, y.elem_size);
@@ -58,18 +62,21 @@ dynarr_copy(const dynarr_t* x) {
 
 /* copy the array as a C-string */
 static inline char*
-to_str(dynarr_t* x) {
-    if (x->data == NULL) return NULL;
+to_str(dynarr_t* x)
+{
+    if (x->data == NULL)
+        return NULL;
     char* arr;
     int arr_sz = x->elem_size * x->size;
     arr = malloc(arr_sz + 1);
-    ((char*) arr)[arr_sz] = '\0';
+    ((char*)arr)[arr_sz] = '\0';
     memcpy(arr, x->data, arr_sz);
     return arr;
 }
 
 static inline void
-append(dynarr_t* x, const void* const elem) {
+append(dynarr_t* x, const void* const elem)
+{
     // if (x->data == NULL) return;
     if (x->size == x->cap) {
         x->cap *= 2;
@@ -82,17 +89,20 @@ append(dynarr_t* x, const void* const elem) {
 #endif
 
 static inline void
-pop(dynarr_t* x) {
+pop(dynarr_t* x)
+{
     x->size--;
 }
 
 static inline void*
-at(const dynarr_t* x, const unsigned int index) {
+at(const dynarr_t* x, const unsigned int index)
+{
     return x->data + index * x->elem_size;
 }
 
 static inline void*
-back(const dynarr_t* x) {
+back(const dynarr_t* x)
+{
     // if (x->data == NULL) {
     //     return NULL;
     // }
@@ -106,7 +116,8 @@ back(const dynarr_t* x) {
    x and y's elem size must be the same
    return 1 if concat seccess, otherwise 0 */
 static inline int
-concat(dynarr_t* x, dynarr_t* y) {
+concat(dynarr_t* x, dynarr_t* y)
+{
     if (x->data == NULL || y->data == NULL) {
         return 0;
     }

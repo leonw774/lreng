@@ -7,7 +7,7 @@
 typedef struct name_objptr_pair {
     int name;
     object_t* objptr;
-} name_objptr_pair_t;
+} name_objptr_t;
 
 typedef struct frame {
     dynarr_t global_pairs; /* type: name_obj_pair_t */
@@ -34,6 +34,5 @@ extern void stack_clear(frame_t* f, const int can_free_pairs);
 extern object_t* frame_get(const frame_t* f, const int name);
 
 extern void frame_set(frame_t* f, const int name, object_t* obj);
-
 
 #endif
