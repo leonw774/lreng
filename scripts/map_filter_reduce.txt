@@ -45,4 +45,5 @@ h = p => { `p + ~p };
 print_tree(f $> tree);
 print_tree(g1 $| tree);
 print_tree(g2 $| tree);
-print_tree(h $/ tree)
+print_tree(h $/ tree);
+output('\n')

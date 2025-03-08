@@ -8,7 +8,6 @@ typedef struct linecol {
     unsigned int col;
 } linecol_t;
 
-
 typedef enum token_type {
     TOK_ID, /*identifier */
     TOK_NUM, /* number */

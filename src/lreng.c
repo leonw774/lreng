@@ -11,10 +11,10 @@
 int
 main(int argc, char** argv) {
     const char* usage = "Usage: lreng [-d] {file_path}\n";
-    int is_debug = 0, is_transpile = 0;
+    int is_debug = 0;
     char* file_path = NULL;
     FILE* in_fp = NULL;
-    long fsize = 0;
+    unsigned long long fsize = 0;
     char* src = NULL;
     
     int opt_c;
@@ -58,7 +58,7 @@ main(int argc, char** argv) {
         fputs("memory error\n", stderr);
         return OS_ERR_CODE;
     }
-    size_t fread_result = fread(src, 1, fsize, in_fp);
+    fsize = fread(src, 1, fsize, in_fp);
     src[fsize] = '\0';
     fclose(in_fp);
 #ifdef IS_PROFILE
@@ -66,13 +66,13 @@ int i;
 for (i = 0; i < 10; i++) {
 #endif
     dynarr_t tokens = tokenize(src, fsize, is_debug);
-    tree_t syntax_tree = tree_parser(tokens, is_debug);
+    tree_t syntax_tree = tree_parse(tokens, is_debug);
     int is_good_semantic = semantic_checker(syntax_tree, is_debug);
     if (!is_good_semantic) {
         return SEMANTIC_ERR_CODE;
     }
     frame_t* top_frame = new_frame();
-    object_t* final_return_object = eval_tree(
+    object_t* final_return_object = eval(
         &syntax_tree,
         top_frame,
         syntax_tree.root_index,
@@ -81,7 +81,7 @@ for (i = 0; i < 10; i++) {
     free_object(final_return_object);
     free_frame(top_frame);
     free(top_frame);
-    free_tree(&syntax_tree);
+    tree_free(&syntax_tree);
     free_dynarr(&tokens);
 #ifdef IS_PROFILE
 }

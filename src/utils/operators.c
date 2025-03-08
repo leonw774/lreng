@@ -64,12 +64,13 @@ const int OP_TIER_LIST[][MAX_OPS_IN_TIER] = {
 };
 #define TIER_COUNT sizeof(OP_TIER_LIST) / MAX_OPS_IN_TIER / sizeof(int)
 
-const int get_op_precedence(op_name_enum op) {
+int
+get_op_precedence(op_name_enum op) {
     static int PRECEDENCES_ARRAY[OPERATOR_COUNT];
     static unsigned char is_initialized = 0;
+    unsigned int i;
     /* initialize array if not */
     if (!is_initialized) {
-        int i;
         for (i = 0; i < OPERATOR_COUNT; i++) {
             PRECEDENCES_ARRAY[i] = 0;
         }
@@ -90,12 +91,13 @@ const int UNARY_OPS[] = {
     OP_POS, OP_NEG, OP_NOT, OP_CEIL, OP_FLOOR, OP_GETL, OP_GETR
 };
 
-const unsigned char is_unary_op(op_name_enum op) {
+unsigned char
+is_unary_op(op_name_enum op) {
     static unsigned char IS_UNARY_OP_ARRAY[OPERATOR_COUNT];
     static unsigned char is_initialized = 0;
+    unsigned int i;
     /* initialize array if not */
     if (!is_initialized) {
-        int i;
         for (i = 0; i < OPERATOR_COUNT; i++) {
             IS_UNARY_OP_ARRAY[i] = 0;
         }
@@ -113,10 +115,11 @@ const int PREFIXABLE_OPS[] = {
     OP_POS, OP_NEG, OP_NOT, OP_CEIL, OP_FLOOR, OP_GETL, OP_GETR
 };
 
-const unsigned char is_prefixable_op(op_name_enum op) {
-    int i;
+unsigned char
+is_prefixable_op(op_name_enum op) {
+    unsigned int i;
     for (i = 0; i < sizeof(PREFIXABLE_OPS) / sizeof(int); i++) {
-        if (PREFIXABLE_OPS[i] == op) {
+        if (PREFIXABLE_OPS[i] == (int) op) {
             return 1;
         }
     }
@@ -128,10 +131,11 @@ const int R_ASSO_OPS[] = {
     OP_EXP, OP_PAIR, OP_FCALLR, OP_ARG, OP_CONDFCALL, OP_ASSIGN
 };
 
-const unsigned char is_r_asso_op(op_name_enum op) {
-    int i;
+unsigned char
+is_r_asso_op(op_name_enum op) {
+    unsigned int i;
     for (i = 0; i < sizeof(R_ASSO_OPS) / sizeof(int); i++) {
-        if (R_ASSO_OPS[i] == op) {
+        if (R_ASSO_OPS[i] == (int) op) {
             return 1;
         }
     }

@@ -33,6 +33,10 @@ object_t* create_object(object_type_enum type, object_data_t data) {
 
 object_t*
 copy_object(object_t* obj) {
+#ifdef ENABLE_DEBUG_LOG_MORE
+    printf("copy_object: obj_addr=%p ref_count=%d\n", obj, obj->ref_count);
+    fflush(stdout);
+#endif
     if (!obj->is_const) {
         obj->ref_count++;
     }
@@ -41,6 +45,11 @@ copy_object(object_t* obj) {
 
 inline void
 free_object(object_t* obj) {
+#ifdef ENABLE_DEBUG_LOG_MORE
+    printf("free_object: addr=%p, ref_count=%d print: ", obj, obj->ref_count);
+    print_object(obj, '\n');
+    fflush(stdout);
+#endif
     if (obj->is_const) {
         return;
     }
@@ -64,17 +73,15 @@ free_object(object_t* obj) {
         if (obj->data.callable.builtin_name != NOT_BUILTIN_FUNC) {
             return;
         }
-        #define obj_init_time_frame obj->data.callable.init_time_frame
-        if (obj_init_time_frame != NULL) {
-            if (obj_init_time_frame->ref_count <= 1) {
-                clear_stack(obj_init_time_frame, 1);
-                free(obj_init_time_frame);
+        if (obj->data.callable.init_time_frame != NULL) {
+            if (obj->data.callable.init_time_frame->ref_count <= 1) {
+                clear_stack(obj->data.callable.init_time_frame, 1);
+                free(obj->data.callable.init_time_frame);
             }
             else {
-                obj_init_time_frame->ref_count--;
+                obj->data.callable.init_time_frame->ref_count--;
             }
         }
-        #undef obj_init_time_frame
     }
     free(obj);
 }

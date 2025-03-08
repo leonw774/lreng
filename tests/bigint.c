@@ -2,16 +2,20 @@
 #include <stdlib.h>
 #include "bigint.h"
 
-int assert(int b) {
+void
+assert(int b) {
     if (b == 0) {
         printf("assertion error\n");
         exit(1);
     }
 }
 
-int main() {
+int
+main() {
     bigint_t zero = bi_from_str("0");
     bigint_t one = bi_from_str("1");
+    print_bi_dec(&zero, '\0'); puts(" = 0");
+    print_bi_dec(&one, '\0'); puts(" = 1");
 
     bigint_t a   = bi_from_str("1234567890");
     bigint_t b   = bi_from_str("9876543210");
@@ -37,6 +41,15 @@ int main() {
     bigint_t j = bi_from_str("18446744073709551614");
     bigint_t idj = bi_from_str("6277101735386680764516354157049543343102891635622409142280");
     bigint_t imodj = bi_from_str("12");
+
+    bigint_t yhex = bi_from_str("0xf5");
+    bigint_t ydec = bi_from_str("245");
+    bigint_t ybin = bi_from_str("0b11110101");
+    print_bi_dec(&yhex, '\0'); puts(" = ");
+    print_bi_dec(&ydec, '\0'); puts(" = ");
+    print_bi_dec(&ybin, '\n');
+    assert(bi_eq(&yhex, &ydec));
+    assert(bi_eq(&ydec, &ybin));
 
     bigint_t zhex = bi_from_str("0xffffffff");
     bigint_t zdec = bi_from_str("4294967295");

@@ -1,7 +1,8 @@
-CFLAGS = -I include/
+CFLAGS = -I include/ -Wall -Wextra
 DEFAULT_FLAGS = -O2
 PROFILE_FLAGS = -fno-pie -no-pie -pg -O1 -D IS_PROFILE
-DEBUG_FLAGS = -g -D ENABLE_DEBUG
+DEBUG_FLAGS = -g -D ENABLE_DEBUG_LOG \
+	-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
 MEMCHECK_FLAGS = -include memcheck/memcheck.h -Wno-implicit-function-declaration
 
 TEST_DIR = tests

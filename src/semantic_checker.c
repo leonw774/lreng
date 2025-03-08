@@ -24,7 +24,7 @@ semantic_checker(const tree_t tree, const int is_debug) {
     token_t* cur_token_p = tree_iter_get(&tree_iter);
     int cur_depth = -1, cur_index = -1, cur_func_depth = -1;
     dynarr_t func_depth_stack = new_dynarr(sizeof(int));
-#ifdef ENABLE_DEBUG
+#ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         printf("check semantic\n");
     }
@@ -44,7 +44,7 @@ semantic_checker(const tree_t tree, const int is_debug) {
             if (cur_token_p->name == OP_ASSIGN) {
                 token_t* left_token =
                     &((token_t*) tree.tokens.data)[tree.lefts[cur_index]];
-#ifdef ENABLE_DEBUG
+#ifdef ENABLE_DEBUG_LOG
                 if (is_debug) {
                     printf(
                         "Line %d, col %d, checking identifier initialization: ",
@@ -84,7 +84,7 @@ semantic_checker(const tree_t tree, const int is_debug) {
             else if (cur_token_p->name == OP_ARG) {
                 token_t* left_token =
                     &((token_t*) tree.tokens.data)[tree.lefts[cur_index]];
-#ifdef ENABLE_DEBUG
+#ifdef ENABLE_DEBUG_LOG
                 if (is_debug) {
                     printf(
                         "Line %d, col %d, checking argument binder: ",
@@ -114,7 +114,7 @@ semantic_checker(const tree_t tree, const int is_debug) {
             }
         }
         else if (cur_token_p->type == TOK_ID) {
-#ifdef ENABLE_DEBUG
+#ifdef ENABLE_DEBUG_LOG
             if (is_debug) {
                 printf(
                     "Line %d, col %d, checking identifier usage: ",

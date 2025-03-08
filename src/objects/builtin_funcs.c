@@ -44,7 +44,6 @@ builtin_func_output(object_t* obj) {
         return (object_t*) ERR_OBJECT_PTR;
     }
     number_t n = obj->data.number;
-    unsigned char c;
     if (n.numer.size == 0) {
         putchar(0);
     }

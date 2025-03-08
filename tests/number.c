@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "number.h"
 
-int
+void
 assert(int b) {
     if (b == 0) {
         printf("assertion error\n");

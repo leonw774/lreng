@@ -54,42 +54,6 @@ static const u32 STATIC_BYTES[257] = {
 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 256
 };
 
-static const char* BYTE_NUMBER_STRS[] = {
-"0",
-"1", "2", "3", "4", "5", "6", "7", "8",
-"9", "10", "11", "12", "13", "14", "15", "16",
-"17", "18", "19", "20", "21", "22", "23", "24",
-"25", "26", "27", "28", "29", "30", "31", "32",
-"33", "34", "35", "36", "37", "38", "39", "40", 
-"41", "42", "43", "44", "45", "46", "47", "48", 
-"49", "50", "51", "52", "53", "54", "55", "56",
-"57", "58", "59", "60", "61", "62", "63", "64",
-"65", "66", "67", "68", "69", "70", "71", "72",
-"73", "74", "75", "76", "77", "78", "79", "80",
-"81", "82", "83", "84", "85", "86", "87", "88",
-"89", "90", "91", "92", "93", "94", "95", "96",
-"97", "98", "99", "100", "101", "102", "103", "104",
-"105", "106", "107", "108", "109", "110", "111", "112",
-"113", "114", "115", "116", "117", "118", "119", "120",
-"121", "122", "123", "124", "125", "126", "127", "128",
-"129", "130", "131", "132", "133", "134", "135", "136",
-"137", "138", "139", "140", "141", "142", "143", "144",
-"145", "146", "147", "148", "149", "150", "151", "152",
-"153", "154", "155", "156", "157", "158", "159", "160",
-"161", "162", "163", "164", "165", "166", "167", "168",
-"169", "170", "171", "172", "173", "174", "175", "176",
-"177", "178", "179", "180", "181", "182", "183", "184",
-"185", "186", "187", "188", "189", "190", "191", "192",
-"193", "194", "195", "196", "197", "198", "199", "200",
-"201", "202", "203", "204", "205", "206", "207", "208",
-"209", "210", "211", "212", "213", "214", "215", "216",
-"217", "218", "219", "220", "221", "222", "223", "224",
-"225", "226", "227", "228", "229", "230", "231", "232",
-"233", "234", "235", "236", "237", "238", "239", "240",
-"241", "242", "243", "244", "245", "246", "247", "248",
-"249", "250", "251", "252", "253", "254", "255", "256"
-};
-
 /* all 1 ~ 256 is shared */
 inline bigint_t
 BYTE_BIGINT(u32 b) {
@@ -329,7 +293,7 @@ void
 bi_usub(bigint_t* res, bigint_t* a, bigint_t* b) {
     u32 a_size = a->size, b_size = b->size;
     u32 sign = 0, borrow;
-    i32 i;
+    i64 i;
     /* handle one digit */
     if (a->size == 1 && b->size == 1) {
         new_bi(res, 1);
@@ -350,7 +314,7 @@ bi_usub(bigint_t* res, bigint_t* a, bigint_t* b) {
         sign = 1;
     }
     if (a_size == b_size) {
-        i = a_size - 1;
+        i = (i64) a_size - 1;
         while (i >= 0 && a->digit[i] == b->digit[i]) {
             i--;
         }
@@ -534,7 +498,7 @@ void
 bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
     bigint_t u, v;
     u32 *uj, *v0;
-    u32 u_size = _u->size, v_size = _v->size, sign = 0;
+    u32 u_size = _u->size, v_size = _v->size;
     u32 d, j, k, qj, rj, ujn, ujnm1, ujnm2;
     i32 borrow;
     u64 utop2, vnm1, vnm2;
@@ -837,8 +801,10 @@ bi_div(bigint_t* a, bigint_t* b) {
         return BYTE_BIGINT(1);
     }
     /* if |a| < |b|, return 0 */
-    if (a->size == b->size && a->digit[a->size -1] < b->digit[b->size -1]
-        || a->size < b->size) {
+    if (
+        a->size == b->size
+        && (a->digit[a->size -1] < b->digit[b->size -1] || a->size < b->size)
+    ) {
         return ZERO_BIGINT;
     }
     bi_udivmod(a, b, &q, &r);
@@ -868,8 +834,10 @@ bi_mod(bigint_t* a, bigint_t* b) {
         return ZERO_BIGINT;
     }
     /* if |a| < |b|, return a */
-    if (a->size == b->size && a->digit[a->size -1] < b->digit[b->size -1]
-        || a->size < b->size) {
+    if (
+        a->size == b->size
+        && (a->digit[a->size -1] < b->digit[b->size -1] || a->size < b->size)
+    ) {
         copy_bi(&r, a);
         return r;
     }
@@ -1002,16 +970,30 @@ bi_from_str(const char* str) {
     bigint_t x, t1, t2;
     size_t str_length = strlen(str), base = 10;
     u32 i, carry = 0, j = 0, d, safe_size, sign = 0;
-    char byte_number_str[4];
 
-    /* before doing real decoding, do brute force from 0 ~ 256 */
     if (str[0] == '0' && str_length == 1) {
         return ZERO_BIGINT;
     }
+    /* before doing real decoding, use sscanf to check the str is presenting
+       number between 1~256 */
     if (str_length <= 3) {
-        for (i = 1; i <= 256; i++) {
-            if (strcmp(BYTE_NUMBER_STRS[i], str) == 0) {
-                return BYTE_BIGINT(i);
+        u32 n;
+        if (str[1] == 'x') {
+            sscanf(str + 2, "%x", &n);
+            if (n == 1 && n <= 256) {
+                return BYTE_BIGINT(n);
+            }
+        }
+        else if (str[1] == 'b') {
+            sscanf(str + 2, "%x", &n);
+            if (n == 1 && n <= 256) {
+                return BYTE_BIGINT(n);
+            }
+        }
+        else {
+            sscanf(str, "%u", &n);
+            if (n == 1 && n <= 256) {
+                return BYTE_BIGINT(n);
             }
         }
     }

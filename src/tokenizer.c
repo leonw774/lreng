@@ -133,7 +133,7 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos) {
             tok_str
         );
         free(tok_str);
-        if (op == -1) {
+        if ((int) op == -1) {
             throw_syntax_error(pos, "bad op name");
         }
         /* if is a empty function call, add null */
@@ -177,7 +177,10 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos) {
         else {
             /* move to token str arena */
             int tok_str_len = strlen(tok_str);
-            char* arena_token_str = arena_token_str_malloc(strlen(tok_str));
+            char* arena_token_str = arena_malloc(
+                &token_str_arena,
+                strlen(tok_str) + 1
+            );
             memcpy(arena_token_str, tok_str, tok_str_len);
             free(tok_str);
             tok_str = arena_token_str;
@@ -279,7 +282,6 @@ ws_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
 
 state_ret
 comment_state(linecol_iterator_t* pos_iter, cargo cur_cargo) {
-    linecol_t pos = pos_iter->pos;
     char c = linecol_read(pos_iter);
     if (c == '\0') {
         return (state_ret) {NULL, cur_cargo};
@@ -626,15 +628,15 @@ tokenize(const char* src, const unsigned long src_len, const int is_debug) {
     cur_cargo.tokens = new_dynarr(sizeof(token_t));
     cur_cargo.str = new_dynarr(sizeof(char));
 
-    arena_token_str_init(src_len);
+    arena_init(&token_str_arena, src_len);
 
-#ifdef ENABLE_DEBUG
+#ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         puts("tokenize");
     }
 #endif
     while (1) {
-#ifdef ENABLE_DEBUG
+#ifdef ENABLE_DEBUG_LOG
         if (is_debug) {
             char c = (pos_iter.index < pos_iter.src_len)
                 ? pos_iter.src[pos_iter.index] : '\0';
@@ -652,7 +654,7 @@ tokenize(const char* src, const unsigned long src_len, const int is_debug) {
         state_ret res = state_func(&pos_iter, cur_cargo);
         cur_cargo = res.cargo;
         state_func = res.state_func;
-#ifdef ENABLE_DEBUG
+#ifdef ENABLE_DEBUG_LOG
         if (is_debug) {
             print_state_name(state_func);
             char* tmp_str = to_str(&cur_cargo.str);
@@ -670,7 +672,7 @@ tokenize(const char* src, const unsigned long src_len, const int is_debug) {
         }
 #endif
     }
-#ifdef ENABLE_DEBUG
+#ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         printf("tokens=");
         int i;

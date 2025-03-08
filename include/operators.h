@@ -30,13 +30,13 @@ extern const char* const OP_STRS[];
 
 extern const char OP_CHARS[];
 
-extern const int get_op_precedence(op_name_enum op);
+extern int get_op_precedence(op_name_enum op);
 
-extern const unsigned char is_unary_op(op_name_enum op);
+extern unsigned char is_unary_op(op_name_enum op);
 
-extern const unsigned char is_prefixable_op(op_name_enum op);
+extern unsigned char is_prefixable_op(op_name_enum op);
 
-extern const unsigned char is_r_asso_op(op_name_enum op);
+extern unsigned char is_r_asso_op(op_name_enum op);
 
 extern const char R_ASSOCIATIVE_OPS[];
 

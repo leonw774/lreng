@@ -37,7 +37,6 @@ copy_frame(const frame_t* f) {
     /* deep copy call stack */
     dynarr_t* src_pairs;
     dynarr_t* dst_pairs;
-    name_objptr_pair_t src_pair, dst_pair;
     new_stack(clone_frame);
     for (i = 0; i < f->stack.size; i++) {
         push_stack(clone_frame, *(int*) at(&f->indexs, i));
@@ -59,6 +58,9 @@ copy_frame(const frame_t* f) {
 /* free global and clear stack and free pairs */
 inline void
 free_frame(frame_t* f) {
+#ifdef ENABLE_DEBUG_LOG_MORE
+    printf("free_frame: %p\n", f);
+#endif
     int i;
     for (i = 0; i < f->global_pairs.size; i++) {
         free_object(((name_objptr_pair_t*) at(&f->global_pairs, i))->objptr);
@@ -69,6 +71,9 @@ free_frame(frame_t* f) {
 
 inline void
 new_stack(frame_t* f) {
+#ifdef ENABLE_DEBUG_LOG_MORE
+    printf("new_stack: %p\n", f);
+#endif
     f->indexs = new_dynarr(sizeof(int));
     f->stack = new_dynarr(sizeof(dynarr_t));
 }
@@ -76,6 +81,9 @@ new_stack(frame_t* f) {
 /* push new stack_start_index */
 inline void
 push_stack(frame_t* f, const int entry_index) {
+#ifdef ENABLE_DEBUG_LOG_MORE
+    printf("push_stack: %p\n", f);
+#endif
     append(&f->indexs, &entry_index);
     dynarr_t new_pairs = new_dynarr(sizeof(name_objptr_pair_t));
     append(&f->stack, &new_pairs);
@@ -84,6 +92,9 @@ push_stack(frame_t* f, const int entry_index) {
 /* free objects in last pairs and pop the stack */
 inline void
 pop_stack(frame_t* f) {
+#ifdef ENABLE_DEBUG_LOG_MORE
+    printf("pop_stack: %p\n", f);
+#endif
     int i;
     if (f->indexs.size == 0) {
         return;

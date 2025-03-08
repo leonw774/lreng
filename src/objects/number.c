@@ -241,7 +241,7 @@ number_div(number_t* a, number_t* b) {
 inline number_t
 number_mod(number_t* a, number_t* b) {
     number_t res = EMPTY_NUMBER;
-    bigint_t n, d, t1, t2;
+    bigint_t t1, t2;
     if (a->numer.nan || b->numer.nan) {
         return NAN_NUMBER;
     }
@@ -259,7 +259,7 @@ number_mod(number_t* a, number_t* b) {
    rational exponent can result in irrational number */
 number_t
 number_exp(number_t* a, number_t* b) {
-    number_t res, cur, t1, t2;
+    number_t res, cur, t1;
     bigint_t e, q = ZERO_BIGINT, r = ZERO_BIGINT, two = BYTE_BIGINT(2);
     if (a->numer.nan || b->numer.nan) {
         return NAN_NUMBER;
@@ -371,7 +371,7 @@ print_number_struct(number_t* x) {
 
 int
 print_number_frac(number_t* x, char end) {
-    int i, printed_bytes_count = 0;
+    int printed_bytes_count = 0;
     printed_bytes_count += printf("[Number] ");
     if (x->numer.nan) {
         printed_bytes_count += printf("NaN");
@@ -395,13 +395,13 @@ print_number_frac(number_t* x, char end) {
 int
 print_number_dec(number_t* x, int precision, char end) {
     int printed_bytes_count = 0;
-    int i, n_exp, d_exp, m, e;
+    int i, n_exp, d_exp, m;
     dynarr_t n_str, d_str, res_str;
     char *n_cstr, *d_cstr, *res_cstr;
     char dot = '.' - '0';
     bigint_t ten_to_abs_e;
     number_t _x, t = EMPTY_NUMBER, q = EMPTY_NUMBER, r = EMPTY_NUMBER,
-        one = ONE_NUMBER, ten = number_from_i32(10), ten_to_e = EMPTY_NUMBER;
+        ten = number_from_i32(10), ten_to_e = EMPTY_NUMBER;
 
     if (x->numer.nan) {
         return printf("[Number] NaN");
@@ -418,7 +418,6 @@ print_number_dec(number_t* x, int precision, char end) {
     n_exp = strlen(n_cstr);
     d_exp = strlen(d_cstr);
     m = n_exp - d_exp + (strcmp(n_cstr, d_cstr) >= 0);
-    e = m - precision;
     free(n_cstr);
     free(d_cstr);
 

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "errormsg.h"
+#include "tree.h"
 #include "lreng.h"
 
 #define EXPECT_PREFIX_MSG \
@@ -10,7 +11,8 @@
     "Expect binary operator or closing bracket. Get '%s'"
 
 /* is the precedence o1 < o2 ? */
-unsigned char op_prec_lt(op_name_enum o1, op_name_enum o2) {
+static inline unsigned char
+op_prec_lt(op_name_enum o1, op_name_enum o2) {
     /* printf(
         "op_prec_lt: %s %d  %s %d\n",
         OP_STRS[o1], get_op_precedence(o1),
@@ -34,7 +36,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
     dynarr_t output = new_dynarr(sizeof(token_t));
     dynarr_t op_stack = new_dynarr(sizeof(token_t));
 
-#ifdef ENABLE_DEBUG
+#ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         puts("tree_parse");
     }
@@ -42,7 +44,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
     int i, prev_output_count = 0;
     for (i = 0; i < tokens.size; i++) {
         token_t cur_token = ((token_t*) tokens.data)[i];
-#ifdef ENABLE_DEBUG
+#ifdef ENABLE_DEBUG_LOG
         if (is_debug) {
             printf("expect=%s token=", (expectation ? "INFIX" : "PREFIX"));
             print_token(cur_token);
@@ -77,7 +79,9 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
 
             /* pop stack until top is left bracket or precedence is not lower */
             token_t* frame_top = back(&op_stack);
-            while (frame_top != NULL && frame_top->type != TOK_LB
+            while (
+                frame_top != NULL
+                && frame_top->type != TOK_LB
                 && op_prec_lt(frame_top->name, cur_token.name)
             ) {
                 append(&output, frame_top);
@@ -152,7 +156,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
             expectation = INFIXER;
             append(&output, &cur_token);
         }
-#ifdef ENABLE_DEBUG
+#ifdef ENABLE_DEBUG_LOG
         if (is_debug) {
             printf("op_stack=");
             int j;
@@ -177,7 +181,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
         pop(&op_stack);
     }
     free_dynarr(&op_stack);
-#ifdef ENABLE_DEBUG
+#ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         printf("result=");
         for (i = 0; i < output.size; i++) {
@@ -191,135 +195,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
 }
 
 tree_t
-tree_parser(const dynarr_t tokens, const int is_debug) {
-    int i = 0;
-    dynarr_t stack = new_dynarr(sizeof(int));
-    /* make empty tree */
-    tree_t tree = {
-        .tokens = {.data = NULL, .cap = 0, .size = 0, .elem_size = 0},
-        .lefts = NULL,
-        .rights = NULL,
-        .root_index = -1,
-        .max_id_name = -1
-    };
-
+tree_parse(const dynarr_t tokens, const int is_debug) {
     /* tokens */
-    tree.tokens = shunting_yard(tokens, is_debug);
-
-    /* max_id_name */
-    for (i = tokens.size - 1; i >= 0; i--) {
-        token_t t = ((token_t*) tokens.data)[i];
-        if (t.type != TOK_ID) {
-            continue;
-        }
-        if (tree.max_id_name < t.name) {
-            tree.max_id_name = t.name;
-        }
-    }
-
-    /* lefts, rights and sizes */
-    tree.lefts = malloc(tree.tokens.size * sizeof(int));
-    tree.rights = malloc(tree.tokens.size * sizeof(int));
-    tree.sizes = malloc(tree.tokens.size * sizeof(int));
-    memset(tree.lefts, -1, tree.tokens.size * sizeof(int));
-    memset(tree.rights, -1, tree.tokens.size * sizeof(int));
-    memset(tree.sizes, 0, tree.tokens.size * sizeof(int));
-    for (i = 0; i < tree.tokens.size; i++) {
-        token_t* cur_token = at(&tree.tokens, i);
-#ifdef ENABLE_DEBUG
-        if (is_debug) {
-            print_token(*cur_token);
-        }
-#endif
-        if (cur_token->type == TOK_OP) {
-            int l_index, r_index = -1;
-            if (!is_unary_op(cur_token->name)) {
-                r_index = *(int*) back(&stack);
-                pop(&stack);
-                tree.rights[i] = r_index;
-            }
-            if (stack.size == 0) {
-                throw_syntax_error(
-                    cur_token->pos,
-                    "Operator has too few operands"
-                );
-            }
-            l_index = *(int*) back(&stack);
-            pop(&stack);
-            tree.lefts[i] = l_index;
-            append(&stack, &i);
-#ifdef ENABLE_DEBUG
-            if (is_debug) {
-                printf(" L=");
-                print_token(*(token_t*) at(&tree.tokens, l_index));
-                printf(" R=");
-                if (r_index != -1) {
-                    print_token(*(token_t*) at(&tree.tokens, r_index));
-                }
-            }
-#endif
-        }
-        else {
-            append(&stack, &i);
-        }
-
-        tree.sizes[i] = (
-            1
-            + ((tree.lefts[i] == -1) ? 0 : tree.sizes[tree.lefts[i]])
-            + ((tree.rights[i] == -1) ? 0 : tree.sizes[tree.rights[i]])
-        );
-
-#ifdef ENABLE_DEBUG
-        if (is_debug) {
-            putchar('\n');
-        }
-#endif
-    }
-
-    /* check result */
-    if (stack.size != 1) {
-#ifdef ENABLE_DEBUG
-        if (is_debug) {
-            int n;
-            printf("REMAINED IN STACK:\n");
-            for (n = 0; n < stack.size; n++) {
-                print_token(
-                    ((token_t*)tree.tokens.data)[((int *)stack.data)[n]]
-                );
-                puts("");
-            }
-        }
-#endif
-        sprintf(
-            ERR_MSG_BUF,
-            "Bad syntax somewhere: %d tokens left in stack when parsing tree",
-            stack.size
-        );
-        throw_syntax_error((linecol_t) {0, 0} , ERR_MSG_BUF);
-    }
-
-    /* root_index */
-    tree.root_index = ((int*) stack.data)[0];
-
-    /* eval literal */
-    /* TODO: extend this to a function and also find pair literal */
-    tree.literals = calloc(tree.tokens.size, sizeof(object_t*));
-    for (i = 0; i < tree.tokens.size; i++) {
-        token_t* cur_token = at(&tree.tokens, i);
-        if (cur_token->type == TOK_NUM) {
-            tree.literals[i] = create_object(TYPE_NUM, (object_data_t) {
-                .number = number_from_str(cur_token->str)
-            });
-        }
-    }
-
-    /* free things */
-    free_dynarr(&stack);
-#ifdef ENABLE_DEBUG
-    if (is_debug) {
-        printf("final_tree=\n");
-        print_tree(&tree);
-    }
-#endif
-    return tree;
+    return tree_create(shunting_yard(tokens, is_debug), is_debug);
 }
