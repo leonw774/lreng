@@ -67,22 +67,22 @@ for (i = 0; i < 10; i++) {
 #endif
     dynarr_t tokens = tokenize(src, fsize, is_debug);
     tree_t syntax_tree = tree_parse(tokens, is_debug);
-    int is_good_semantic = semantic_checker(syntax_tree, is_debug);
+    int is_good_semantic = check_semantic(syntax_tree, is_debug);
     if (!is_good_semantic) {
         return SEMANTIC_ERR_CODE;
     }
-    frame_t* top_frame = new_frame();
+    frame_t* top_frame = frame_new();
     object_t* final_return_object = eval(
         &syntax_tree,
         top_frame,
         syntax_tree.root_index,
         is_debug
     );
-    free_object(final_return_object);
-    free_frame(top_frame);
+    object_free(final_return_object);
+    frame_free(top_frame);
     free(top_frame);
     tree_free(&syntax_tree);
-    free_dynarr(&tokens);
+    dynarr_free(&tokens);
 #ifdef IS_PROFILE
 }
 #endif

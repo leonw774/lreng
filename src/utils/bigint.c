@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include "dynarr.h"
 #include "bigint.h"
 
@@ -71,7 +72,10 @@ BYTE_BIGINT(u32 b) {
 }
 
 inline void
-new_bi(bigint_t* x, u32 size) {
+bi_new(bigint_t* x, u32 size) {
+#ifdef ENABLE_DEBUG_LOG
+    assert(x->digit == NULL);
+#endif
     x->shared = 0;
     x->nan = 0;
     x->size = size;
@@ -87,7 +91,10 @@ new_bi(bigint_t* x, u32 size) {
 
 /* this function do new and move */
 inline void
-copy_bi(bigint_t* dst, const bigint_t* src) {
+bi_copy(bigint_t* dst, const bigint_t* src) {
+#ifdef ENABLE_DEBUG_LOG
+    assert(dst->digit == NULL);
+#endif
     if (src->nan) {
         *dst = *src; /* shallow copy */
         dst->digit = NULL;
@@ -108,7 +115,7 @@ copy_bi(bigint_t* dst, const bigint_t* src) {
 }
 
 inline void
-free_bi(bigint_t* x) {
+bi_free(bigint_t* x) {
     if (!x->shared && x->digit != NULL) {
         free(x->digit);
     }
@@ -128,12 +135,12 @@ bi_normalize(bigint_t* x) {
     }
     /* if all is zero, free it and become zero */
     if (i == 0 && x->digit[0] == 0) {
-        free_bi(x);
+        bi_free(x);
     }
     /* use byte number if possible */
     else if (i == 0 && x->sign == 0 && x->digit[0] <= 256) {
         u32 tmp = x->digit[0];
-        free_bi(x);
+        bi_free(x);
         *x = BYTE_BIGINT(tmp);
     }
     else {
@@ -258,12 +265,12 @@ bi_uadd(bigint_t* res, bigint_t* a, bigint_t* b) {
     if (a->size == 1 && b->size == 1) {
         u32 carry = a->digit[0] + b->digit[0];
         if (carry & CARRY_MASK) {
-            new_bi(res, 2);
+            bi_new(res, 2);
             res->digit[0] = carry & DIGIT_MASK;
             res->digit[1] = 1;
         }
         else {
-            new_bi(res, 1);
+            bi_new(res, 1);
             res->digit[0] = carry;
         }
         bi_normalize(res);
@@ -274,7 +281,7 @@ bi_uadd(bigint_t* res, bigint_t* a, bigint_t* b) {
         bigint_t* tmp = a; a = b; b = tmp;
         u32 tmp_size = a_size; a_size = b_size; b_size = tmp_size;
     }
-    new_bi(res, a_size + 1);
+    bi_new(res, a_size + 1);
     for (i = 0; i < b_size; ++i) {
         carry += a->digit[i] + b->digit[i];
         res->digit[i] = carry & DIGIT_MASK;
@@ -296,7 +303,7 @@ bi_usub(bigint_t* res, bigint_t* a, bigint_t* b) {
     i64 i;
     /* handle one digit */
     if (a->size == 1 && b->size == 1) {
-        new_bi(res, 1);
+        bi_new(res, 1);
         if (a->digit[0] >= b->digit[0]) {
             res->digit[0] = a->digit[0] - b->digit[0];
         }
@@ -327,7 +334,7 @@ bi_usub(bigint_t* res, bigint_t* a, bigint_t* b) {
         }
         a_size = b_size = i + 1;
     }
-    new_bi(res, a_size);
+    bi_new(res, a_size);
     borrow = 0;
     for (i = 0; i < b_size; ++i) {
         borrow = a->digit[i] - b->digit[i] - borrow;
@@ -360,16 +367,16 @@ bi_umul(bigint_t* res, bigint_t* a, bigint_t* b) {
         return;
     }
     if (a_size == 1 && a->digit[0] == 1) {
-        copy_bi(res, b);
+        bi_copy(res, b);
         return;
     }
     if (b_size == 1 && b->digit[0] == 1) {
-        copy_bi(res, a);
+        bi_copy(res, a);
         return;
     }
     if (a_size== 1 && b_size == 1) {
         i64m = (u64) a->digit[0] * b->digit[0];
-        new_bi(res, 2);
+        bi_new(res, 2);
         res->digit[0] = (u32) i64m & DIGIT_MASK;
         res->digit[1] = (u32) (i64m >> BASE_SHIFT) & DIGIT_MASK;
         bi_normalize(res);
@@ -383,7 +390,7 @@ bi_umul(bigint_t* res, bigint_t* a, bigint_t* b) {
             tmp = a; a = b; b = tmp;
             tmp_size = a_size; a_size = b_size; b_size = tmp_size;
         }
-        new_bi(res, b_size + 1);
+        bi_new(res, b_size + 1);
         a0 = a->digit[0];
         carry = 0;
         for (i = 0; i < b_size; i++) {
@@ -401,16 +408,19 @@ bi_umul(bigint_t* res, bigint_t* a, bigint_t* b) {
     u32 low_size;
     u32* tmp_mem;
 
+    /* init */
+    a_high = a_low = b_high = b_low = ZERO_BIGINT;
+
     low_size = ((a_size > b_size) ? a_size : b_size) / 2;
     /* split a and b */
     if (a_size <= low_size) {
-        copy_bi(&a_low, a);
+        bi_copy(&a_low, a);
         a_high = ZERO_BIGINT;
     }
     else {
-        new_bi(&a_low, low_size);
+        bi_new(&a_low, low_size);
         memcpy(a_low.digit, a->digit, low_size * sizeof(u32));
-        new_bi(&a_high, a_size - low_size);
+        bi_new(&a_high, a_size - low_size);
         memcpy(
             a_high.digit,
             a->digit + low_size,
@@ -420,13 +430,13 @@ bi_umul(bigint_t* res, bigint_t* a, bigint_t* b) {
     bi_normalize(&a_low);
     bi_normalize(&a_high);
     if (b_size <= low_size) {
-        copy_bi(&b_low, b);
+        bi_copy(&b_low, b);
         b_high = ZERO_BIGINT;
     }
     else {
-        new_bi(&b_low, low_size);
+        bi_new(&b_low, low_size);
         memcpy(b_low.digit, b->digit, low_size * sizeof(u32));
-        new_bi(&b_high, b_size - low_size);
+        bi_new(&b_high, b_size - low_size);
         memcpy(
             b_high.digit,
             b->digit + low_size,
@@ -443,21 +453,21 @@ bi_umul(bigint_t* res, bigint_t* a, bigint_t* b) {
     tmp1 = bi_add(&a_low, &a_high);
     tmp2 = bi_add(&b_low, &b_high);
     bi_umul(&z1, &tmp1, &tmp2);
-    free_bi(&tmp1);
-    free_bi(&tmp2);
-    free_bi(&a_low);
-    free_bi(&b_low);
+    bi_free(&tmp1);
+    bi_free(&tmp2);
+    bi_free(&a_low);
+    bi_free(&b_low);
     
     /* z2' */
     bi_umul(&z2, &a_high, &b_high);
-    free_bi(&a_high);
-    free_bi(&b_high);
+    bi_free(&a_high);
+    bi_free(&b_high);
 
     /* z1 = (z1' - z2' - z0) * b^split_size */
     tmp1 = bi_sub(&z1, &z0);
-    free_bi(&z1);
+    bi_free(&z1);
     z1 = bi_sub(&tmp1, &z2);
-    free_bi(&tmp1);
+    bi_free(&tmp1);
     tmp_mem = calloc(z1.size + low_size, sizeof(u32));
     memcpy(tmp_mem + low_size, z1.digit, z1.size * sizeof(u32));
     if (z1.shared) {
@@ -488,15 +498,15 @@ bi_umul(bigint_t* res, bigint_t* a, bigint_t* b) {
     /* m = z0 + z1 + z2 */
     tmp1 = bi_add(&z0, &z1);
     *res = bi_add(&tmp1, &z2);
-    free_bi(&z0);
-    free_bi(&z1);
-    free_bi(&z2);
-    free_bi(&tmp1);
+    bi_free(&z0);
+    bi_free(&z1);
+    bi_free(&z2);
+    bi_free(&tmp1);
 }
 
 void
 bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
-    bigint_t u, v;
+    bigint_t u = ZERO_BIGINT, v = ZERO_BIGINT;
     u32 *uj, *v0;
     u32 u_size = _u->size, v_size = _v->size;
     u32 d, j, k, qj, rj, ujn, ujnm1, ujnm2;
@@ -507,7 +517,7 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
     /* if u < v, no need to compute */
     if (u_size < v_size) {
         *q = ZERO_BIGINT;
-        copy_bi(r, _u);
+        bi_copy(r, _u);
         return;
     }
     if (u_size == v_size) {
@@ -522,14 +532,14 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
         }
         if (_u->digit[i] < _v->digit[i]) {
             *q = ZERO_BIGINT;
-            copy_bi(r, _u);
+            bi_copy(r, _u);
             return;
         }
     }
     /* if size == 1 */
     if (u_size == 1 && v_size == 1) {
-        new_bi(q, 1);
-        new_bi(r, 1);
+        bi_new(q, 1);
+        bi_new(r, 1);
         q->digit[0] = _u->digit[0] / _v->digit[0];
         r->digit[0] = _u->digit[0] % _v->digit[0];
         bi_normalize(q);
@@ -604,8 +614,8 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
        shift u and v so that the top digit of v >= floor(base / 2) and increase
        the size of u by one */
     d = BASE_SHIFT - bit_length(_v->digit[_v->size-1]);
-    copy_bi(&u, _u);
-    copy_bi(&v, _v);
+    bi_copy(&u, _u);
+    bi_copy(&v, _v);
 
     bi_extend(&u, 1);
     u_size++;
@@ -621,7 +631,7 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
        have at most m+1 digits. in the loop, we get quotent's digits one by one
        from j = m to 0, by performing u[j:j+n] / v[0:n-1] (long division) */
     j = u_size - v_size - 1;
-    new_bi(q, j+1);
+    bi_new(q, j+1);
     v0 = v.digit;
     vnm1 = (u64) v.digit[v_size-1];
     vnm2 = (u64) (v_size > 1) ? v.digit[v_size-2] : 0;
@@ -682,14 +692,14 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
     }
 
     /* the content of u (shifted _u) is now shifted remainder, shift it back */  
-    copy_bi(r, &u);
+    bi_copy(r, &u);
     bi_shr(r, d);
     /* normalize the result */
     bi_normalize(r);
     bi_normalize(q);
     /* free u & v */
-    free_bi(&u);
-    free_bi(&v);
+    bi_free(&u);
+    bi_free(&v);
     /* printf("r "); print_bi(r, '\n');
     printf("q "); print_bi(r, '\n'); */
 }
@@ -697,17 +707,17 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r) {
 
 inline bigint_t
 bi_add(bigint_t* a, bigint_t* b) {
-    bigint_t c; 
+    bigint_t c = ZERO_BIGINT;
     /* handle zeros */
     if (BIPTR_IS_ZERO(a) && BIPTR_IS_ZERO(b)) {
         return ZERO_BIGINT;
     }
     else if (BIPTR_IS_ZERO(a)) {
-        copy_bi(&c, b);
+        bi_copy(&c, b);
         return c;
     }
     else if (BIPTR_IS_ZERO(b)) {
-        copy_bi(&c, a);
+        bi_copy(&c, a);
         return c;
     }
     c = ZERO_BIGINT;
@@ -732,18 +742,18 @@ bi_add(bigint_t* a, bigint_t* b) {
 
 inline bigint_t
 bi_sub(bigint_t* a, bigint_t* b) {
-    bigint_t c;
+    bigint_t c = ZERO_BIGINT;
     /* handle zeros */
     if (BIPTR_IS_ZERO(a) && BIPTR_IS_ZERO(b)) {
         return ZERO_BIGINT;
     }
     else if (BIPTR_IS_ZERO(a)) {
-        copy_bi(&c, b);
+        bi_copy(&c, b);
         c.sign = 1;
         return c;
     }
     else if (BIPTR_IS_ZERO(b)) {
-        copy_bi(&c, a);
+        bi_copy(&c, a);
         return c;
     }
 
@@ -770,7 +780,7 @@ bi_sub(bigint_t* a, bigint_t* b) {
 
 inline bigint_t
 bi_mul(bigint_t *a, bigint_t *b) {
-    bigint_t m;
+    bigint_t m = ZERO_BIGINT;
     bi_umul(&m, a, b);
     if (a->sign != b->sign) {
         m.sign = 1;
@@ -790,7 +800,7 @@ bi_div(bigint_t* a, bigint_t* b) {
     }
     /* if |b| == 1, just copy a */
     if (b->size == 1 && b->digit[0] == 1) {
-        copy_bi(&q, a);
+        bi_copy(&q, a);
         if (a->sign != b->sign) {
             q.sign = 1;
         }
@@ -808,7 +818,7 @@ bi_div(bigint_t* a, bigint_t* b) {
         return ZERO_BIGINT;
     }
     bi_udivmod(a, b, &q, &r);
-    free_bi(&r);
+    bi_free(&r);
     if (a->sign != b->sign) {
         q.sign = 1;
     }
@@ -838,18 +848,18 @@ bi_mod(bigint_t* a, bigint_t* b) {
         a->size == b->size
         && (a->digit[a->size -1] < b->digit[b->size -1] || a->size < b->size)
     ) {
-        copy_bi(&r, a);
+        bi_copy(&r, a);
         return r;
     }
 
     bi_udivmod(a, b, &q, &r);
-    free_bi(&q);
+    bi_free(&q);
     if (BIPTR_IS_ZERO((&r))) {
         return ZERO_BIGINT;
     }
     if (a->sign != b->sign) {
         bi_usub(&_r, b, &r);
-        free_bi(&r);
+        bi_free(&r);
         r = _r;
     }
     if (b->sign) {
@@ -891,7 +901,7 @@ bi_to_dec_str(bigint_t* x) {
     char buf[24];
     char nan[4] = "NaN";
     int i, figure_num = 0;
-    string = new_dynarr(1);
+    string = dynarr_new(1);
     if (x->nan) {
         for (i = 0; i < 3; i++) {
             append(&string, &nan[i]);
@@ -923,29 +933,30 @@ bi_to_dec_str(bigint_t* x) {
             }
             return string;
         }
-        bigint_t y, ten, q = ZERO_BIGINT, r = ZERO_BIGINT;
-        dynarr_t reversed_digits = new_dynarr(1);
-        char d;
-        copy_bi(&y, x);
-        new_bi(&ten, 1);
-        ten.digit[0] = 10;
-        while (y.size != 0) {
-            bi_udivmod(&y, &ten, &q, &r);
-            d = (r.digit ? r.digit[0] : 0) + '0';
-            append(&reversed_digits, &d);
-            free_bi(&y);
-            free_bi(&r);
-            copy_bi(&y, &q);
-            free_bi(&q);
+        else {
+            bigint_t y = ZERO_BIGINT, q = ZERO_BIGINT, r = ZERO_BIGINT;
+            bigint_t ten = BYTE_BIGINT(10);
+            dynarr_t reversed_digits = dynarr_new(1);
+            char d;
+            bi_copy(&y, x);
+            while (y.size != 0) {
+                bi_udivmod(&y, &ten, &q, &r);
+                d = (r.digit ? r.digit[0] : 0) + '0';
+                append(&reversed_digits, &d);
+                bi_free(&y);
+                bi_free(&r);
+                bi_copy(&y, &q);
+                bi_free(&q);
+            }
+            for (i = reversed_digits.size - 1; i >= 0; i--) {
+                append(&string, at(&reversed_digits, i));
+            }
+            dynarr_free(&reversed_digits);
+            bi_free(&y);
+            /* bi_free(&ten); */
+            bi_free(&q);
+            bi_free(&r);
         }
-        for (i = reversed_digits.size - 1; i >= 0; i--) {
-            append(&string, at(&reversed_digits, i));
-        }
-        free_dynarr(&reversed_digits);
-        free_bi(&y);
-        free_bi(&ten);
-        free_bi(&q);
-        free_bi(&r);
     }
     return string;
 }
@@ -960,16 +971,16 @@ print_bi_dec(bigint_t* x, char end) {
         printed_bytes_count += printf("%c", end);
     }
     free(x_cstr);
-    free_dynarr(&x_str);
+    dynarr_free(&x_str);
     return printed_bytes_count;
 }
 
 /* expect string of decimal, heximal, or binary u32eger */
 bigint_t
 bi_from_str(const char* str) {
-    bigint_t x, t1, t2;
+    bigint_t x = ZERO_BIGINT, t1 = ZERO_BIGINT, t2 = ZERO_BIGINT;
     size_t str_length = strlen(str), base = 10;
-    u32 i, carry = 0, j = 0, d, safe_size, sign = 0;
+    u32 i = 0, j = 0, sign = 0, safe_size = 0;
 
     if (str[0] == '0' && str_length == 1) {
         return ZERO_BIGINT;
@@ -1021,7 +1032,7 @@ bi_from_str(const char* str) {
     }
 
     if (base == 2) {
-        new_bi(&x, safe_size);
+        bi_new(&x, safe_size);
         /* set it bit by bit */
         for (i = 0, j = str_length - 1; i < str_length; i++, j--) {
             if (str[i] == '1') {
@@ -1030,19 +1041,21 @@ bi_from_str(const char* str) {
         }
     }
     else {
-        new_bi(&x, (base == 10) ? 1 : safe_size);
+        u32 d = 0, carry = 0;
+        bi_new(&x, (base == 10) ? 1 : safe_size);
         for (i = 0; i < str_length; i++) {
             /* x *= base */
             if (i != 0) {
                 if (base == 10) {
                     /* x * 10 = (x << 2 + x) << 1 */
-                    copy_bi(&t1, &x);
+                    bi_copy(&t1, &x);
                     bi_shl(&t1, 2);
                     bi_uadd(&t2, &t1, &x);
                     bi_shl(&t2, 1);
-                    free_bi(&x);
-                    free_bi(&t1);
+                    bi_free(&x);
+                    bi_free(&t1);
                     x = t2;
+                    t2.digit = NULL;
                 }
                 else {
                     /* base == 16 */
@@ -1090,6 +1103,7 @@ bi_from_str(const char* str) {
 
 bigint_t
 bi_from_tens_power(i32 exp) {
+    bigint_t x = BYTE_BIGINT(1), t1, t2, t3;
     if (exp < 0) {
         printf("bi_from_tens_power: negative exp\n");
         return NAN_BIGINT();
@@ -1103,50 +1117,53 @@ bi_from_tens_power(i32 exp) {
     if (exp == 2) {
         return BYTE_BIGINT(100);
     }
-    bigint_t x = BYTE_BIGINT(1), t1, t2, t3;
+    t1 = t2 = t3 = ZERO_BIGINT;
     while (exp != 0) {
         if (exp == 1) {
             /* x *= 10 --> x = ((x << 2) + x) << 1 */
-            copy_bi(&t1, &x);
+            bi_copy(&t1, &x);
             bi_shl(&t1, 2);
             bi_uadd(&t2, &t1, &x);
             bi_shl(&t2, 1);
-            free_bi(&x);
-            free_bi(&t1);
+            bi_free(&x);
+            bi_free(&t1);
             x = t2;
+            t2.digit = NULL;
             exp--;
         }
         else if (exp == 2) {
             /* x *= 100 --> x = ((x << 4) + (x << 3) + x) << 2 */
-            copy_bi(&t1, &x);
-            copy_bi(&t2, &x);
+            bi_copy(&t1, &x);
+            bi_copy(&t2, &x);
             bi_shl(&t1, 4);
             bi_shl(&t2, 3);
             bi_uadd(&t3, &t1, &t2);
-            free_bi(&t1);
+            bi_free(&t1);
             bi_uadd(&t1, &t3, &x);
             bi_shl(&t1, 2);
-            free_bi(&x);
-            free_bi(&t2);
-            free_bi(&t3);
+            bi_free(&x);
+            bi_free(&t2);
+            bi_free(&t3);
             x = t1;
+            t1.digit = NULL;
             exp -= 2;
         }
         else {
             /* x *= 1000 --> x = ((x << 10) - (x << 4) - (x << 3)) */
-            copy_bi(&t1, &x);
-            copy_bi(&t2, &x);
+            bi_copy(&t1, &x);
+            bi_copy(&t2, &x);
             bi_shl(&t1, 10);
             bi_shl(&t2, 4);
             bi_usub(&t3, &t1, &t2);
-            free_bi(&t1);
+            bi_free(&t1);
             bi_shl(&x, 3);
-            free_bi(&t2);
+            bi_free(&t2);
             bi_usub(&t2, &t3, &x);
-            free_bi(&x);
-            free_bi(&t1);
-            free_bi(&t3);
-            copy_bi(&x, &t2);
+            bi_free(&x);
+            bi_free(&t1);
+            bi_free(&t3);
+            x = t2;
+            t2.digit = NULL;
             exp -= 3;
         }
         /* print_bigint_dec(&x, '\n'); */

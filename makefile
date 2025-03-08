@@ -16,8 +16,8 @@ MAIN_TARGET = lreng
 
 .PHONY: lreng debug memcheck clean
 
-main: CFLAGS += $(DEFAULT_FLAGS)
-main: $(MAIN_TARGET)
+release: CFLAGS += $(DEFAULT_FLAGS)
+release: $(MAIN_TARGET)
 
 profile: CFLAGS += $(PROFILE_FLAGS)
 profile: $(MAIN_TARGET)

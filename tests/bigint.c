@@ -1,14 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "assert.h"
 #include "bigint.h"
-
-void
-assert(int b) {
-    if (b == 0) {
-        printf("assertion error\n");
-        exit(1);
-    }
-}
 
 int
 main() {

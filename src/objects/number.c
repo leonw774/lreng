@@ -6,7 +6,7 @@
 #include "number.h"
 
 inline void
-copy_number(number_t* dst, const number_t* src) {
+number_copy(number_t* dst, const number_t* src) {
     if (src->numer.nan) {
         dst->numer = NAN_BIGINT();
         dst->denom = NAN_BIGINT();
@@ -15,14 +15,14 @@ copy_number(number_t* dst, const number_t* src) {
         dst->numer = ZERO_BIGINT;
         dst->denom = BYTE_BIGINT(1);
     }
-    copy_bi(&dst->numer, &src->numer);
-    copy_bi(&dst->denom, &src->denom);
+    bi_copy(&dst->numer, &src->numer);
+    bi_copy(&dst->denom, &src->denom);
 }
 
 inline void
-free_number(number_t* x) {
-    free_bi(&x->numer);
-    free_bi(&x->denom);
+number_free(number_t* x) {
+    bi_free(&x->numer);
+    bi_free(&x->denom);
 }
 
 void
@@ -32,8 +32,8 @@ number_normalize(number_t* x) {
 
     /* flags */
     if (x->numer.nan || x->denom.nan) {
-        free_bi(&x->numer);
-        free_bi(&x->denom);
+        bi_free(&x->numer);
+        bi_free(&x->denom);
         x->numer = NAN_BIGINT();
         x->denom = NAN_BIGINT();
     }
@@ -41,8 +41,8 @@ number_normalize(number_t* x) {
     /* special cases */
     /* n = 0 */
     if (x->numer.size == 0) {
-        free_bi(&x->numer);
-        free_bi(&x->denom);
+        bi_free(&x->numer);
+        bi_free(&x->denom);
         *x = ZERO_NUMBER;
         return;
     }
@@ -52,15 +52,15 @@ number_normalize(number_t* x) {
     }
     /* d == 0 */
     if (x->denom.size == 0) {
-        free_bi(&x->numer);
-        free_bi(&x->denom);
+        bi_free(&x->numer);
+        bi_free(&x->denom);
         *x = NAN_NUMBER;
         return;
     }
     /* n == d */
     if (bi_eq(&x->numer, &x->denom)) {
-        free_bi(&x->numer);
-        free_bi(&x->denom);
+        bi_free(&x->numer);
+        bi_free(&x->denom);
         x->numer = BYTE_BIGINT(1);
         x->denom = BYTE_BIGINT(1);
         return;
@@ -73,39 +73,39 @@ number_normalize(number_t* x) {
     x->numer.sign = x->denom.sign = 0;
     
     /* euclidian algorithm */
-    copy_bi(&a, &x->numer);
-    copy_bi(&b, &x->denom);
+    bi_copy(&a, &x->numer);
+    bi_copy(&b, &x->denom);
     /* printf("a "); print_bi(&a, '\n');
     printf("b "); print_bi(&b, '\n'); */
     while (b.size != 0) {
-        free_bi(&t2);
+        bi_free(&t2);
         t2 = bi_mod(&a, &b); /* t2 = a mod b */
-        free_bi(&a);
-        copy_bi(&a, &b); /* a = t1 */
-        free_bi(&b);
-        copy_bi(&b, &t2);  /* b = t2 */
+        bi_free(&a);
+        bi_copy(&a, &b); /* a = t1 */
+        bi_free(&b);
+        bi_copy(&b, &t2);  /* b = t2 */
         /* printf("a "); print_bi(&a, '\n');
         printf("b "); print_bi(&b, '\n'); */
     }
 
     /* a is gcd of numer & denom */
     if (!bi_eq(&a, &one)) {
-        free_bi(&t1);
+        bi_free(&t1);
         t1 = bi_div(&x->numer, &a);
-        free_bi(&x->numer);
+        bi_free(&x->numer);
         x->numer = t1;
-        free_bi(&t2);
+        bi_free(&t2);
         t2 = bi_div(&x->denom, &a);
-        free_bi(&x->denom);
+        bi_free(&x->denom);
         x->denom = t2;
         /* dont need to free t1 and t2 because they are own by x now */
     }
     else {
-        free_bi(&t1);
-        free_bi(&t2);
+        bi_free(&t1);
+        bi_free(&t2);
     }
-    free_bi(&a);
-    free_bi(&b);
+    bi_free(&a);
+    bi_free(&b);
     x->numer.sign = sign;
 }
 
@@ -142,8 +142,8 @@ number_lt(number_t* a, number_t* b) {
     bigint_t l = bi_mul(&a->numer, &b->denom),
         r = bi_mul(&b->numer, &a->denom);
     int res = bi_lt(&l, &r);
-    free_bi(&l);
-    free_bi(&r);
+    bi_free(&l);
+    bi_free(&r);
     return res;
 }
 
@@ -159,19 +159,19 @@ number_add(number_t* a, number_t* b) {
         return ZERO_NUMBER;
     }
     if (a->numer.size == 0) {
-        copy_number(&res, b);
+        number_copy(&res, b);
         return res;
     }
     if (b->numer.size == 0) {
-        copy_number(&res, a);
+        number_copy(&res, a);
         return res;
     }
     t1 = bi_mul(&a->numer, &b->denom);
     t2 = bi_mul(&b->numer, &a->denom);
     res.numer = bi_add(&t1, &t2);
     res.denom = bi_mul(&a->denom, &b->denom);
-    free_bi(&t1);
-    free_bi(&t2);
+    bi_free(&t1);
+    bi_free(&t2);
     number_normalize(&res);
     return res;
 }
@@ -187,20 +187,20 @@ number_sub(number_t* a, number_t* b) {
         return ZERO_NUMBER;
     }
     if (a->numer.size == 0) {
-        copy_number(&res, b);
+        number_copy(&res, b);
         res.numer.sign = !res.numer.sign;
         return res;
     }
     if (b->numer.size == 0) {
-        copy_number(&res, a);
+        number_copy(&res, a);
         return res;
     }
     t1 = bi_mul(&a->numer, &b->denom);
     t2 = bi_mul(&b->numer, &a->denom);
     res.numer = bi_sub(&t1, &t2);
     res.denom = bi_mul(&a->denom, &b->denom);
-    free_bi(&t1);
-    free_bi(&t2);
+    bi_free(&t1);
+    bi_free(&t2);
     number_normalize(&res);
     return res;
 }
@@ -249,8 +249,8 @@ number_mod(number_t* a, number_t* b) {
     t2 = bi_mul(&b->numer, &a->denom);
     res.numer = bi_mod(&t1, &t2);
     res.denom = bi_mul(&a->denom, &b->denom);
-    free_bi(&t1);
-    free_bi(&t2);
+    bi_free(&t1);
+    bi_free(&t2);
     number_normalize(&res);
     return res;
 }
@@ -265,40 +265,40 @@ number_exp(number_t* a, number_t* b) {
         return NAN_NUMBER;
     }
     if (b->denom.size != 1 || b->denom.digit[0] != 1) {
-        free_bi(&two);
+        bi_free(&two);
         return NAN_NUMBER;
     }
     if (b->numer.digit[0] == 0) {
-        free_bi(&two);
+        bi_free(&two);
         return ONE_NUMBER;
     }
 
     res = ONE_NUMBER; /* res = 1 */
-    copy_number(&cur, a); /* cur = a */
-    copy_bi(&e, &b->numer); /* e = b */
+    number_copy(&cur, a); /* cur = a */
+    bi_copy(&e, &b->numer); /* e = b */
     while (e.size != 0) {
         /* r = e % 2 */
         r = bi_mod(&e, &two);
         /* e = e / 2 */
         q = bi_div(&e, &two);
-        free_bi(&e);
-        copy_bi(&e, &q);
+        bi_free(&e);
+        bi_copy(&e, &q);
         /* if r == 1:
              res = res * cur */
         if (r.size != 0) {
             t1 = number_mul(&res, &cur);
-            free_number(&res);
+            number_free(&res);
             res = t1;
         }
         /* cur = cur * cur */
         t1 = number_mul(&cur, &cur);
-        free_number(&cur);
+        number_free(&cur);
         cur = t1;
-        free_bi(&r);
-        free_bi(&q);
+        bi_free(&r);
+        bi_free(&q);
     }
-    free_number(&cur);
-    free_bi(&two);
+    number_free(&cur);
+    bi_free(&two);
     if (b->numer.sign) {
         bigint_t tmp = res.numer;
         res.numer = res.denom;
@@ -332,7 +332,7 @@ number_ceil(number_t* a) {
         t1 = bi_div(&a->numer, &a->denom);
         res.numer = bi_add(&t1, &one);
         res.denom = one;
-        free_bi(&t1);
+        bi_free(&t1);
     }
     return res;
 }
@@ -352,7 +352,7 @@ number_floor(number_t* a) {
         t1 = bi_div(&a->numer, &a->denom);
         res.numer = bi_sub(&t1, &one);
         res.denom = one;
-        free_bi(&t1);
+        bi_free(&t1);
     }
     else {
         res.numer = bi_div(&a->numer, &a->denom);
@@ -370,7 +370,7 @@ print_number_struct(number_t* x) {
 }
 
 int
-print_number_frac(number_t* x, char end) {
+number_print_frac(number_t* x, char end) {
     int printed_bytes_count = 0;
     printed_bytes_count += printf("[Number] ");
     if (x->numer.nan) {
@@ -393,7 +393,7 @@ print_number_frac(number_t* x, char end) {
 }
 
 int
-print_number_dec(number_t* x, int precision, char end) {
+number_print_dec(number_t* x, int precision, char end) {
     int printed_bytes_count = 0;
     int i, n_exp, d_exp, m;
     dynarr_t n_str, d_str, res_str;
@@ -438,18 +438,18 @@ print_number_dec(number_t* x, int precision, char end) {
         ten_to_e.numer = ten_to_abs_e;
         ten_to_e.denom = BYTE_BIGINT(1);
     }
-    res_str = new_dynarr(1);
-    copy_number(&_x, x);
+    res_str = dynarr_new(1);
+    number_copy(&_x, x);
     while (1) {
         /* q = (x - x % 10^e) / 10^e */
-        free_number(&r);
-        free_number(&t);
-        free_number(&q);
+        number_free(&r);
+        number_free(&t);
+        number_free(&q);
         r = number_mod(&_x, &ten_to_e);
         t = number_sub(&_x, &r);
         q = number_div(&t, &ten_to_e);
         if (q.numer.size != 1 || q.numer.digit[0] >= 10) {
-            printf("print_number_dec: q's numer >= 10\n");
+            printf("number_print_dec: q's numer >= 10\n");
             exit(OTHER_ERR_CODE);
         }
         append(&res_str, &(q.numer.digit[0]));
@@ -461,26 +461,26 @@ print_number_dec(number_t* x, int precision, char end) {
             break;
         }
         /* x -= q * 10^e */
-        free_number(&r);
+        number_free(&r);
         r = number_mul(&q, &ten_to_e);
-        free_number(&q);
+        number_free(&q);
         q = number_sub(&_x, &r);
-        free_number(&_x);
-        copy_number(&_x, &q);
+        number_free(&_x);
+        number_copy(&_x, &q);
         /* ten_to_e /= 10 */
-        free_number(&t);
+        number_free(&t);
         t = number_div(&ten_to_e, &ten);
-        free_number(&ten_to_e);
-        copy_number(&ten_to_e, &t);
+        number_free(&ten_to_e);
+        number_copy(&ten_to_e, &t);
     }
-    free_number(&t);
+    number_free(&t);
     res_cstr = to_str(&res_str);
     for (i = 0; i < res_str.size; i++) {
         res_cstr[i] += '0';
     }
     printed_bytes_count = printf("[Number] %s", res_cstr);
-    free_dynarr(&n_str);
-    free_dynarr(&d_str);
+    dynarr_free(&n_str);
+    dynarr_free(&d_str);
     free(res_cstr);
     if (end != '\0') {
         printed_bytes_count += printf("%c", end);
@@ -557,7 +557,7 @@ number_from_i32(i32 i) {
         j = i;
     }
     if (j >= DIGIT_BASE) {
-        new_bi(&n.numer, 2);
+        bi_new(&n.numer, 2);
         n.numer.digit[0] = j & DIGIT_MASK;
         n.numer.digit[1] = 1;
     }
@@ -565,7 +565,7 @@ number_from_i32(i32 i) {
         n.numer = BYTE_BIGINT(j);
     }
     else {
-        new_bi(&n.numer, 1);
+        bi_new(&n.numer, 1);
         n.numer.digit[0] = j;
     }
     n.numer.sign = sign;

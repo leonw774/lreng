@@ -194,7 +194,7 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos) {
         };
         append(&cur_cargo->tokens, &new_token);
     }
-    reset_dynarr(&cur_cargo->str);
+    dynarr_reset(&cur_cargo->str);
 }
 
 /* finite state machine: state: input & cargo => state & cargo */
@@ -624,13 +624,14 @@ tokenize(const char* src, const unsigned long src_len, const int is_debug) {
     linecol_iterator_t pos_iter = {src, src_len, 0, pos};
     cargo cur_cargo;
     state_ret (*state_func)(linecol_iterator_t*, cargo) = ws_state;
-    int i, j, prev_tokens_count = 0;
-    cur_cargo.tokens = new_dynarr(sizeof(token_t));
-    cur_cargo.str = new_dynarr(sizeof(char));
+    int i, j;
+    cur_cargo.tokens = dynarr_new(sizeof(token_t));
+    cur_cargo.str = dynarr_new(sizeof(char));
 
     arena_init(&token_str_arena, src_len);
 
 #ifdef ENABLE_DEBUG_LOG
+    int prev_tokens_count = 0;
     if (is_debug) {
         puts("tokenize");
     }
@@ -663,7 +664,7 @@ tokenize(const char* src, const unsigned long src_len, const int is_debug) {
             int size = cur_cargo.tokens.size;
             if (prev_tokens_count != size && size) {
                 printf("new_token=");
-                print_token(
+                token_print(
                     ((token_t*) cur_cargo.tokens.data)[size - 1]
                 );
                 prev_tokens_count = size;
@@ -677,7 +678,7 @@ tokenize(const char* src, const unsigned long src_len, const int is_debug) {
         printf("tokens=");
         int i;
         for (i = 0; i < cur_cargo.tokens.size; i++) {
-            print_token(((token_t*) cur_cargo.tokens.data)[i]);
+            token_print(((token_t*) cur_cargo.tokens.data)[i]);
             printf(" ");
         }
         puts("");
@@ -686,7 +687,7 @@ tokenize(const char* src, const unsigned long src_len, const int is_debug) {
     /* give identifier names */
     /* init name str map with keywords */
     /* TODO: rewrite this with prefix-tree */
-    dynarr_t name_str_map = new_dynarr(sizeof(char*));
+    dynarr_t name_str_map = dynarr_new(sizeof(char*));
     for (i = 0; i < RESERVED_ID_NUM; i++) {
         append(&name_str_map, &RESERVED_IDS[i]);
     }
@@ -709,8 +710,8 @@ tokenize(const char* src, const unsigned long src_len, const int is_debug) {
             append(&name_str_map, &cur_token_str);
         }
     }
-    free_dynarr(&name_str_map);
+    dynarr_free(&name_str_map);
 
-    free_dynarr(&cur_cargo.str);
+    dynarr_free(&cur_cargo.str);
     return cur_cargo.tokens;
 }

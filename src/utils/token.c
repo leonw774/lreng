@@ -4,7 +4,7 @@
 #include "token.h"
 
 int
-print_token(token_t token) {
+token_print(token_t token) {
     const char* token_str;
     const char* type_str;
     if (token.type == TOK_OP || token.type == TOK_LB || token.type == TOK_RB) {

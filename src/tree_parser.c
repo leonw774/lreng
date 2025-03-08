@@ -33,21 +33,22 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
         /* infixer include infix (binary ops) and postfix (closing bracket) */
     };
     int expectation = PREFIXER;
-    dynarr_t output = new_dynarr(sizeof(token_t));
-    dynarr_t op_stack = new_dynarr(sizeof(token_t));
+    dynarr_t output = dynarr_new(sizeof(token_t));
+    dynarr_t op_stack = dynarr_new(sizeof(token_t));
 
 #ifdef ENABLE_DEBUG_LOG
+    int prev_output_count = 0;
     if (is_debug) {
         puts("tree_parse");
     }
 #endif
-    int i, prev_output_count = 0;
+    int i;
     for (i = 0; i < tokens.size; i++) {
         token_t cur_token = ((token_t*) tokens.data)[i];
 #ifdef ENABLE_DEBUG_LOG
         if (is_debug) {
             printf("expect=%s token=", (expectation ? "INFIX" : "PREFIX"));
-            print_token(cur_token);
+            token_print(cur_token);
             puts("");
         }
 #endif
@@ -161,14 +162,14 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
             printf("op_stack=");
             int j;
             for (j = 0; j < op_stack.size; j++) {
-                print_token(((token_t*) op_stack.data)[j]);
+                token_print(((token_t*) op_stack.data)[j]);
                 printf(" ");
             }
             puts("");
             if (prev_output_count != output.size) {
                 prev_output_count = output.size;
                 printf("new_output=");
-                print_token(*(token_t *) back(&output));
+                token_print(*(token_t *) back(&output));
                 puts("");
             }
         }
@@ -180,12 +181,12 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
         append(&output, back(&op_stack));
         pop(&op_stack);
     }
-    free_dynarr(&op_stack);
+    dynarr_free(&op_stack);
 #ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         printf("result=");
         for (i = 0; i < output.size; i++) {
-            print_token(((token_t*) output.data)[i]);
+            token_print(((token_t*) output.data)[i]);
             printf(" ");
         }
         puts("");

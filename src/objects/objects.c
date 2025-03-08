@@ -19,7 +19,7 @@ const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM + 1] = {
     "Any"
 };
 
-object_t* create_object(object_type_enum type, object_data_t data) {
+object_t* object_create(object_type_enum type, object_data_t data) {
     object_t* objptr = malloc(sizeof(object_t));
     *objptr = (object_t) {
         .is_error = 0,
@@ -32,9 +32,9 @@ object_t* create_object(object_type_enum type, object_data_t data) {
 }
 
 object_t*
-copy_object(object_t* obj) {
+object_copy(object_t* obj) {
 #ifdef ENABLE_DEBUG_LOG_MORE
-    printf("copy_object: obj_addr=%p ref_count=%d\n", obj, obj->ref_count);
+    printf("object_copy: obj_addr=%p ref_count=%d\n", obj, obj->ref_count);
     fflush(stdout);
 #endif
     if (!obj->is_const) {
@@ -44,9 +44,9 @@ copy_object(object_t* obj) {
 }
 
 inline void
-free_object(object_t* obj) {
+object_free(object_t* obj) {
 #ifdef ENABLE_DEBUG_LOG_MORE
-    printf("free_object: addr=%p, ref_count=%d print: ", obj, obj->ref_count);
+    printf("object_free: addr=%p, ref_count=%d print: ", obj, obj->ref_count);
     print_object(obj, '\n');
     fflush(stdout);
 #endif
@@ -58,14 +58,14 @@ free_object(object_t* obj) {
         return;
     }
     if (obj->type == TYPE_NUM) {
-        free_number(&obj->data.number);
+        number_free(&obj->data.number);
     }
     else if (obj->type == TYPE_PAIR) {
         if (obj->data.pair.left != NULL) {
-            free_object(obj->data.pair.left);
+            object_free(obj->data.pair.left);
         }
         if (obj->data.pair.right != NULL) {
-            free_object(obj->data.pair.right);
+            object_free(obj->data.pair.right);
         }
     }
     else if (obj->type == TYPE_CALL) {
@@ -75,7 +75,7 @@ free_object(object_t* obj) {
         }
         if (obj->data.callable.init_time_frame != NULL) {
             if (obj->data.callable.init_time_frame->ref_count <= 1) {
-                clear_stack(obj->data.callable.init_time_frame, 1);
+                stack_clear(obj->data.callable.init_time_frame, 1);
                 free(obj->data.callable.init_time_frame);
             }
             else {
@@ -87,7 +87,7 @@ free_object(object_t* obj) {
 }
 
 inline int
-print_object(object_t* obj, char end) {
+object_print(object_t* obj, char end) {
     int printed_bytes_count = 0;
     if (obj->is_error) {
         printed_bytes_count = printf("[Error]");
@@ -96,7 +96,7 @@ print_object(object_t* obj, char end) {
         printed_bytes_count = printf("[Null]");
     }
     else if (obj->type == TYPE_NUM) {
-        printed_bytes_count = print_number_frac(&obj->data.number, '\0');
+        printed_bytes_count = number_print_frac(&obj->data.number, '\0');
     }
     else if (obj->type == TYPE_PAIR) {
         printed_bytes_count = printf("[Pair] (");
@@ -104,14 +104,14 @@ print_object(object_t* obj, char end) {
             printed_bytes_count += printf("(empty)");
         }
         else {
-            printed_bytes_count += print_object(obj->data.pair.left, '\0');
+            printed_bytes_count += object_print(obj->data.pair.left, '\0');
         }
         printed_bytes_count += printf(", ");
         if (obj->data.pair.right == NULL) {
             printed_bytes_count += printf("(empty)");
         }
         else {
-            printed_bytes_count += print_object(obj->data.pair.right, '\0');
+            printed_bytes_count += object_print(obj->data.pair.right, '\0');
         }
         printed_bytes_count += printf(")");
     }
@@ -131,7 +131,7 @@ print_object(object_t* obj, char end) {
         }
     }
     else {
-        printf("print_object: bad object type: %d\n", obj->type);
+        printf("object_print: bad object type: %d\n", obj->type);
         return 0;
     }
     if (end != '\0') {
@@ -172,7 +172,7 @@ object_eq(object_t* a, object_t* b) {
 }
 
 inline int
-to_bool(object_t* obj) {
+object_to_bool(object_t* obj) {
     if (obj->type == TYPE_NUM) {
         return obj->data.number.numer.size != 0;
     }

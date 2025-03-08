@@ -60,12 +60,12 @@ extern const object_t ERR_OBJECT;
 
 extern const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM + 1];
 
-extern object_t* create_object(object_type_enum type, object_data_t data);
-extern object_t* copy_object(object_t* obj);
-extern void free_object(object_t* obj);
-extern int print_object(object_t* obj, char end);
+extern object_t* object_create(object_type_enum type, object_data_t data);
+extern object_t* object_copy(object_t* obj);
+extern void object_free(object_t* obj);
+extern int object_print(object_t* obj, char end);
 
 extern int object_eq(object_t* a, object_t* b);
-extern int to_bool(object_t* obj);
+extern int object_to_bool(object_t* obj);
 
 #endif

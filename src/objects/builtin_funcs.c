@@ -26,7 +26,7 @@ builtin_func_input(object_t* obj) {
         return (object_t*) ERR_OBJECT_PTR;
     }
     c = getchar();
-    return create_object(
+    return object_create(
         TYPE_NUM,
         (object_data_t) number_from_i32(c)
     );
@@ -40,7 +40,7 @@ builtin_func_output(object_t* obj) {
             ERR_MSG_BUF,
             "built-in function 'output': argument is not a number"
         );
-        print_object(obj, '\n');
+        object_print(obj, '\n');
         return (object_t*) ERR_OBJECT_PTR;
     }
     number_t n = obj->data.number;
@@ -60,13 +60,13 @@ builtin_func_output(object_t* obj) {
             ERR_MSG_BUF,
             "built-in function 'output': argument is not integer in [0, 255]"
             ", but [Number] (%s, %s)",
-            numer_str,
-            denom_str
+            numer_str ? numer_str : "(null)",
+            denom_str ? denom_str : "(null)"
         );
         free(numer_str);
         free(denom_str);
-        free_dynarr(&numer_dynarr);
-        free_dynarr(&denom_dynarr);
+        dynarr_free(&numer_dynarr);
+        dynarr_free(&denom_dynarr);
         return (object_t*) ERR_OBJECT_PTR;
     }
     return (object_t*) NULL_OBJECT_PTR;
@@ -74,7 +74,7 @@ builtin_func_output(object_t* obj) {
 
 object_t*
 builtin_func_is_number(object_t* obj) {
-    return create_object(
+    return object_create(
         TYPE_NUM,
         (object_data_t) number_from_i32(obj->type == TYPE_NUM)
     );
@@ -82,7 +82,7 @@ builtin_func_is_number(object_t* obj) {
 
 object_t*
 builtin_func_is_callable(object_t* obj) {
-    return create_object(
+    return object_create(
         TYPE_NUM,
         (object_data_t) number_from_i32(obj->type == TYPE_CALL)
     );
@@ -90,7 +90,7 @@ builtin_func_is_callable(object_t* obj) {
 
 object_t*
 builtin_func_is_pair(object_t* obj) {
-    return create_object(
+    return object_create(
         TYPE_NUM,
         (object_data_t) number_from_i32(obj->type == TYPE_PAIR)
     );

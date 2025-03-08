@@ -17,7 +17,7 @@ tree_create(dynarr_t tokens, const int is_debug) {
         .root_index = -1,
         .max_id_name = -1
     };
-    dynarr_t stack = new_dynarr(sizeof(int));
+    dynarr_t stack = dynarr_new(sizeof(int));
     int* tree_data = malloc(token_size * sizeof(int) * 3);
 
     /* max_id_name */
@@ -42,7 +42,7 @@ tree_create(dynarr_t tokens, const int is_debug) {
         token_t* cur_token = at(&tree.tokens, i);
 #ifdef ENABLE_DEBUG_LOG
         if (is_debug) {
-            print_token(*cur_token);
+            token_print(*cur_token);
         }
 #endif
         if (cur_token->type == TOK_OP) {
@@ -65,10 +65,10 @@ tree_create(dynarr_t tokens, const int is_debug) {
 #ifdef ENABLE_DEBUG_LOG
             if (is_debug) {
                 printf(" L=");
-                print_token(*(token_t*) at(&tree.tokens, l_index));
+                token_print(*(token_t*) at(&tree.tokens, l_index));
                 printf(" R=");
                 if (r_index != -1) {
-                    print_token(*(token_t*) at(&tree.tokens, r_index));
+                    token_print(*(token_t*) at(&tree.tokens, r_index));
                 }
             }
 #endif
@@ -97,7 +97,7 @@ tree_create(dynarr_t tokens, const int is_debug) {
             int n;
             printf("REMAINED IN STACK:\n");
             for (n = 0; n < stack.size; n++) {
-                print_token(
+                token_print(
                     ((token_t*)tree.tokens.data)[((int *)stack.data)[n]]
                 );
                 puts("");
@@ -121,7 +121,7 @@ tree_create(dynarr_t tokens, const int is_debug) {
     for (i = 0; i < token_size; i++) {
         token_t* cur_token = at(&tree.tokens, i);
         if (cur_token->type == TOK_NUM) {
-            tree.literals[i] = create_object(TYPE_NUM, (object_data_t) {
+            tree.literals[i] = object_create(TYPE_NUM, (object_data_t) {
                 .number = number_from_str(cur_token->str)
             });
             /* set them to const to they will not mess with stack frame */
@@ -130,7 +130,7 @@ tree_create(dynarr_t tokens, const int is_debug) {
     }
 
     /* free things */
-    free_dynarr(&stack);
+    dynarr_free(&stack);
 #ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         printf("final_tree=\n");
@@ -151,15 +151,15 @@ tree_free(tree_t* tree) {
         if (tree->literals[i] != NULL) {
 #ifdef ENABLE_DEBUG_LOG_MORE
             printf("freeing literal at node %d\n", i);
-            print_object(tree->literals[i], '\n');
+            object_print(tree->literals[i], '\n');
 #endif
             /* remove literal's is_coust so they can be freed */
             tree->literals[i]->is_const = 0;
-            free_object(tree->literals[i]);
+            object_free(tree->literals[i]);
         }
     }
     arena_free(&token_str_arena);
-    free_dynarr(&tree->tokens);
+    dynarr_free(&tree->tokens);
     free(tree->lefts);
     /* lefts, rights, sizes share same heap chunk so freeing left is enough */
     /*
@@ -176,8 +176,8 @@ tree_iter_init(const tree_t* tree, int entry_index) {
     static int one = 1;
     tree_preorder_iterator_t iter = {
         .tree = tree,
-        .index_stack = new_dynarr(sizeof(int)),
-        .depth_stack = new_dynarr(sizeof(int))
+        .index_stack = dynarr_new(sizeof(int)),
+        .depth_stack = dynarr_new(sizeof(int))
     };
     append(
         &iter.index_stack,
@@ -219,9 +219,9 @@ tree_iter_next(tree_preorder_iterator_t* iter) {
 }
 
 inline void
-free_tree_iter(tree_preorder_iterator_t* tree_iter) {
-    free_dynarr(&tree_iter->index_stack);
-    free_dynarr(&tree_iter->depth_stack);
+tree_iter_free(tree_preorder_iterator_t* tree_iter) {
+    dynarr_free(&tree_iter->index_stack);
+    dynarr_free(&tree_iter->depth_stack);
 }
 
 void
@@ -237,7 +237,7 @@ tree_print(const tree_t* tree) {
         if (cur_index != -1) {
             /* print */
             printf("%*c", next_depth - 1, ' ');
-            print_token(*(token_t*) at(&tree->tokens, cur_index));
+            token_print(*(token_t*) at(&tree->tokens, cur_index));
             printf(" (%d)\n", cur_index);
             fflush(stdout);
             
@@ -252,5 +252,5 @@ tree_print(const tree_t* tree) {
             }
         }
     }
-    free_tree_iter(&iter);
+    tree_iter_free(&iter);
 }

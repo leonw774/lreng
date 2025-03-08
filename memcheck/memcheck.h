@@ -147,7 +147,7 @@ memcheck_new_dynarr(
     memset(x.data, 0, elem_size * DYN_ARR_INIT_CAP);
     fprintf(
         MEMCHECK_OUTFILE,
-        "\n[memcheck][new_dynarr] %s:%i::%s %p elem_size=%d\n",
+        "\n[memcheck][dynarr_new] %s:%i::%s %p elem_size=%d\n",
         file, line, func, x.data, elem_size
     );
     x.elem_size = elem_size;
@@ -164,7 +164,7 @@ memcheck_free_dynarr(
     init_memcheck_out_file();
     fprintf(
         MEMCHECK_OUTFILE,
-        "\n[memcheck][free_dynarr] %s:%i::%s %p -\n",
+        "\n[memcheck][dynarr_free] %s:%i::%s %p -\n",
         file, line, func, x->data
     );
     if (x->data != NULL) {
@@ -182,14 +182,14 @@ memcheck_reset_dynarr(
     init_memcheck_out_file();
     fprintf(
         MEMCHECK_OUTFILE,
-        "\n[memcheck][reset_dynarr] %s:%i::%s %p -\n",
+        "\n[memcheck][dynarr_reset] %s:%i::%s %p -\n",
         file, line, func, x->data
     );
-    free_dynarr(x);
-    *x = new_dynarr(x->elem_size);
+    dynarr_free(x);
+    *x = dynarr_new(x->elem_size);
     fprintf(
         MEMCHECK_OUTFILE,
-        "\n[memcheck][reset_dynarr] %s:%i::%s %p -\n",
+        "\n[memcheck][dynarr_reset] %s:%i::%s %p -\n",
         file, line, func, x->data
     );
 }
@@ -202,7 +202,7 @@ memcheck_copy_dynarr(
     init_memcheck_out_file();
     fprintf(
         MEMCHECK_OUTFILE,
-        "\n[memcheck][copy_dynarr] %s:%i::%s %p %s\n",
+        "\n[memcheck][dynarr_copy] %s:%i::%s %p %s\n",
         file, line, func, x->data, x->data
     );
     dynarr_t y;
@@ -211,7 +211,7 @@ memcheck_copy_dynarr(
     memcpy(y.data, x->data, x->elem_size * x->size);
     fprintf(
         MEMCHECK_OUTFILE,
-        "\n[memcheck][copy_dynarr] %s:%i::%s %p -\n",
+        "\n[memcheck][dynarr_copy] %s:%i::%s %p -\n",
         file, line, func, x->data
     );
     return y;

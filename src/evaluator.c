@@ -99,9 +99,9 @@ exec_call(
             && *(int*) back(&cur_frame->indexs) == func_obj->data.callable.index
         ) {
             // if is recursion, copy the current stack except the last
-            call_frame->indexs = copy_dynarr(&cur_frame->indexs);
+            call_frame->indexs = dynarr_copy(&cur_frame->indexs);
             pop(&call_frame->indexs);
-            call_frame->stack = copy_dynarr(&cur_frame->stack);
+            call_frame->stack = dynarr_copy(&cur_frame->stack);
             pop(&call_frame->stack);
         }
         else {
@@ -109,7 +109,7 @@ exec_call(
             same, call-frame's i-th stack = current frame's i-th stack. but once
             the entry_index is different they are in different closure path, so
             only the rest of init-time-frame stack is used */
-            new_stack(call_frame);
+            stack_new(call_frame);
             for (i = 0; i < f_init_frame->stack.size; i++) {
                 init_index = *(int*) at(&f_init_frame->indexs, i);
                 cur_index = -1;
@@ -143,7 +143,7 @@ exec_call(
         }
 
         /* push new stack to call_frame and set argument */
-        push_stack(call_frame, func_obj->data.callable.index);
+        stack_push(call_frame, func_obj->data.callable.index);
         if (func_obj->data.callable.arg_name != -1) {
             frame_set(call_frame, func_obj->data.callable.arg_name, arg_obj);
         }
@@ -153,9 +153,9 @@ exec_call(
 #ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         printf("exec_call: call_frame=%p\nfunc_obj=", call_frame);
-        print_object(func_obj, '\n');
+        object_print(func_obj, '\n');
         printf("arg_obj=");
-        print_object(arg_obj, '\n');
+        object_print(arg_obj, '\n');
     }
 #endif
     /* eval from function's entry index */
@@ -167,9 +167,9 @@ exec_call(
     );
     if (!func_obj->data.callable.is_macro) {
         /* free the object own by this function call */
-        pop_stack(call_frame);
+        stack_pop(call_frame);
         /* free the rest of stack but not free bollowed pairs */
-        clear_stack(call_frame, 0);
+        stack_clear(call_frame, 0);
         free(call_frame);
     }
     return returned_obj;
@@ -188,18 +188,18 @@ exec_map(
 #ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         printf("exec_map\n");
-        printf("func_obj="); print_object(func_obj, '\n');
-        printf("pair_obj="); print_object(pair_obj, '\n');
+        printf("func_obj="); object_print(func_obj, '\n');
+        printf("pair_obj="); object_print(pair_obj, '\n');
     }
 #endif
     int is_error = 0;
-    object_t* returned_obj = create_object(
+    object_t* returned_obj = object_create(
         TYPE_PAIR,
         (object_data_t) {.pair = (pair_t) {NULL, NULL}}
     );
     dynarr_t arg_pair_stack, res_pair_stack;
-    arg_pair_stack = new_dynarr(sizeof(object_t*));
-    res_pair_stack = new_dynarr(sizeof(object_t*));
+    arg_pair_stack = dynarr_new(sizeof(object_t*));
+    res_pair_stack = dynarr_new(sizeof(object_t*));
     append(&arg_pair_stack, &pair_obj);
     append(&res_pair_stack, &returned_obj);
     while(arg_pair_stack.size > 0) {
@@ -213,7 +213,7 @@ exec_map(
 #ifdef ENABLE_DEBUG_LOG
             if (is_debug) {
                 printf("exec_map: bad pair - left or right is empty: ");
-                print_object(arg_pair_obj, '\n');
+                object_print(arg_pair_obj, '\n');
             }
 #endif
             is_error = 1;
@@ -222,7 +222,7 @@ exec_map(
         /* left */
         if (arg_pair_obj->data.pair.left->type == TYPE_PAIR) {
             if (res_pair_obj->data.pair.left == NULL) {
-                res_pair_obj->data.pair.left = create_object(
+                res_pair_obj->data.pair.left = object_create(
                     TYPE_PAIR,
                     (object_data_t) {.pair = (pair_t) {NULL, NULL}}
                 );
@@ -240,7 +240,7 @@ exec_map(
 #ifdef ENABLE_DEBUG_LOG
                 if (is_debug) {
                     printf("exec_map: a left child return with error: ");
-                    print_object(left_ret_obj, '\n');
+                    object_print(left_ret_obj, '\n');
                 }
 #endif
                 is_error = 1;
@@ -251,7 +251,7 @@ exec_map(
         /* right */
         if (arg_pair_obj->data.pair.right->type == TYPE_PAIR) {
             if (res_pair_obj->data.pair.right == NULL) {
-                res_pair_obj->data.pair.right = create_object(
+                res_pair_obj->data.pair.right = object_create(
                     TYPE_PAIR,
                     (object_data_t) {.pair = (pair_t) {NULL, NULL}}
                 );
@@ -269,7 +269,7 @@ exec_map(
 #ifdef ENABLE_DEBUG_LOG
                 if (is_debug) {
                     printf("exec_map: a right child return with error: ");
-                    print_object(right_ret_obj, '\n');
+                    object_print(right_ret_obj, '\n');
                 }
 #endif
                 is_error = 1;
@@ -282,11 +282,11 @@ exec_map(
         pop(&res_pair_stack);
     }
     if (is_error) {
-        free_object(returned_obj);
+        object_free(returned_obj);
         returned_obj = (object_t*) ERR_OBJECT_PTR;
     }
-    free_dynarr(&arg_pair_stack);
-    free_dynarr(&res_pair_stack);
+    dynarr_free(&arg_pair_stack);
+    dynarr_free(&res_pair_stack);
     return returned_obj;
 }
 
@@ -303,7 +303,7 @@ object_t* filter_merge(object_t* pair_to_merge, const int is_debug) {
             printf("filter_merge: pair removed\n");
         }
 #endif
-        free_object(pair_to_merge);
+        object_free(pair_to_merge);
         return (object_t*) ERR_OBJECT_PTR;
     }
     else if (left->is_error) {
@@ -314,7 +314,7 @@ object_t* filter_merge(object_t* pair_to_merge, const int is_debug) {
 #endif
         /* free parent but don't want to free children */
         right->ref_count++;
-        free_object(pair_to_merge);
+        object_free(pair_to_merge);
         right->ref_count--;
         return right;
     }
@@ -326,7 +326,7 @@ object_t* filter_merge(object_t* pair_to_merge, const int is_debug) {
 #endif
         /* free parent but don't want to free children */
         left->ref_count++;
-        free_object(pair_to_merge);
+        object_free(pair_to_merge);
         left->ref_count--;
         return left;
     }
@@ -349,17 +349,17 @@ exec_filter(
 #ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         printf("exec_filter\n");
-        printf("func_obj="); print_object(func_obj, '\n');
-        printf("pair_obj="); print_object(pair_obj, '\n');
+        printf("func_obj="); object_print(func_obj, '\n');
+        printf("pair_obj="); object_print(pair_obj, '\n');
     }
 #endif
     int is_error = 0;
-    object_t* returned_obj = create_object(
+    object_t* returned_obj = object_create(
         TYPE_PAIR,
         (object_data_t) {.pair = (pair_t) {NULL, NULL}}
     );
-    dynarr_t arg_pair_stack = new_dynarr(sizeof(object_t*));
-    dynarr_t res_pair_stack = new_dynarr(sizeof(object_t*));
+    dynarr_t arg_pair_stack = dynarr_new(sizeof(object_t*));
+    dynarr_t res_pair_stack = dynarr_new(sizeof(object_t*));
     append(&arg_pair_stack, &pair_obj);
     append(&res_pair_stack, &returned_obj);
 
@@ -375,7 +375,7 @@ exec_filter(
 #ifdef ENABLE_DEBUG_LOG
             if (is_debug) {
                 printf("exec_filter: bad pair - left or right is empty: ");
-                print_object(arg_pair_obj, '\n');
+                object_print(arg_pair_obj, '\n');
             }
 #endif
             is_error = 1;
@@ -386,7 +386,7 @@ exec_filter(
         /* left */
         if (arg_pair_obj->data.pair.left->type == TYPE_PAIR) {
             if (res_pair_obj->data.pair.left == NULL) {
-                res_pair_obj->data.pair.left = create_object(
+                res_pair_obj->data.pair.left = object_create(
                     TYPE_PAIR,
                     (object_data_t) {.pair = (pair_t) {NULL, NULL}}
                 );
@@ -404,15 +404,15 @@ exec_filter(
 #ifdef ENABLE_DEBUG_LOG
                 if (is_debug) {
                     printf("exec_filter: a left child return with error: ");
-                    print_object(left_ret_obj, '\n');
+                    object_print(left_ret_obj, '\n');
                 }
 #endif
                 is_error = 1;
-                free_object(left_ret_obj);
+                object_free(left_ret_obj);
                 break;
             }
-            if (to_bool(left_ret_obj)) {
-                res_pair_obj->data.pair.left = copy_object(
+            if (object_to_bool(left_ret_obj)) {
+                res_pair_obj->data.pair.left = object_copy(
                     arg_pair_obj->data.pair.left
                 );
             }
@@ -420,12 +420,12 @@ exec_filter(
                 /* removed */
                 res_pair_obj->data.pair.left = (object_t*) ERR_OBJECT_PTR;
             }
-            free_object(left_ret_obj);
+            object_free(left_ret_obj);
         }
         /* right */
         if (arg_pair_obj->data.pair.right->type == TYPE_PAIR) {
             if (res_pair_obj->data.pair.right == NULL) {
-                res_pair_obj->data.pair.right = create_object(
+                res_pair_obj->data.pair.right = object_create(
                     TYPE_PAIR,
                     (object_data_t) {.pair = (pair_t) {NULL, NULL}}
                 );
@@ -443,15 +443,15 @@ exec_filter(
 #ifdef ENABLE_DEBUG_LOG
                 if (is_debug) {
                     printf("exec_filter: a right child return with error: ");
-                    print_object(right_ret_obj, '\n');
+                    object_print(right_ret_obj, '\n');
                 }
 #endif
                 is_error = 1;
-                free_object(right_ret_obj);
+                object_free(right_ret_obj);
                 break;
             }
-            if (to_bool(right_ret_obj)) {
-                res_pair_obj->data.pair.right = copy_object(
+            if (object_to_bool(right_ret_obj)) {
+                res_pair_obj->data.pair.right = object_copy(
                     arg_pair_obj->data.pair.right
                 );
             }
@@ -459,7 +459,7 @@ exec_filter(
                 /* removed */
                 res_pair_obj->data.pair.right = (object_t*) ERR_OBJECT_PTR;
             }
-            free_object(right_ret_obj);
+            object_free(right_ret_obj);
         }
         /* merge */
         res_pair_obj->data.pair.left =
@@ -470,20 +470,20 @@ exec_filter(
 #ifdef ENABLE_DEBUG_LOG
         if (is_debug) {
             printf("exec_filter: pair_obj=");
-            print_object(arg_pair_obj, '\n');
+            object_print(arg_pair_obj, '\n');
             printf("exec_filter: res_obj=");
-            print_object(res_pair_obj, '\n');
+            object_print(res_pair_obj, '\n');
         }
 #endif
 
         pop(&arg_pair_stack);
         pop(&res_pair_stack);
     }
-    free_dynarr(&arg_pair_stack);
-    free_dynarr(&res_pair_stack);
+    dynarr_free(&arg_pair_stack);
+    dynarr_free(&res_pair_stack);
 
     if (is_error) {
-        free_object(returned_obj);
+        object_free(returned_obj);
 #ifdef ENABLE_DEBUG_LOG
         if (is_debug) {
             printf("exec_filter: error\n");
@@ -519,18 +519,18 @@ exec_reduce(
 #ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         printf("exec_reduce\n");
-        printf("func_obj="); print_object(func_obj, '\n');
-        printf("pair_obj="); print_object(pair_obj, '\n');
+        printf("func_obj="); object_print(func_obj, '\n');
+        printf("pair_obj="); object_print(pair_obj, '\n');
     }
 #endif
    int is_error = 0;
-    object_t* returned_obj = create_object(
+    object_t* returned_obj = object_create(
         TYPE_PAIR,
         (object_data_t) {.pair = (pair_t) {NULL, NULL}}
     );
     dynarr_t arg_pair_stack, res_pair_stack;
-    arg_pair_stack = new_dynarr(sizeof(object_t*));
-    res_pair_stack = new_dynarr(sizeof(object_t*));
+    arg_pair_stack = dynarr_new(sizeof(object_t*));
+    res_pair_stack = dynarr_new(sizeof(object_t*));
     append(&arg_pair_stack, &pair_obj);
     append(&res_pair_stack, &returned_obj);
     while(arg_pair_stack.size > 0) {
@@ -544,7 +544,7 @@ exec_reduce(
 #ifdef ENABLE_DEBUG_LOG
             if (is_debug) {
                 printf("exec_reduce: bad pair - left or right is empty: ");
-                print_object(arg_pair_obj, '\n');
+                object_print(arg_pair_obj, '\n');
             }
 #endif
             is_error = 1;
@@ -553,7 +553,7 @@ exec_reduce(
         /* left */
         if (arg_pair_obj->data.pair.left->type == TYPE_PAIR) {
             if (res_pair_obj->data.pair.left == NULL) {
-                res_pair_obj->data.pair.left = create_object(
+                res_pair_obj->data.pair.left = object_create(
                     TYPE_PAIR,
                     (object_data_t) {.pair = (pair_t) {NULL, NULL}}
                 );
@@ -563,14 +563,14 @@ exec_reduce(
             }
         }
         else if (res_pair_obj->data.pair.left == NULL) {
-            res_pair_obj->data.pair.left = copy_object(
+            res_pair_obj->data.pair.left = object_copy(
                 arg_pair_obj->data.pair.left
             );
         }
         /* right */
         if (arg_pair_obj->data.pair.right->type == TYPE_PAIR) {
             if (res_pair_obj->data.pair.right == NULL) {
-                res_pair_obj->data.pair.right = create_object(
+                res_pair_obj->data.pair.right = object_create(
                     TYPE_PAIR,
                     (object_data_t) {.pair = (pair_t) {NULL, NULL}}
                 );
@@ -580,7 +580,7 @@ exec_reduce(
             }
         }
         else if (res_pair_obj->data.pair.right == NULL) {
-            res_pair_obj->data.pair.right = copy_object(
+            res_pair_obj->data.pair.right = object_copy(
                 arg_pair_obj->data.pair.right
             );
         }
@@ -592,29 +592,29 @@ exec_reduce(
 #ifdef ENABLE_DEBUG_LOG
             if (is_debug) {
                 printf("exec_reduce: a child return with error: ");
-                print_object(reduce_ret_obj, '\n');
+                object_print(reduce_ret_obj, '\n');
             }
 #endif
             is_error = 1;
-            free_object(reduce_ret_obj);
-            free_object(res_pair_obj);
+            object_free(reduce_ret_obj);
+            object_free(res_pair_obj);
             break;
         }
-        free_object(res_pair_obj->data.pair.left);
-        free_object(res_pair_obj->data.pair.right);
+        object_free(res_pair_obj->data.pair.left);
+        object_free(res_pair_obj->data.pair.right);
         /* copy reduce return obj to res_pair_obj and free it immediately */
         *res_pair_obj = *reduce_ret_obj;
-        free_object(reduce_ret_obj);
+        object_free(reduce_ret_obj);
 
         pop(&arg_pair_stack);
         pop(&res_pair_stack);
     }
     if (is_error) {
-        free_object(returned_obj);
+        object_free(returned_obj);
         returned_obj = (object_t*) ERR_OBJECT_PTR;
     }
-    free_dynarr(&arg_pair_stack);
-    free_dynarr(&res_pair_stack);
+    dynarr_free(&arg_pair_stack);
+    dynarr_free(&res_pair_stack);
     return returned_obj;
 }
 
@@ -663,7 +663,7 @@ exec_op(
         if (is_bad_type(op_token, TYPE_NUM, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        tmp_obj = create_object(
+        tmp_obj = object_create(
             left_obj->type,
             left_obj->data
         );
@@ -673,15 +673,15 @@ exec_op(
         if (is_bad_type(op_token, TYPE_ANY, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return create_object(
+        return object_create(
             TYPE_NUM,
-            (object_data_t) (to_bool(left_obj) ? ONE_NUMBER : ZERO_NUMBER)
+            (object_data_t) (object_to_bool(left_obj) ? ONE_NUMBER : ZERO_NUMBER)
         );
     case OP_CEIL:
         if (is_bad_type(op_token, TYPE_NUM, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return create_object(
+        return object_create(
             TYPE_NUM,
             (object_data_t) number_ceil(&left_obj->data.number)
         );
@@ -689,7 +689,7 @@ exec_op(
         if (is_bad_type(op_token, TYPE_NUM, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return create_object(
+        return object_create(
             TYPE_NUM,
             (object_data_t) number_floor(&left_obj->data.number)
         );
@@ -697,12 +697,12 @@ exec_op(
         if (is_bad_type(op_token, TYPE_PAIR, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return copy_object(left_obj->data.pair.left);
+        return object_copy(left_obj->data.pair.left);
     case OP_GETR:
         if (is_bad_type(op_token, TYPE_PAIR, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return copy_object(left_obj->data.pair.right);
+        return object_copy(left_obj->data.pair.right);
     case OP_EXP:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
@@ -712,7 +712,7 @@ exec_op(
             print_runtime_error(op_token.pos, "Exponent must be integer");
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return  create_object(
+        return  object_create(
             TYPE_NUM,
             (object_data_t) number_exp(
                 &left_obj->data.number,
@@ -723,7 +723,7 @@ exec_op(
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return create_object(
+        return object_create(
             TYPE_NUM,
             (object_data_t) number_mul(
                 &left_obj->data.number,
@@ -738,7 +738,7 @@ exec_op(
             print_runtime_error(op_token.pos, "Divided by zero");
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return create_object(
+        return object_create(
             TYPE_NUM,
             (object_data_t) number_div(
                 &left_obj->data.number,
@@ -749,7 +749,7 @@ exec_op(
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return create_object(
+        return object_create(
             TYPE_NUM,
             (object_data_t) number_mod(
                 &left_obj->data.number,
@@ -760,7 +760,7 @@ exec_op(
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return create_object(
+        return object_create(
             TYPE_NUM,
             (object_data_t) number_add(
                 &left_obj->data.number,
@@ -771,7 +771,7 @@ exec_op(
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return create_object(
+        return object_create(
             TYPE_NUM,
             (object_data_t) number_sub(
                 &left_obj->data.number,
@@ -782,7 +782,7 @@ exec_op(
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return create_object(
+        return object_create(
             TYPE_NUM,
             (object_data_t) number_from_i32(
                 number_lt(&left_obj->data.number, &right_obj->data.number)
@@ -792,7 +792,7 @@ exec_op(
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return create_object(
+        return object_create(
             TYPE_NUM,
             (object_data_t) number_from_i32(
                 !number_lt(&right_obj->data.number, &left_obj->data.number)
@@ -802,7 +802,7 @@ exec_op(
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return create_object(
+        return object_create(
             TYPE_NUM,
             (object_data_t) number_from_i32(
                 number_lt(&right_obj->data.number, &left_obj->data.number)
@@ -812,19 +812,19 @@ exec_op(
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return create_object(
+        return object_create(
             TYPE_NUM,
             (object_data_t) number_from_i32(
                 !number_lt(&left_obj->data.number, &right_obj->data.number)
             )
         );
     case OP_EQ:
-        return create_object(
+        return object_create(
             TYPE_NUM,
             (object_data_t) number_from_i32(object_eq(left_obj, right_obj))
         );
     case OP_NE:
-        return create_object(
+        return object_create(
             TYPE_NUM,
             (object_data_t) number_from_i32(!object_eq(left_obj, right_obj))
         );
@@ -832,31 +832,31 @@ exec_op(
         if (is_bad_type(op_token, TYPE_ANY, TYPE_ANY, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return create_object(
+        return object_create(
             TYPE_NUM,
             (object_data_t) number_from_i32(
-                to_bool(left_obj) && to_bool(right_obj)
+                object_to_bool(left_obj) && object_to_bool(right_obj)
             )
         );
     case OP_OR:
         if (is_bad_type(op_token, TYPE_ANY, TYPE_ANY, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return create_object(
+        return object_create(
             TYPE_NUM,
             (object_data_t) number_from_i32(
-                to_bool(left_obj) || to_bool(right_obj)
+                object_to_bool(left_obj) || object_to_bool(right_obj)
             )
         );
     case OP_PAIR:
         if (is_bad_type(op_token, TYPE_ANY, TYPE_ANY, left_obj, right_obj)) {
             return (object_t*) ERR_OBJECT_PTR;
         }
-        return create_object(
+        return object_create(
             TYPE_PAIR,
             (object_data_t) (pair_t) {
-                .left = copy_object(left_obj),
-                .right = copy_object(right_obj)
+                .left = object_copy(left_obj),
+                .right = object_copy(right_obj)
             }
         );
     case OP_FCALLR:
@@ -890,7 +890,7 @@ exec_op(
             tree,
             cur_frame,
             op_token.pos,
-            (to_bool(left_obj)
+            (object_to_bool(left_obj)
                 ? right_obj->data.pair.left : right_obj->data.pair.right),
             (object_t*) &RESERVED_OBJS[RESERVED_ID_NAME_NULL],
             is_debug
@@ -940,7 +940,7 @@ eval(
     #define _OBJ_TABLE(index) (obj_table[index - obj_table_offset])
 
     /* begin evaluation */
-    token_index_stack = new_dynarr(sizeof(int));
+    token_index_stack = dynarr_new(sizeof(int));
     append(&token_index_stack, &entry_index);
     while (token_index_stack.size > 0) {
         cur_index = *(int*) back(&token_index_stack);
@@ -950,7 +950,7 @@ eval(
 #ifdef ENABLE_DEBUG_LOG
         if(is_debug) {
             printf("> (node %d) ", cur_index);
-            print_token(cur_token);
+            token_print(cur_token);
             printf(
                 " (local=%d) left=%d right=%d\n",
                 cur_index - obj_table_offset, left_index, right_index
@@ -968,7 +968,7 @@ eval(
             switch (cur_token.name) {
             /* function maker */
             case OP_FMAKE:
-                _OBJ_TABLE(cur_index) = create_object(
+                _OBJ_TABLE(cur_index) = object_create(
                     TYPE_CALL,
                     (object_data_t) (callable_t) {
                         .is_macro = 0,
@@ -976,19 +976,19 @@ eval(
                         .arg_name = -1,
                         .index = left_index,
                         /* owns a deep copy of the frame it created under */
-                        .init_time_frame = copy_frame(cur_frame)
+                        .init_time_frame = frame_copy(cur_frame)
                     }
                 );
 #ifdef ENABLE_DEBUG_LOG
                 if (is_debug) {
                     printf(" make function:");
-                    print_object(_OBJ_TABLE(cur_index), '\n');
+                    object_print(_OBJ_TABLE(cur_index), '\n');
                 }
 #endif
                 break;
             /* macro maker */
             case OP_MMAKE:
-                _OBJ_TABLE(cur_index) = create_object(
+                _OBJ_TABLE(cur_index) = object_create(
                     TYPE_CALL,
                     (object_data_t) (callable_t) {
                         .is_macro = 1,
@@ -996,13 +996,13 @@ eval(
                         .arg_name = -1,
                         .index = left_index,
                         /* owns a deep copy of the frame it created under */
-                        .init_time_frame = copy_frame(cur_frame)
+                        .init_time_frame = frame_copy(cur_frame)
                     }
                 );
 #ifdef ENABLE_DEBUG_LOG
                 if (is_debug) {
                     printf(" make macro:");
-                    print_object(_OBJ_TABLE(cur_index), '\n');
+                    object_print(_OBJ_TABLE(cur_index), '\n');
                 }
 #endif
                 break;
@@ -1058,7 +1058,7 @@ eval(
 #ifdef ENABLE_DEBUG_LOG
                 if (is_debug) {
                     printf("initialized identifier '%s' to ", left_token->str);
-                    print_object(right_obj, '\n');
+                    object_print(right_obj, '\n');
                 }
 #endif
                 /* move right to current */
@@ -1079,7 +1079,7 @@ eval(
                    F            | T         | T
                    T            | F         | T
                    T            | T         | F             */
-                if (to_bool(left_obj) != (cur_token.name == OP_CONDOR)) {
+                if (object_to_bool(left_obj) != (cur_token.name == OP_CONDOR)) {
                     if (right_obj == NULL) {
                         append(&token_index_stack, &right_index);
                         continue;
@@ -1105,7 +1105,7 @@ eval(
                 _OBJ_TABLE(cur_index) = right_obj;
                 _OBJ_TABLE(right_index) = NULL;
                 /* left is out of reach so free it immediately */
-                free_object(_OBJ_TABLE(left_index));
+                object_free(_OBJ_TABLE(left_index));
                 _OBJ_TABLE(left_index) = NULL;
                 break;
             /* other operator */
@@ -1164,20 +1164,20 @@ eval(
                 break;
             }
             /* copy object from frame */
-            _OBJ_TABLE(cur_index) = copy_object(o);
+            _OBJ_TABLE(cur_index) = object_copy(o);
 #ifdef ENABLE_DEBUG_LOG
             if (is_debug) {
                 printf(
                     "  get identifiter '%s' (name=%d) from frame (addr=%p): ",
                     cur_token.str, cur_token.name, o
                 );
-                print_object(o, '\n');
+                object_print(o, '\n');
             }
 #endif
         }
         else if (cur_token.type == TOK_NUM) {
             /* copy object from tree */
-            _OBJ_TABLE(cur_index) = copy_object(tree->literals[cur_index]);
+            _OBJ_TABLE(cur_index) = object_copy(tree->literals[cur_index]);
         }
         else {
             printf("eval: bad token type: %d\n", cur_token.type);
@@ -1186,7 +1186,7 @@ eval(
 #ifdef ENABLE_DEBUG_LOG
         if (is_debug) {
             printf("< (node %d) eval result: ", cur_index);
-            print_object(_OBJ_TABLE(cur_index), '\n');
+            object_print(_OBJ_TABLE(cur_index), '\n');
             fflush(stdout);
         }
 #endif
@@ -1203,11 +1203,11 @@ eval(
         returned_obj = (object_t*) ERR_OBJECT_PTR;
     }
     else {
-        returned_obj = copy_object(_OBJ_TABLE(entry_index));
+        returned_obj = object_copy(_OBJ_TABLE(entry_index));
     }
 
     /* free things */
-    free_dynarr(&token_index_stack);
+    dynarr_free(&token_index_stack);
 #ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         printf("free obj_tables\n");
@@ -1219,18 +1219,18 @@ eval(
 #ifdef ENABLE_DEBUG_LOG
             if (is_debug) {
                 printf("free [%d] addr: %p:", i, obj_table[i]);
-                print_object(obj_table[i], '\n');
+                object_print(obj_table[i], '\n');
                 fflush(stdout);
             }
 #endif
-            free_object(obj_table[i]);
+            object_free(obj_table[i]);
         }
     }
     free(obj_table);
 #ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         printf("eval returned ");
-        print_object(returned_obj, '\n');
+        object_print(returned_obj, '\n');
         fflush(stdout);
     }
 #endif

@@ -13,7 +13,7 @@ tree_t tree_parse(
     const int is_debug
 );
 
-int semantic_checker(
+int check_semantic(
     const tree_t tree,
     const int is_debug
 );

@@ -17,19 +17,19 @@ typedef struct frame {
     int ref_count;
 } frame_t;
 
-extern frame_t* new_frame();
+extern frame_t* frame_new();
 
-extern frame_t* copy_frame(const frame_t* f);
+extern frame_t* frame_copy(const frame_t* f);
 
-extern void free_frame(frame_t* f);
+extern void frame_free(frame_t* f);
 
-extern void new_stack(frame_t* f);
+extern void stack_new(frame_t* f);
 
-extern void push_stack(frame_t* f, const int entry_index);
+extern void stack_push(frame_t* f, const int entry_index);
 
-extern void pop_stack(frame_t* f);
+extern void stack_pop(frame_t* f);
 
-extern void clear_stack(frame_t* f, const int can_free_pairs);
+extern void stack_clear(frame_t* f, const int can_free_pairs);
 
 extern object_t* frame_get(const frame_t* f, const int name);
 

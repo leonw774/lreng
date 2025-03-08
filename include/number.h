@@ -31,8 +31,8 @@ typedef struct number {
 })
 #define NAN_NUMBER ((number_t) {.numer = NAN_BIGINT(), .denom = NAN_BIGINT()})
 
-extern void copy_number(number_t* dst, const number_t* src);
-extern void free_number(number_t* x);
+extern void number_copy(number_t* dst, const number_t* src);
+extern void number_free(number_t* x);
 
 extern int number_eq(number_t* a, number_t* b);
 extern int number_lt(number_t* a, number_t* b);
@@ -46,8 +46,8 @@ extern number_t number_exp(number_t* a, number_t* b);
 extern number_t number_ceil(number_t* a);
 extern number_t number_floor(number_t* a);
 
-extern int print_number_frac(number_t* x, char end);
-extern int print_number_dec(number_t* x, int precision, char end);
+extern int number_print_frac(number_t* x, char end);
+extern int number_print_dec(number_t* x, int precision, char end);
 extern number_t number_from_str(const char* str);
 extern number_t number_from_i32(i32 n);
 

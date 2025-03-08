@@ -20,6 +20,8 @@ extern tree_t tree_create(dynarr_t tokens, const int is_debug);
 
 extern void tree_free(tree_t* tree);
 
+extern void tree_print(const tree_t* tree);
+
 typedef struct tree_preorder_iterator {
     const tree_t* tree;
     dynarr_t index_stack; /* type: int */
@@ -32,8 +34,6 @@ extern token_t* tree_iter_get(tree_preorder_iterator_t*);
 
 extern void tree_iter_next(tree_preorder_iterator_t*);
 
-extern void free_tree_iter(tree_preorder_iterator_t*);
-
-extern void tree_print(const tree_t* tree);
+extern void tree_iter_free(tree_preorder_iterator_t*);
 
 #endif

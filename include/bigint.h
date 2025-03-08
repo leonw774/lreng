@@ -31,9 +31,9 @@ typedef struct bigint {
     .shared = 0, .nan = 1, .sign = 0, .size = 0, .digit = 0})
 extern bigint_t BYTE_BIGINT(unsigned int b);
 
-extern void new_bi(bigint_t* x, u32 size);
-extern void copy_bi(bigint_t* dst, const bigint_t* src);
-extern void free_bi(bigint_t* x);
+extern void bi_new(bigint_t* x, u32 size);
+extern void bi_copy(bigint_t* dst, const bigint_t* src);
+extern void bi_free(bigint_t* x);
 
 extern int bi_eq(bigint_t* a, bigint_t* b);
 extern int bi_lt(bigint_t* a, bigint_t* b);

@@ -9,7 +9,7 @@
 #include "reserved.h"
 
 int
-semantic_checker(const tree_t tree, const int is_debug) {
+check_semantic(const tree_t tree, const int is_debug) {
     int i, is_passed = 1;
     unsigned char* id_usage = calloc(
         tree.max_id_name + 1, sizeof(unsigned char));
@@ -17,13 +17,13 @@ semantic_checker(const tree_t tree, const int is_debug) {
         id_usage[i] = (unsigned char) 1;
     }
 
-    frame_t* cur_frame = new_frame();
+    frame_t* cur_frame = frame_new();
     object_t objnull = RESERVED_OBJS[RESERVED_ID_NAME_NULL];
 
     tree_preorder_iterator_t tree_iter = tree_iter_init(&tree, -1);
     token_t* cur_token_p = tree_iter_get(&tree_iter);
     int cur_depth = -1, cur_index = -1, cur_func_depth = -1;
-    dynarr_t func_depth_stack = new_dynarr(sizeof(int));
+    dynarr_t func_depth_stack = dynarr_new(sizeof(int));
 #ifdef ENABLE_DEBUG_LOG
     if (is_debug) {
         printf("check semantic\n");
@@ -38,7 +38,7 @@ semantic_checker(const tree_t tree, const int is_debug) {
             if (cur_depth <= cur_func_depth) {
                 /* we left a function */
                 pop(&func_depth_stack);
-                pop_stack(cur_frame);
+                stack_pop(cur_frame);
             }
             /* check assign rule */
             if (cur_token_p->name == OP_ASSIGN) {
@@ -51,9 +51,9 @@ semantic_checker(const tree_t tree, const int is_debug) {
                         cur_token_p->pos.line,
                         cur_token_p->pos.col
                     );
-                    print_token(*left_token);
+                    token_print(*left_token);
                     putchar(' ');
-                    print_token(*cur_token_p);
+                    token_print(*cur_token_p);
                     putchar('\n');
                 }
 #endif
@@ -91,9 +91,9 @@ semantic_checker(const tree_t tree, const int is_debug) {
                         cur_token_p->pos.line,
                         cur_token_p->pos.col
                     );
-                    print_token(*left_token);
+                    token_print(*left_token);
                     putchar(' ');
-                    print_token(*cur_token_p);
+                    token_print(*cur_token_p);
                     putchar('\n');
                 }
 #endif
@@ -109,7 +109,7 @@ semantic_checker(const tree_t tree, const int is_debug) {
             }
             /* walk into a function */
             else if (cur_token_p->name == OP_FMAKE) {
-                push_stack(cur_frame, cur_index);
+                stack_push(cur_frame, cur_index);
                 append(&func_depth_stack, &cur_depth);
             }
         }
@@ -121,7 +121,7 @@ semantic_checker(const tree_t tree, const int is_debug) {
                     cur_token_p->pos.line,
                     cur_token_p->pos.col
                 );
-                print_token(*cur_token_p);
+                token_print(*cur_token_p);
                 putchar('\n');
                 fflush(stdout);
             }
@@ -133,9 +133,9 @@ semantic_checker(const tree_t tree, const int is_debug) {
         cur_token_p = tree_iter_get(&tree_iter);
     }
 
-    free_tree_iter(&tree_iter);
-    free_dynarr(&func_depth_stack);
-    free_frame(cur_frame);
+    tree_iter_free(&tree_iter);
+    dynarr_free(&func_depth_stack);
+    frame_free(cur_frame);
     free(cur_frame);
     free(id_usage);
     return is_passed;

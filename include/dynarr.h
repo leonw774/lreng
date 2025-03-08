@@ -23,7 +23,7 @@ typedef struct dynarr {
 
 /* create a new empty dynamic array */
 static inline dynarr_t
-new_dynarr(int elem_size) {
+dynarr_new(int elem_size) {
     dynarr_t x;
     x.data = calloc(elem_size, DYN_ARR_INIT_CAP);
     x.elem_size = elem_size;
@@ -33,7 +33,7 @@ new_dynarr(int elem_size) {
 };
 
 static inline void
-free_dynarr(dynarr_t* x) {
+dynarr_free(dynarr_t* x) {
     if (x->data != NULL) {
         free(x->data);
         x->data = NULL;
@@ -42,13 +42,13 @@ free_dynarr(dynarr_t* x) {
 };
 
 static inline void
-reset_dynarr(dynarr_t* x) {
-    free_dynarr(x);
-    *x = new_dynarr(x->elem_size);
+dynarr_reset(dynarr_t* x) {
+    dynarr_free(x);
+    *x = dynarr_new(x->elem_size);
 }
 
 static inline dynarr_t
-copy_dynarr(const dynarr_t* x) {
+dynarr_copy(const dynarr_t* x) {
     dynarr_t y;
     y = *x;
     y.data = calloc(y.cap, y.elem_size);
