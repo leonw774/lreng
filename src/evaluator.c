@@ -320,10 +320,11 @@ filter_merge(object_t* pair_to_merge, const int is_debug)
             printf("filter_merge: pair replaced by its right\n");
         }
 #endif
-        /* free parent but don't want to free children */
+        /* we free parent but don't want to free children so increase 1 here to
+           counter the decrease in object_free
+        */
         right->ref_count++;
         object_free(pair_to_merge);
-        right->ref_count--;
         return right;
     } else if (right->is_error) {
 #ifdef ENABLE_DEBUG_LOG
@@ -331,10 +332,8 @@ filter_merge(object_t* pair_to_merge, const int is_debug)
             printf("filter_merge: pair replaced by its left\n");
         }
 #endif
-        /* free parent but don't want to free children */
         left->ref_count++;
         object_free(pair_to_merge);
-        left->ref_count--;
         return left;
     }
     return pair_to_merge;
@@ -459,7 +458,6 @@ exec_filter(
         /* merge */
         *res_left = filter_merge(*res_left, context.is_debug);
         *res_right = filter_merge(*res_right, context.is_debug);
-
 #ifdef ENABLE_DEBUG_LOG
         if (context.is_debug) {
             printf("exec_filter: pair=");
@@ -487,10 +485,13 @@ exec_filter(
 
     /* final merge */
     if (result->type == TYPE_PAIR) {
-        result->data.pair.left
-            = filter_merge(result->data.pair.left, context.is_debug);
-        result->data.pair.right
-            = filter_merge(result->data.pair.right, context.is_debug);
+#ifdef ENABLE_DEBUG_LOG
+        if (context.is_debug) {
+            printf("exec_filter: do final merge on ");
+            object_print(result, '\n');
+        }
+#endif
+        result = filter_merge(result, context.is_debug);;
     }
     /* if root is removed: return null object */
     if (result->is_error) {
@@ -882,19 +883,16 @@ exec_op(
 object_t*
 eval(context_t context, const int entry_index)
 {
-    const token_t* global_tokens = context.tree->tokens.data;
-    const int tree_size = context.tree->sizes[entry_index];
+    frame_t* cur_frame = context.cur_frame;
+    const tree_t* tree = context.tree;
+    const token_t* tree_tokens = tree->tokens.data;
+    const int tree_size = tree->sizes[entry_index];
     /* obj_table_offset = entry_index - tree_size + 1
-       because global tokens are order in postfix */
+       because tree tokens are order in postfix */
     const int obj_table_offset = entry_index - tree_size + 1;
 
     dynarr_t token_index_stack; /* type: int */
     object_t** obj_table;
-
-    token_t cur_token;
-    int cur_index, left_index, right_index;
-    object_t* left_obj;
-    object_t* right_obj;
 
     int i, is_error = 0;
     object_t* result;
@@ -902,7 +900,7 @@ eval(context_t context, const int entry_index)
 #ifdef ENABLE_DEBUG_LOG
     if (context.is_debug) {
         printf("eval\n");
-        printf("entry_index=%d cur_frame=%p ", entry_index, context.cur_frame);
+        printf("entry_index=%d cur_frame=%p ", entry_index, cur_frame);
         printf("obj_table_offset = %d ", obj_table_offset);
         printf("tree_size = %d\n", tree_size);
     }
@@ -910,16 +908,20 @@ eval(context_t context, const int entry_index)
 
     /* obj_table store shallow copyed intermidiate results */
     obj_table = calloc(tree_size, sizeof(object_t*));
-#define _OBJ_TABLE(index) (obj_table[index - obj_table_offset])
+#define OBJ_TABLE(index) (obj_table[index - obj_table_offset])
 
     /* begin evaluation */
     token_index_stack = dynarr_new(sizeof(int));
     append(&token_index_stack, &entry_index);
     while (token_index_stack.size > 0) {
-        cur_index = *(int*)back(&token_index_stack);
-        cur_token = global_tokens[cur_index];
-        left_index = context.tree->lefts[cur_index];
-        right_index = context.tree->rights[cur_index];
+        int cur_index = *(int*)back(&token_index_stack),
+            left_index = tree->lefts[cur_index],
+            right_index = tree->rights[cur_index];
+        token_t cur_token = tree_tokens[cur_index];
+        const token_t* left_token
+            = (left_index < 0) ? NULL : &tree_tokens[left_index];
+        object_t *left_obj = (left_index < 0) ? NULL : OBJ_TABLE(left_index),
+                 *right_obj = (right_index < 0) ? NULL : OBJ_TABLE(right_index);
 #ifdef ENABLE_DEBUG_LOG
         if (context.is_debug) {
             printf("> (node %d) ", cur_index);
@@ -931,21 +933,18 @@ eval(context_t context, const int entry_index)
             fflush(stdout);
         }
 #endif
-        left_obj = (left_index == -1) ? NULL : _OBJ_TABLE(left_index);
-        right_obj = (right_index == -1) ? NULL : _OBJ_TABLE(right_index);
+
         if (cur_token.type == TOK_ID) {
-            object_t* o = frame_get(context.cur_frame, cur_token.name);
+            object_t* o = frame_get(cur_frame, cur_token.name);
             if (o == NULL) {
-                sprintf(
-                    ERR_MSG_BUF, "Identifier '%s' used uninitialized",
-                    cur_token.str
-                );
+                const char* err_msg = "Identifier '%s' used uninitialized";
+                sprintf(ERR_MSG_BUF, err_msg, cur_token.str);
                 print_runtime_error(cur_token.pos, ERR_MSG_BUF);
                 is_error = 1;
                 break;
             }
             /* copy object from frame */
-            _OBJ_TABLE(cur_index) = object_copy(o);
+            OBJ_TABLE(cur_index) = object_copy(o);
 #ifdef ENABLE_DEBUG_LOG
             if (context.is_debug) {
                 printf(
@@ -957,203 +956,168 @@ eval(context_t context, const int entry_index)
 #endif
         } else if (cur_token.type == TOK_NUM) {
             /* copy object from tree */
-            _OBJ_TABLE(cur_index)
-                = object_copy(context.tree->literals[cur_index]);
-        } else if (cur_token.type == TOK_OP) {
-            const token_t* left_token
-                = (left_index == -1) ? NULL : &global_tokens[left_index];
-
-            switch (cur_token.name) {
-            /* function maker */
-            case OP_FMAKE:
-                _OBJ_TABLE(cur_index) = object_create(
-                    TYPE_CALL,
-                    (object_data_t)(callable_t) {
-                        .is_macro = 0,
-                        .builtin_name = NOT_BUILTIN_FUNC,
-                        .arg_name = -1,
-                        .index = left_index,
-                        /* owns a deep copy of the frame it created under */
-                        .init_time_frame = frame_copy(context.cur_frame),
-                    }
-                );
-#ifdef ENABLE_DEBUG_LOG
-                if (context.is_debug) {
-                    printf(" make function:");
-                    object_print(_OBJ_TABLE(cur_index), '\n');
-                }
-#endif
-                break;
-            /* macro maker */
-            case OP_MMAKE:
-                _OBJ_TABLE(cur_index) = object_create(
-                    TYPE_CALL,
-                    (object_data_t)(callable_t) {
-                        .is_macro = 1,
-                        .builtin_name = NOT_BUILTIN_FUNC,
-                        .arg_name = -1,
-                        .index = left_index,
-                        /* owns a deep copy of the frame it created under */
-                        .init_time_frame = frame_copy(context.cur_frame),
-                    }
-                );
-#ifdef ENABLE_DEBUG_LOG
-                if (context.is_debug) {
-                    printf(" make macro:");
-                    object_print(_OBJ_TABLE(cur_index), '\n');
-                }
-#endif
-                break;
-            /* argument binder */
-            case OP_ARG:
-                if (right_obj == NULL) {
-                    append(
-                        &token_index_stack, &context.tree->rights[cur_index]
-                    );
-                    continue;
-                }
-                if (right_obj->type != TYPE_CALL
-                    || right_obj->data.callable.is_macro) {
-                    print_runtime_error(
-                        cur_token.pos,
-                        "Right side of argument binder should be function"
-                    );
-                    is_error = 1;
-                    break;
-                }
-                if (right_obj->data.callable.arg_name != -1) {
-                    print_runtime_error(
-                        cur_token.pos,
-                        "Bind argument to a function that already has one"
-                    );
-                    is_error = 1;
-                    break;
-                }
-                /* move right to current and modify arg_name */
-                right_obj->data.callable.arg_name = left_token->name;
-                _OBJ_TABLE(cur_index) = right_obj;
-                _OBJ_TABLE(right_index) = NULL;
-                break;
-            /* assignment */
-            case OP_ASSIGN:
-                if (right_obj == NULL) {
-                    append(&token_index_stack, &right_index);
-                    continue;
-                }
-                if (frame_get(context.cur_frame, left_token->name) != NULL) {
-                    sprintf(
-                        ERR_MSG_BUF,
-                        "Repeated initialization of identifier '%s'",
-                        left_token->str
-                    );
-                    print_runtime_error(left_token->pos, ERR_MSG_BUF);
-                    is_error = 1;
-                    break;
-                }
-                /* set frame */
-                frame_set(context.cur_frame, left_token->name, right_obj);
-#ifdef ENABLE_DEBUG_LOG
-                if (context.is_debug) {
-                    printf("initialized identifier '%s' to ", left_token->str);
-                    object_print(right_obj, '\n');
-                }
-#endif
-                /* move right to current */
-                _OBJ_TABLE(cur_index) = right_obj;
-                _OBJ_TABLE(right_index) = NULL;
-                break;
-            /* condition-and or condition-or */
-            case OP_CONDAND:
-            case OP_CONDOR:
-                /* eval left first and eval right conditionally */
-                if (left_obj == NULL) {
-                    append(&token_index_stack, &left_index);
-                    continue;
-                }
-                /* is_left_true | is_condor | is_eval_right
-                   F            | F         | F
-                   F            | T         | T
-                   T            | F         | T
-                   T            | T         | F             */
-                if (object_to_bool(left_obj) != (cur_token.name == OP_CONDOR)) {
-                    if (right_obj == NULL) {
-                        append(&token_index_stack, &right_index);
-                        continue;
-                    }
-                    /* move right to current */
-                    _OBJ_TABLE(cur_index) = right_obj;
-                    _OBJ_TABLE(right_index) = NULL;
-                } else {
-                    /* move left to current */
-                    _OBJ_TABLE(cur_index) = left_obj;
-                    _OBJ_TABLE(left_index) = NULL;
-                }
-                break;
-            /* expresion seperator */
-            case OP_EXPRSEP:
-                if (left_obj == NULL && right_obj == NULL) {
-                    append(&token_index_stack, &right_index);
-                    append(&token_index_stack, &left_index);
-                    continue;
-                }
-                /* move right to current */
-                _OBJ_TABLE(cur_index) = right_obj;
-                _OBJ_TABLE(right_index) = NULL;
-                /* left is out of reach so free it immediately */
-                object_free(_OBJ_TABLE(left_index));
-                _OBJ_TABLE(left_index) = NULL;
-                break;
-            /* other operator */
-            default:
-                if (is_unary_op(cur_token.name) && left_obj == NULL) {
-                    append(&token_index_stack, &left_index);
-                    continue;
-                } else if (left_obj == NULL && right_obj == NULL) {
-                    append(&token_index_stack, &right_index);
-                    append(&token_index_stack, &left_index);
-                    continue;
-                }
-                result = exec_op(context, cur_token, left_obj, right_obj);
-                if (result->is_error) {
-                    sprintf(
-                        ERR_MSG_BUF, "operator \"%s\" returns with error",
-                        OP_STRS[cur_token.name]
-                    );
-                    print_runtime_error(cur_token.pos, ERR_MSG_BUF);
-                }
-#ifdef ENABLE_DEBUG_LOG
-                if (context.is_debug) {
-                    printf(
-                        "^ (node %d) exec_op %s returned\n", cur_index,
-                        OP_STRS[cur_token.name]
-                    );
-                }
-#endif
-                /* end eval if error */
-                if (result->is_error) {
-                    is_error = 1;
-                    break;
-                }
-                /* don't need to copy cause it is created or newed in exec_op */
-                _OBJ_TABLE(cur_index) = result;
-            }
-            // end switch
-            if (is_error) {
-                break; /* break the while loop */
-            }
-        } else {
+            OBJ_TABLE(cur_index) = object_copy(tree->literals[cur_index]);
+            /* not id or num or op: error */
+        } else if (cur_token.type != TOK_OP) {
             printf("eval: bad token type: %d\n", cur_token.type);
             exit(RUNTIME_ERR_CODE);
+            /* function and macro maker */
+        } else if (cur_token.name == OP_FMAKE || cur_token.name == OP_MMAKE) {
+            int is_macro = cur_token.name == OP_MMAKE;
+            /* function will owns a deep copy of the frame it created under */
+            frame_t* init_time_frame = is_macro ? NULL : frame_copy(cur_frame);
+            OBJ_TABLE(cur_index) = object_create(
+                TYPE_CALL,
+                (object_data_t)(callable_t) {
+                    .is_macro = is_macro,
+                    .builtin_name = NOT_BUILTIN_FUNC,
+                    .arg_name = -1,
+                    .index = left_index,
+                    .init_time_frame = init_time_frame,
+                }
+            );
+#ifdef ENABLE_DEBUG_LOG
+            if (context.is_debug) {
+                printf(is_macro ? " make function:" : " make macro:");
+                object_print(OBJ_TABLE(cur_index), '\n');
+            }
+#endif
+            /* argument binder */
+        } else if (cur_token.name == OP_ARG) {
+            if (right_obj == NULL) {
+                append(&token_index_stack, &tree->rights[cur_index]);
+                continue;
+            }
+            if (right_obj->type != TYPE_CALL
+                || right_obj->data.callable.is_macro) {
+                const char* err_msg
+                    = "Right side of argument binder should be function";
+                print_runtime_error(cur_token.pos, err_msg);
+                is_error = 1;
+                break;
+            }
+            if (right_obj->data.callable.arg_name != -1) {
+                const char* err_msg
+                    = "Bind argument to a function that already has one";
+                print_runtime_error(cur_token.pos, err_msg);
+                is_error = 1;
+                break;
+            }
+            /* move right to current and modify arg_name */
+            right_obj->data.callable.arg_name = left_token->name;
+            OBJ_TABLE(cur_index) = right_obj;
+            OBJ_TABLE(right_index) = NULL;
+        } else if (cur_token.name == OP_ASSIGN) {
+            /* assignment */
+            if (right_obj == NULL) {
+                append(&token_index_stack, &right_index);
+                continue;
+            }
+            if (frame_get(cur_frame, left_token->name) != NULL) {
+                const char* err_msg
+                    = "Repeated initialization of identifier '%s'";
+                sprintf(ERR_MSG_BUF, err_msg, left_token->str);
+                print_runtime_error(left_token->pos, ERR_MSG_BUF);
+                is_error = 1;
+                break;
+            }
+            /* set frame */
+            frame_set(cur_frame, left_token->name, right_obj);
+#ifdef ENABLE_DEBUG_LOG
+            if (context.is_debug) {
+                printf("initialized identifier '%s' to ", left_token->str);
+                object_print(right_obj, '\n');
+            }
+#endif
+            /* move right to current */
+            OBJ_TABLE(cur_index) = right_obj;
+            OBJ_TABLE(right_index) = NULL;
+            /* condition-and or condition-or */
+        } else if (cur_token.name == OP_CONDAND
+                   || cur_token.name == OP_CONDOR) {
+            /* eval left first and eval right conditionally */
+            if (left_obj == NULL) {
+                append(&token_index_stack, &left_index);
+                continue;
+            }
+            /* is_left_true | is_condor | is_eval_right
+               F            | F         | F
+               F            | T         | T
+               T            | F         | T
+               T            | T         | F
+            */
+            if (object_to_bool(left_obj) != (cur_token.name == OP_CONDOR)) {
+                if (right_obj == NULL) {
+                    append(&token_index_stack, &right_index);
+                    continue;
+                }
+                /* move right to current */
+                OBJ_TABLE(cur_index) = right_obj;
+                OBJ_TABLE(right_index) = NULL;
+            } else {
+                /* move left to current */
+                OBJ_TABLE(cur_index) = left_obj;
+                OBJ_TABLE(left_index) = NULL;
+            }
+        } else if (cur_token.name == OP_EXPRSEP) {
+            /* expresion seperator */
+            if (left_obj == NULL && right_obj == NULL) {
+                append(&token_index_stack, &right_index);
+                append(&token_index_stack, &left_index);
+                continue;
+            }
+            /* move right to current */
+            OBJ_TABLE(cur_index) = right_obj;
+            OBJ_TABLE(right_index) = NULL;
+            /* left is out of reach so free it immediately */
+            object_free(OBJ_TABLE(left_index));
+            OBJ_TABLE(left_index) = NULL;
+        } else {
+            /* other operator */
+
+            if (is_unary_op(cur_token.name) && left_obj == NULL) {
+                append(&token_index_stack, &left_index);
+                continue;
+            } else if (left_obj == NULL && right_obj == NULL) {
+                append(&token_index_stack, &right_index);
+                append(&token_index_stack, &left_index);
+                continue;
+            }
+            result = exec_op(context, cur_token, left_obj, right_obj);
+            if (result->is_error) {
+                const char* err_msg = "operator \"%s\" returns with error";
+                sprintf(ERR_MSG_BUF, err_msg, OP_STRS[cur_token.name]);
+                print_runtime_error(cur_token.pos, ERR_MSG_BUF);
+            }
+#ifdef ENABLE_DEBUG_LOG
+            if (context.is_debug) {
+                printf(
+                    "^ (node %d) exec_op %s returned\n", cur_index,
+                    OP_STRS[cur_token.name]
+                );
+            }
+#endif
+            /* end eval if error */
+            if (result->is_error) {
+                is_error = 1;
+                break;
+            }
+            /* don't need to copy cause it is created or newed in exec_op */
+            OBJ_TABLE(cur_index) = result;
+        }
+        /* end if-else */
+        if (is_error) {
+            break; /* break the while loop */
         }
 #ifdef ENABLE_DEBUG_LOG
         if (context.is_debug) {
             printf("< (node %d) eval result: ", cur_index);
-            object_print(_OBJ_TABLE(cur_index), '\n');
+            object_print(OBJ_TABLE(cur_index), '\n');
             fflush(stdout);
         }
 #endif
         pop(&token_index_stack);
-    }
+    } /* end while loop */
 
     /* prepare return object */
     if (is_error) {
@@ -1164,7 +1128,7 @@ eval(context_t context, const int entry_index)
 #endif
         result = (object_t*)ERR_OBJECT_PTR;
     } else {
-        result = object_copy(_OBJ_TABLE(entry_index));
+        result = object_copy(OBJ_TABLE(entry_index));
     }
 
     /* free things */

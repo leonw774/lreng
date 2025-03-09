@@ -55,7 +55,7 @@ object_free(object_t* obj)
 {
 #ifdef ENABLE_DEBUG_LOG_MORE
     printf("object_free: addr=%p, ref_count=%d print: ", obj, obj->ref_count);
-    print_object(obj, '\n');
+    object_print(obj, '\n');
     fflush(stdout);
 #endif
     if (obj->is_const) {
@@ -135,6 +135,7 @@ object_print(const object_t* obj, char end)
     if (end != '\0') {
         printed_bytes_count += printf("%c", end);
     }
+    fflush(stdout);
     return printed_bytes_count;
 }
 

@@ -58,20 +58,16 @@ check_semantic(const tree_t tree, const int is_debug)
                 }
 #endif
                 if (left_token->type != TOK_ID) {
-                    is_passed = 0;
-                    sprintf(
-                        ERR_MSG_BUF, "Left side of %s is not identifier.",
-                        OP_STRS[cur_token_p->name]
-                    );
+                    const char* err_msg = "Left side of %s is not identifier.";
+                    sprintf(ERR_MSG_BUF, err_msg, OP_STRS[cur_token_p->name]);
                     print_semantic_error(left_token->pos, ERR_MSG_BUF);
+                    is_passed = 0;
                 } else if (frame_get(cur_frame, left_token->name)) {
-                    is_passed = 0;
-                    sprintf(
-                        ERR_MSG_BUF,
-                        "Repeated initialization of identifier '%s'",
-                        left_token->str
-                    );
+                    const char* err_msg_repeat_init
+                        = "Repeated initialization of identifier '%s'";
+                    sprintf(ERR_MSG_BUF, err_msg_repeat_init, left_token->str);
                     print_semantic_error(left_token->pos, ERR_MSG_BUF);
+                    is_passed = 0;
                 } else {
                     frame_set(cur_frame, left_token->name, &objnull);
                     id_usage[left_token->name] = (unsigned char)1;
@@ -93,12 +89,10 @@ check_semantic(const tree_t tree, const int is_debug)
                 }
 #endif
                 if (left_token->type != TOK_ID) {
-                    is_passed = 0;
-                    sprintf(
-                        ERR_MSG_BUF, "Left side of %s is not identifier.",
-                        OP_STRS[cur_token_p->name]
-                    );
+                    const char* err_msg = "Left side of %s is not identifier.";
+                    sprintf(ERR_MSG_BUF, err_msg, OP_STRS[cur_token_p->name]);
                     print_semantic_error(left_token->pos, ERR_MSG_BUF);
+                    is_passed = 0;
                 }
             }
             /* walk into a function */

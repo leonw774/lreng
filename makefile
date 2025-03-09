@@ -3,6 +3,7 @@ DEFAULT_FLAGS = -O2
 PROFILE_FLAGS = -fno-pie -no-pie -pg -O1 -D IS_PROFILE
 DEBUG_FLAGS = -g -D ENABLE_DEBUG_LOG \
 	-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
+DEBUG_MORE_FLAGS = -D ENABLE_DEBUG_LOG_MORE
 MEMCHECK_FLAGS = -include memcheck/memcheck.h -Wno-implicit-function-declaration
 
 TEST_DIR = tests
@@ -24,6 +25,9 @@ profile: $(MAIN_TARGET)
 
 debug: CFLAGS += $(DEBUG_FLAGS)
 debug: $(MAIN_TARGET) $(TEST_TARGET)
+
+debug_more: CFLAGS += $(DEBUG_FLAGS) ${DEBUG_MORE_FLAGS}
+debug_more: $(MAIN_TARGET) $(TEST_TARGET)
 
 memcheck: CFLAGS += $(DEBUG_FLAGS) $(MEMCHECK_FLAGS)
 memcheck: $(MAIN_TARGET) $(TEST_TARGET)

@@ -21,11 +21,10 @@ object_t*
 builtin_func_input(const object_t* obj)
 {
     int c;
+    const char err_msg[]
+        = "built-in function 'input': argument type should be null";
     if (obj->type != TYPE_NULL) {
-        sprintf(
-            ERR_MSG_BUF,
-            "built-in function 'input': argument type should be null"
-        );
+        sprintf(ERR_MSG_BUF, err_msg);
         return (object_t*)ERR_OBJECT_PTR;
     }
     c = getchar();
@@ -35,32 +34,33 @@ builtin_func_input(const object_t* obj)
 object_t*
 builtin_func_output(const object_t* obj)
 {
+    const char* err_msg_not_number
+        = "built-in function 'output': argument is not a number";
+    const char* err_msg_not_byte_number
+        = "built-in function 'output': argument is not integer in [0, 255], "
+          "but [Number] (%s, %s)";
     /* check if obj is number */
     if (obj->type != TYPE_NUM) {
-        sprintf(
-            ERR_MSG_BUF, "built-in function 'output': argument is not a number"
-        );
+        sprintf(ERR_MSG_BUF, err_msg_not_number);
         object_print(obj, '\n');
         return (object_t*)ERR_OBJECT_PTR;
     }
-    const number_t n = obj->data.number;
-    if (n.numer.size == 0) {
+    if (obj->data.number.numer.size == 0) {
         putchar(0);
     } else {
-        int is_int = n.denom.size == 1 && n.denom.digit[0] == 1;
-        int is_less_than_one_256 = n.numer.size == 1 && n.numer.digit[0] < 256;
-        if (n.numer.sign == 0 && is_int && is_less_than_one_256) {
-            putchar(n.numer.digit[0]);
+        int is_int = obj->data.number.denom.size == 1
+            && obj->data.number.denom.digit[0] == 1;
+        int is_less_than_256 = obj->data.number.numer.size == 1
+            && obj->data.number.numer.digit[0] < 256;
+        if (obj->data.number.numer.sign == 0 && is_int && is_less_than_256) {
+            putchar(obj->data.number.numer.digit[0]);
         } else {
-            dynarr_t numer_dynarr = bi_to_dec_str(&n.numer),
-                     denom_dynarr = bi_to_dec_str(&n.denom);
+            dynarr_t numer_dynarr = bi_to_dec_str(&obj->data.number.numer),
+                     denom_dynarr = bi_to_dec_str(&obj->data.number.denom);
             char *numer_str = to_str(&numer_dynarr),
                  *denom_str = to_str(&denom_dynarr);
             sprintf(
-                ERR_MSG_BUF,
-                "built-in function 'output': argument is not integer in "
-                "[0, 255]"
-                ", but [Number] (%s, %s)",
+                ERR_MSG_BUF, err_msg_not_byte_number,
                 numer_str ? numer_str : "(null)",
                 denom_str ? denom_str : "(null)"
             );

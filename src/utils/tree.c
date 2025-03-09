@@ -121,8 +121,6 @@ tree_create(dynarr_t tokens, const int is_debug)
                 TYPE_NUM,
                 (object_data_t) { .number = number_from_str(cur_token->str) }
             );
-            /* set them to const to they will not mess with stack frame */
-            tree.literals[i]->is_const = 1;
         }
     }
 
