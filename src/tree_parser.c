@@ -1,35 +1,38 @@
+#include "errormsg.h"
+#include "lreng.h"
+#include "tree.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "errormsg.h"
-#include "tree.h"
-#include "lreng.h"
 
-#define EXPECT_PREFIX_MSG \
+#define EXPECT_PREFIX_MSG                                                      \
     "Expect unary operator, number, identifier, or open bracket. Get '%s'"
-#define EXPECT_INFIX_MSG \
-    "Expect binary operator or closing bracket. Get '%s'"
+#define EXPECT_INFIX_MSG "Expect binary operator or closing bracket. Get '%s'"
 
 /* is the precedence o1 < o2 ? */
 static inline unsigned char
-op_prec_lt(op_name_enum o1, op_name_enum o2) {
-    /* printf(
+op_prec_lt(op_name_enum o1, op_name_enum o2)
+{
+    /*
+    printf(
         "op_prec_lt: %s %d  %s %d\n",
         OP_STRS[o1], get_op_precedence(o1),
         OP_STRS[o2], get_op_precedence(o2)
-    ); */
+    );
+    */
     return (
         get_op_precedence(o1) < get_op_precedence(o2)
         || (get_op_precedence(o1) == get_op_precedence(o2) && !is_r_asso_op(o2))
     );
 }
 
-
-/* return expression tokens in postfix */
+/* return rearranged tokens in postfix order */
 dynarr_t
-shunting_yard(const dynarr_t tokens, const int is_debug) {
+shunting_yard(const dynarr_t tokens, const int is_debug)
+{
     enum EXPECT {
-        PREFIXER, INFIXER
+        PREFIXER,
+        INFIXER
         /* infixer include infix (binary ops) and postfix (closing bracket) */
     };
     int expectation = PREFIXER;
@@ -44,7 +47,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
 #endif
     int i;
     for (i = 0; i < tokens.size; i++) {
-        token_t cur_token = ((token_t*) tokens.data)[i];
+        token_t cur_token = ((token_t*)tokens.data)[i];
 #ifdef ENABLE_DEBUG_LOG
         if (is_debug) {
             printf("expect=%s token=", (expectation ? "INFIX" : "PREFIX"));
@@ -62,8 +65,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
                     );
                     throw_syntax_error(cur_token.pos, ERR_MSG_BUF);
                 }
-            }
-            else {
+            } else {
                 if (expectation == PREFIXER) {
                     sprintf(
                         ERR_MSG_BUF, EXPECT_PREFIX_MSG, OP_STRS[cur_token.name]
@@ -79,21 +81,21 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
             }
 
             /* pop stack until top is left bracket or precedence is not lower */
-            token_t* frame_top = back(&op_stack);
-            while (
-                frame_top != NULL
-                && frame_top->type != TOK_LB
-                && op_prec_lt(frame_top->name, cur_token.name)
-            ) {
-                append(&output, frame_top);
+            token_t* stack_top = back(&op_stack);
+            while (stack_top != NULL && stack_top->type != TOK_LB
+                   && op_prec_lt(stack_top->name, cur_token.name)) {
+                append(&output, stack_top);
                 pop(&op_stack);
-                frame_top = back(&op_stack);
+                stack_top = back(&op_stack);
             }
             /* push */
             append(&op_stack, &cur_token);
         }
         /* is a right bracket */
         else if (cur_token.type == TOK_RB) {
+            token_t* stack_top = back(&op_stack);
+            op_name_enum top_op, cur_op;
+
             /* check expectation */
             if (expectation == PREFIXER) {
                 sprintf(
@@ -102,43 +104,37 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
                 throw_syntax_error(cur_token.pos, ERR_MSG_BUF);
             }
             expectation = INFIXER;
-
             /* pop stack until top is left braclet */
-            token_t* frame_top = back(&op_stack);
-            while (frame_top != NULL && frame_top->type != TOK_LB) {
-                append(&output, frame_top);
+            while (stack_top != NULL && stack_top->type != TOK_LB) {
+                append(&output, stack_top);
                 pop(&op_stack);
-                frame_top = back(&op_stack);
+                stack_top = back(&op_stack);
             }
-
             /* pop out the left bracket */
             pop(&op_stack);
-
-            op_name_enum top_op = frame_top->name,
-                cur_op = cur_token.name;
-            if (frame_top == NULL) {
+            top_op = stack_top->name;
+            cur_op = cur_token.name;
+            /* check */
+            if (stack_top == NULL) {
                 throw_syntax_error(
                     cur_token.pos,
                     "Unmatched closing bracket: Cannot find opening bracket"
                 );
             }
-            /* special operators */
+            /* special operators replacement */
             else if (top_op == OP_FCALL && cur_op == OP_RPAREN) {
                 /* create function call */
-                token_t fcall = {NULL, OP_FCALL, TOK_OP, frame_top->pos};
+                token_t fcall = { NULL, OP_FCALL, TOK_OP, stack_top->pos };
                 append(&output, &fcall);
-            }
-            else if (top_op == OP_LCURLY && cur_op == OP_RCURLY) {
+            } else if (top_op == OP_LCURLY && cur_op == OP_RCURLY) {
                 /* function maker */
-                token_t fmake = {NULL, OP_FMAKE, TOK_OP, frame_top->pos};
+                token_t fmake = { NULL, OP_FMAKE, TOK_OP, stack_top->pos };
                 append(&output, &fmake);
-            }
-            else if (top_op == OP_LSQUARE && cur_op == OP_RSQUARE) {
+            } else if (top_op == OP_LSQUARE && cur_op == OP_RSQUARE) {
                 /* pure function maker */
-                token_t pfmake = {NULL, OP_MMAKE, TOK_OP, frame_top->pos};
+                token_t pfmake = { NULL, OP_MMAKE, TOK_OP, stack_top->pos };
                 append(&output, &pfmake);
-            }
-            else if (!(top_op == OP_LPAREN && cur_op == OP_RPAREN)) {
+            } else if (!(top_op == OP_LPAREN && cur_op == OP_RPAREN)) {
                 sprintf(
                     ERR_MSG_BUF,
                     "Unmatched closing bracket: Found '%s' to '%s'",
@@ -162,14 +158,14 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
             printf("op_stack=");
             int j;
             for (j = 0; j < op_stack.size; j++) {
-                token_print(((token_t*) op_stack.data)[j]);
+                token_print(((token_t*)op_stack.data)[j]);
                 printf(" ");
             }
             puts("");
             if (prev_output_count != output.size) {
                 prev_output_count = output.size;
                 printf("new_output=");
-                token_print(*(token_t *) back(&output));
+                token_print(*(token_t*)back(&output));
                 puts("");
             }
         }
@@ -186,7 +182,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
     if (is_debug) {
         printf("result=");
         for (i = 0; i < output.size; i++) {
-            token_print(((token_t*) output.data)[i]);
+            token_print(((token_t*)output.data)[i]);
             printf(" ");
         }
         puts("");
@@ -196,7 +192,8 @@ shunting_yard(const dynarr_t tokens, const int is_debug) {
 }
 
 tree_t
-tree_parse(const dynarr_t tokens, const int is_debug) {
+tree_parse(const dynarr_t tokens, const int is_debug)
+{
     /* tokens */
     return tree_create(shunting_yard(tokens, is_debug), is_debug);
 }

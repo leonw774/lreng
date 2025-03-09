@@ -75,9 +75,13 @@ main(int argc, char** argv)
             return SEMANTIC_ERR_CODE;
         }
         frame_t* top_frame = frame_new();
-        object_t* final_return_object
-            = eval(&syntax_tree, top_frame, syntax_tree.root_index, is_debug);
-        object_free(final_return_object);
+        context_t top_context = {
+            .tree = &syntax_tree,
+            .cur_frame = top_frame,
+            .is_debug = is_debug,
+        };
+        object_t* final_result = eval(top_context, syntax_tree.root_index);
+        object_free(final_result);
         frame_free(top_frame);
         free(top_frame);
         tree_free(&syntax_tree);

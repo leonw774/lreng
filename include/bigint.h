@@ -26,21 +26,9 @@ typedef struct bigint {
 #define bigint_struct_size sizeof(bigint_t)
 
 #define ZERO_BIGINT                                                            \
-    ((bigint_t) {                                                              \
-        .shared = 0,                                                           \
-        .nan = 0,                                                              \
-        .sign = 0,                                                             \
-        .size = 0,                                                             \
-        .digit = 0,                                                            \
-    })
+    ((bigint_t) { .sign = 0, .nan = 0, .size = 0, .shared = 0, .digit = 0 })
 #define NAN_BIGINT()                                                           \
-    ((bigint_t) {                                                              \
-        .shared = 0,                                                           \
-        .nan = 1,                                                              \
-        .sign = 0,                                                             \
-        .size = 0,                                                             \
-        .digit = 0,                                                            \
-    })
+    ((bigint_t) { .sign = 0, .nan = 1, .size = 0, .shared = 0, .digit = 0 })
 extern bigint_t BYTE_BIGINT(unsigned int b);
 
 extern void bi_new(bigint_t* x, u32 size);

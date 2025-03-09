@@ -8,7 +8,7 @@
 #include "objects.h"
 
 /* correspond to reserved_id_name in reserved.h */
-object_t* (*BUILDTIN_FUNC_ARRAY[RESERVED_ID_NUM])(object_t*) = {
+object_t* (*BUILDTIN_FUNC_ARRAY[RESERVED_ID_NUM])(const object_t*) = {
     NULL, /* RESERVED_ID_NAME_NULL */
     &builtin_func_input, /* RESERVED_ID_NAME_INPUT */
     &builtin_func_output, /* RESERVED_ID_NAME_OUTPUT */
@@ -18,7 +18,7 @@ object_t* (*BUILDTIN_FUNC_ARRAY[RESERVED_ID_NUM])(object_t*) = {
 };
 
 object_t*
-builtin_func_input(object_t* obj)
+builtin_func_input(const object_t* obj)
 {
     int c;
     if (obj->type != TYPE_NULL) {
@@ -33,7 +33,7 @@ builtin_func_input(object_t* obj)
 }
 
 object_t*
-builtin_func_output(object_t* obj)
+builtin_func_output(const object_t* obj)
 {
     /* check if obj is number */
     if (obj->type != TYPE_NUM) {
@@ -43,7 +43,7 @@ builtin_func_output(object_t* obj)
         object_print(obj, '\n');
         return (object_t*)ERR_OBJECT_PTR;
     }
-    number_t n = obj->data.number;
+    const number_t n = obj->data.number;
     if (n.numer.size == 0) {
         putchar(0);
     } else {
@@ -75,7 +75,7 @@ builtin_func_output(object_t* obj)
 }
 
 object_t*
-builtin_func_is_number(object_t* obj)
+builtin_func_is_number(const object_t* obj)
 {
     return object_create(
         TYPE_NUM, (object_data_t)number_from_i32(obj->type == TYPE_NUM)
@@ -83,7 +83,7 @@ builtin_func_is_number(object_t* obj)
 }
 
 object_t*
-builtin_func_is_callable(object_t* obj)
+builtin_func_is_callable(const object_t* obj)
 {
     return object_create(
         TYPE_NUM, (object_data_t)number_from_i32(obj->type == TYPE_CALL)
@@ -91,7 +91,7 @@ builtin_func_is_callable(object_t* obj)
 }
 
 object_t*
-builtin_func_is_pair(object_t* obj)
+builtin_func_is_pair(const object_t* obj)
 {
     return object_create(
         TYPE_NUM, (object_data_t)number_from_i32(obj->type == TYPE_PAIR)

@@ -64,10 +64,10 @@ BYTE_BIGINT(u32 b)
         exit(1);
     }
     return (bigint_t) {
-        .shared = 1,
+        .sign = 0,
         .nan = 0,
         .size = 1,
-        .sign = 0,
+        .shared = 1,
         .digit = (u32*)&STATIC_BYTES[b],
     };
 }

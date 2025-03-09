@@ -15,8 +15,6 @@ typedef enum object_type {
     TYPE_ANY
 } object_type_enum;
 
-typedef unsigned char object_type_t;
-
 #define OBJECT_TYPE_NUM TYPE_ANY
 
 typedef struct object object_t;
@@ -39,6 +37,7 @@ typedef struct callable {
 #define NOT_BUILTIN_FUNC -1
 
 typedef union object_data {
+    unsigned long long null;
     number_t number;
     pair_t pair;
     callable_t callable;
@@ -47,7 +46,7 @@ typedef union object_data {
 typedef struct object {
     unsigned char is_error;
     unsigned char is_const;
-    object_type_t type;
+    unsigned char type;
     unsigned int ref_count;
     object_data_t data;
 } object_t;
@@ -58,7 +57,7 @@ typedef struct object {
 extern const object_t* ERR_OBJECT_PTR;
 extern const object_t ERR_OBJECT;
 
-extern const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM + 1];
+extern const char* OBJ_TYPE_STR[OBJECT_TYPE_NUM + 1];
 
 extern object_t* object_create(object_type_enum type, object_data_t data);
 extern object_t* object_copy(object_t* obj);

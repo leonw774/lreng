@@ -7,7 +7,7 @@ BinPackArguments: true
 AllowAllArgumentsOnNextLine: true
 BinPackParameters: true
 AllowAllParametersOfDeclarationOnNextLine: true
-BinPackBracedLists: false
+BinPackBracedLists: true
 BinPackLongBracedList: true
 
 AlignAfterOpenBracket: BlockIndent

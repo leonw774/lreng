@@ -15,7 +15,7 @@ const object_t ERR_OBJECT = (object_t) {
 const object_t* ERR_OBJECT_PTR = &ERR_OBJECT;
 
 /* correspond with object_type_enum in objects.h */
-const char* OBJECT_TYPE_STR[OBJECT_TYPE_NUM + 1] = {
+const char* OBJ_TYPE_STR[OBJECT_TYPE_NUM + 1] = {
     "Null", /* TYPE_NULL */
     "Number", /* TYPE_NUMBER */
     "Pair", /* TYPE_PAIR */
