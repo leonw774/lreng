@@ -323,18 +323,18 @@ filter_merge(object_t* pair_to_merge, const int is_debug)
         /* we free parent but don't want to free children so increase 1 here to
            counter the decrease in object_free
         */
-        right->ref_count++;
+        object_t* right_copy = object_copy(right);
         object_free(pair_to_merge);
-        return right;
+        return right_copy;
     } else if (right->is_error) {
 #ifdef ENABLE_DEBUG_LOG
         if (is_debug) {
             printf("filter_merge: pair replaced by its left\n");
         }
 #endif
-        left->ref_count++;
+        object_t* left_copy = object_copy(left);
         object_free(pair_to_merge);
-        return left;
+        return left_copy;
     }
     return pair_to_merge;
 }
