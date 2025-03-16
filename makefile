@@ -1,6 +1,6 @@
 CFLAGS = -I include/ -Wall -Wextra
 DEFAULT_FLAGS = -O3
-PROFILE_FLAGS = -fno-pie -no-pie -pg -O1 -D IS_PROFILE
+PROFILE_FLAGS = -fno-pie -no-pie -pg -O3 -D IS_PROFILE -D PROFILE_REPEAT_NUM=100W
 DEBUG_FLAGS = -g -D ENABLE_DEBUG_LOG \
 	-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
 DEBUG_MORE_FLAGS = -D ENABLE_DEBUG_LOG_MORE

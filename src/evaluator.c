@@ -454,18 +454,15 @@ exec_filter(
             continue;
         }
         /* merge */
+        *res_left = filter_merge(*res_left);
+        *res_right = filter_merge(*res_right);
 #ifdef ENABLE_DEBUG_LOG
-        *res_left = filter_merge(*res_left, global_is_enable_debug_log);
-        *res_right = filter_merge(*res_right, global_is_enable_debug_log);
         if (global_is_enable_debug_log) {
             printf("exec_filter: pair=");
             object_print(arg_pair, '\n');
             printf("exec_filter: res_obj=");
             object_print(res_pair, '\n');
         }
-#else
-        *res_left = filter_merge(*res_left);
-        *res_right = filter_merge(*res_right);
 #endif
 
         pop(&arg_pair_stack);
@@ -491,10 +488,8 @@ exec_filter(
             printf("exec_filter: do final merge on ");
             object_print(result, '\n');
         }
-        result = filter_merge(result, global_is_enable_debug_log);
-#else
-        result = filter_merge(result);
 #endif
+        result = filter_merge(result);
     }
     /* if root is removed: return null object */
     if (result->is_error) {
@@ -958,14 +953,21 @@ eval(context_t context, const int entry_index)
             }
 #endif
         } else if (cur_token.type == TOK_NUM) {
-            /* copy object from tree */
+            /* we sure number is pre eval when creating tree so just
+               copy object from tree
+            */
             OBJ_TABLE(cur_index) = object_copy(tree->literals[cur_index]);
             /* not id or num or op: error */
         } else if (cur_token.type != TOK_OP) {
             printf("eval: bad token type: %d\n", cur_token.type);
             exit(RUNTIME_ERR_CODE);
-            /* function and macro maker */
+        } else if (tree->literals[cur_index] != NULL) {
+            /* we now sure this token is operator: copy object from tree if it
+               is pre-evaled
+            */
+            OBJ_TABLE(cur_index) = object_copy(tree->literals[cur_index]);
         } else if (cur_token.name == OP_FMAKE || cur_token.name == OP_MMAKE) {
+            /* function and macro maker */
             int is_macro = cur_token.name == OP_MMAKE;
             /* function will owns a deep copy of the frame it created under */
             frame_t* init_time_frame = is_macro ? NULL : frame_copy(cur_frame);
@@ -985,8 +987,8 @@ eval(context_t context, const int entry_index)
                 object_print(OBJ_TABLE(cur_index), '\n');
             }
 #endif
-            /* argument binder */
         } else if (cur_token.name == OP_ARG) {
+            /* argument binder */
             if (right_obj == NULL) {
                 append(&token_index_stack, &tree->rights[cur_index]);
                 continue;
@@ -1035,9 +1037,9 @@ eval(context_t context, const int entry_index)
             /* move right to current */
             OBJ_TABLE(cur_index) = right_obj;
             OBJ_TABLE(right_index) = NULL;
-            /* condition-and or condition-or */
         } else if (cur_token.name == OP_CONDAND
                    || cur_token.name == OP_CONDOR) {
+            /* condition-and or condition-or */
             /* eval left first and eval right conditionally */
             if (left_obj == NULL) {
                 append(&token_index_stack, &left_index);
@@ -1077,7 +1079,6 @@ eval(context_t context, const int entry_index)
             OBJ_TABLE(left_index) = NULL;
         } else {
             /* other operator */
-
             if (is_unary_op(cur_token.name) && left_obj == NULL) {
                 append(&token_index_stack, &left_index);
                 continue;

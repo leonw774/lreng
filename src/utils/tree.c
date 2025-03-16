@@ -117,6 +117,23 @@ tree_create(dynarr_t tokens)
                 TYPE_NUM,
                 (object_data_t) { .number = number_from_str(cur_token->str) }
             );
+        } else if (cur_token->type == TOK_OP && cur_token->name == OP_PAIR) {
+            if (tree.lefts[i] == -1 || tree.rights[i] == -1) {
+                throw_syntax_error(
+                    cur_token->pos, "Pair operator has too few operands"
+                );
+            } else if (tree.literals[tree.lefts[i]] != NULL
+                       && tree.literals[tree.rights[i]] != NULL) {
+                tree.literals[i] = object_create(
+                    TYPE_PAIR,
+                    (object_data_t) {
+                        .pair = (pair_t) {
+                            .left = tree.literals[tree.lefts[i]],
+                            .right = tree.literals[tree.rights[i]],
+                        }
+                    }
+                );
+            }
         }
     }
 
@@ -129,7 +146,10 @@ inline void
 tree_free(tree_t* tree)
 {
     int i;
-    for (i = 0; i < tree->tokens.size; i++) {
+    /* iterate from back because literal could be pair and we waant to free
+       parents first
+    */
+    for (i = tree->tokens.size - 1; i >= 0; i--) {
         token_t* token = at(&tree->tokens, i);
         if (token->type == TOK_ID && token->name < RESERVED_ID_NUM) {
             continue;
@@ -139,9 +159,8 @@ tree_free(tree_t* tree)
             printf("freeing literal at node %d\n", i);
             object_print(tree->literals[i], '\n');
 #endif
-            /* remove literal's is_coust so they can be freed */
-            tree->literals[i]->is_const = 0;
-            object_free(tree->literals[i]);
+            /* dont worry about possible memory leak cause it is literal */
+            free(tree->literals[i]);
         }
     }
     dynarr_free(&tree->tokens);
