@@ -1,3 +1,4 @@
+#include "lreng.h"
 #include "arena.h"
 #include "dynarr.h"
 #include "errormsg.h"
@@ -573,7 +574,7 @@ op_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
 
 /* define the state machine: return a dynarr_t of tokens */
 dynarr_t
-tokenize(const char* src, const unsigned long src_len, const int is_debug)
+tokenize(const char* src, const unsigned long src_len)
 {
     linecol_t pos = { 1, 0 }; /* start at line 1 col 1 */
     linecol_iterator_t pos_iter = { src, src_len, 0, pos };
@@ -587,13 +588,13 @@ tokenize(const char* src, const unsigned long src_len, const int is_debug)
 
 #ifdef ENABLE_DEBUG_LOG
     int prev_tokens_count = 0;
-    if (is_debug) {
+    if (global_is_enable_debug_log) {
         puts("tokenize");
     }
 #endif
     while (1) {
 #ifdef ENABLE_DEBUG_LOG
-        if (is_debug) {
+        if (global_is_enable_debug_log) {
             char c = (pos_iter.index < pos_iter.src_len)
                 ? pos_iter.src[pos_iter.index]
                 : '\0';
@@ -611,7 +612,7 @@ tokenize(const char* src, const unsigned long src_len, const int is_debug)
         cur_cargo = res.cargo;
         state_func = res.state_func;
 #ifdef ENABLE_DEBUG_LOG
-        if (is_debug) {
+        if (global_is_enable_debug_log) {
             char* tmp_str = to_str(&cur_cargo.str);
             int size = cur_cargo.tokens.size;
             print_state_name(state_func);
@@ -627,7 +628,7 @@ tokenize(const char* src, const unsigned long src_len, const int is_debug)
 #endif
     }
 #ifdef ENABLE_DEBUG_LOG
-    if (is_debug) {
+    if (global_is_enable_debug_log) {
         int i;
         printf("tokens=");
         for (i = 0; i < cur_cargo.tokens.size; i++) {

@@ -2,17 +2,22 @@
 #include "token.h"
 #include "tree.h"
 
+#ifndef LRENG_H
+#define LRENG_H
+
+extern int global_is_enable_debug_log;
+
 typedef struct context {
     const tree_t* tree;
     frame_t* cur_frame;
-    const int is_debug;
 } context_t;
 
-dynarr_t
-tokenize(const char* src, const unsigned long src_len, const int is_debug);
+dynarr_t tokenize(const char* src, const unsigned long src_len);
 
-tree_t tree_parse(const dynarr_t tokens, const int is_debug);
+tree_t tree_parse(const dynarr_t tokens);
 
-int check_semantic(const tree_t tree, const int is_debug);
+int check_semantic(const tree_t tree);
 
 object_t* eval(context_t context, const int entry_index);
+
+#endif

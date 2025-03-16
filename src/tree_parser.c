@@ -26,9 +26,11 @@ op_prec_lt(op_name_enum o1, op_name_enum o2)
     );
 }
 
+/* FUTURE WORK: rewrite parsing with pratt parser */
+
 /* return rearranged tokens in postfix order */
 dynarr_t
-shunting_yard(const dynarr_t tokens, const int is_debug)
+shunting_yard(const dynarr_t tokens)
 {
     enum EXPECT {
         PREFIXER,
@@ -41,7 +43,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug)
 
 #ifdef ENABLE_DEBUG_LOG
     int prev_output_count = 0;
-    if (is_debug) {
+    if (global_is_enable_debug_log) {
         puts("tree_parse");
     }
 #endif
@@ -49,7 +51,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug)
     for (i = 0; i < tokens.size; i++) {
         token_t cur_token = ((token_t*)tokens.data)[i];
 #ifdef ENABLE_DEBUG_LOG
-        if (is_debug) {
+        if (global_is_enable_debug_log) {
             printf("expect=%s token=", (expectation ? "INFIX" : "PREFIX"));
             token_print(cur_token);
             puts("");
@@ -154,7 +156,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug)
             append(&output, &cur_token);
         }
 #ifdef ENABLE_DEBUG_LOG
-        if (is_debug) {
+        if (global_is_enable_debug_log) {
             printf("op_stack=");
             int j;
             for (j = 0; j < op_stack.size; j++) {
@@ -179,7 +181,7 @@ shunting_yard(const dynarr_t tokens, const int is_debug)
     }
     dynarr_free(&op_stack);
 #ifdef ENABLE_DEBUG_LOG
-    if (is_debug) {
+    if (global_is_enable_debug_log) {
         printf("result=");
         for (i = 0; i < output.size; i++) {
             token_print(((token_t*)output.data)[i]);
@@ -192,8 +194,15 @@ shunting_yard(const dynarr_t tokens, const int is_debug)
 }
 
 tree_t
-tree_parse(const dynarr_t tokens, const int is_debug)
+tree_parse(const dynarr_t tokens)
 {
     /* tokens */
-    return tree_create(shunting_yard(tokens, is_debug), is_debug);
+    tree_t tree = tree_create(shunting_yard(tokens));
+#ifdef ENABLE_DEBUG_LOG
+    if (global_is_enable_debug_log) {
+        printf("final_tree=\n");
+        tree_print(&tree);
+    }
+#endif
+    return tree;
 }

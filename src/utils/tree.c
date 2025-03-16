@@ -8,7 +8,7 @@
 #include <stdlib.h>
 
 tree_t
-tree_create(dynarr_t tokens, const int is_debug)
+tree_create(dynarr_t tokens)
 {
     int i, token_size = tokens.size;
     tree_t tree = {
@@ -41,7 +41,7 @@ tree_create(dynarr_t tokens, const int is_debug)
     memset(tree.sizes, 0, token_size * sizeof(int));
     for (i = 0; i < token_size; i++) {
         token_t* cur_token = at(&tree.tokens, i);
-#ifdef ENABLE_DEBUG_LOG
+#ifdef ENABLE_DEBUG_LOG_MORE
         if (is_debug) {
             token_print(*cur_token);
         }
@@ -62,7 +62,7 @@ tree_create(dynarr_t tokens, const int is_debug)
             pop(&stack);
             tree.lefts[i] = l_index;
             append(&stack, &i);
-#ifdef ENABLE_DEBUG_LOG
+#ifdef ENABLE_DEBUG_LOG_MORE
             if (is_debug) {
                 printf(" L=");
                 token_print(*(token_t*)at(&tree.tokens, l_index));
@@ -79,8 +79,7 @@ tree_create(dynarr_t tokens, const int is_debug)
         tree.sizes[i]
             = (1 + ((tree.lefts[i] == -1) ? 0 : tree.sizes[tree.lefts[i]])
                + ((tree.rights[i] == -1) ? 0 : tree.sizes[tree.rights[i]]));
-
-#ifdef ENABLE_DEBUG_LOG
+#ifdef ENABLE_DEBUG_LOG_MORE
         if (is_debug) {
             putchar('\n');
         }
@@ -90,14 +89,11 @@ tree_create(dynarr_t tokens, const int is_debug)
     /* check result */
     if (stack.size != 1) {
 #ifdef ENABLE_DEBUG_LOG
-        if (is_debug) {
-            int n;
-            printf("REMAINED IN STACK:\n");
-            for (n = 0; n < stack.size; n++) {
-                token_print(((token_t*)tree.tokens.data)[((int*)stack.data)[n]]
-                );
-                puts("");
-            }
+        int n;
+        printf("REMAINED IN STACK:\n");
+        for (n = 0; n < stack.size; n++) {
+            token_print(((token_t*)tree.tokens.data)[((int*)stack.data)[n]]);
+            puts("");
         }
 #endif
         sprintf(
@@ -126,12 +122,6 @@ tree_create(dynarr_t tokens, const int is_debug)
 
     /* free things */
     dynarr_free(&stack);
-#ifdef ENABLE_DEBUG_LOG
-    if (is_debug) {
-        printf("final_tree=\n");
-        tree_print(&tree);
-    }
-#endif
     return tree;
 }
 
@@ -154,7 +144,6 @@ tree_free(tree_t* tree)
             object_free(tree->literals[i]);
         }
     }
-    arena_free(&token_str_arena);
     dynarr_free(&tree->tokens);
     free(tree->lefts);
     /* lefts, rights, sizes share same heap chunk so freeing left is enough */

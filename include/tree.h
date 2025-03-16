@@ -16,7 +16,7 @@ typedef struct tree {
     int max_id_name; /* number of ids in tree */
 } tree_t;
 
-extern tree_t tree_create(dynarr_t tokens, const int is_debug);
+extern tree_t tree_create(dynarr_t tokens);
 
 extern void tree_free(tree_t* tree);
 

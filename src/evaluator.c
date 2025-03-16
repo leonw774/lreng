@@ -50,8 +50,7 @@ is_bad_type(
 
 void
 construct_call_frame(
-    frame_t* call_frame, const frame_t* cur_frame, const object_t* func,
-    const int is_debug
+    frame_t* call_frame, const frame_t* cur_frame, const object_t* func
 )
 {
     /* if is direct recursion, copy the current stack except the last */
@@ -83,19 +82,19 @@ construct_call_frame(
 
             if (!is_forked && cur_frame_index == init_frame_index) {
 #ifdef ENABLE_DEBUG_LOG
-                if (is_debug) {
+                if (global_is_enable_debug_log) {
                     printf("exec_call: stack[%d] use current\n", i);
                 }
-                src_pairs = (dynarr_t*)at(&cur_frame->stack, i);
 #endif
+                src_pairs = (dynarr_t*)at(&cur_frame->stack, i);
             } else {
-                is_forked = 1;
-                src_pairs = (dynarr_t*)at(&f_init_frame->stack, i);
 #ifdef ENABLE_DEBUG_LOG
-                if (is_debug) {
+                if (global_is_enable_debug_log) {
                     printf("exec_call: stack[%d] use init-time\n", i);
                 }
 #endif
+                is_forked = 1;
+                src_pairs = (dynarr_t*)at(&f_init_frame->stack, i);
             }
             /* push the shallow copy of source pairs */
             append(&call_frame->stack, src_pairs);
@@ -126,7 +125,7 @@ exec_call(context_t context, linecol_t pos, const object_t* func, object_t* arg)
     }
 
 #ifdef ENABLE_DEBUG_LOG
-    if (context.is_debug) {
+    if (global_is_enable_debug_log) {
         printf("exec_call: prepare call frame\n");
     }
 #endif
@@ -136,7 +135,7 @@ exec_call(context_t context, linecol_t pos, const object_t* func, object_t* arg)
     } else {
         call_frame = calloc(1, sizeof(frame_t));
         call_frame->global_pairs = cur_frame->global_pairs;
-        construct_call_frame(call_frame, cur_frame, func, context.is_debug);
+        construct_call_frame(call_frame, cur_frame, func);
         /* set argument to call-frame */
         if (func->data.callable.arg_name != -1) {
             frame_set(call_frame, func->data.callable.arg_name, arg);
@@ -144,7 +143,7 @@ exec_call(context_t context, linecol_t pos, const object_t* func, object_t* arg)
     }
 
 #ifdef ENABLE_DEBUG_LOG
-    if (context.is_debug) {
+    if (global_is_enable_debug_log) {
         printf("exec_call: call_frame=%p\nfunc_obj=", call_frame);
         object_print(func, '\n');
         printf("arg=");
@@ -155,7 +154,6 @@ exec_call(context_t context, linecol_t pos, const object_t* func, object_t* arg)
     context_t new_context = {
         .tree = context.tree,
         .cur_frame = call_frame,
-        .is_debug = context.is_debug,
     };
     result = eval(new_context, func->data.callable.index);
     if (!func->data.callable.is_macro) {
@@ -195,7 +193,7 @@ map_process_node(
         object_t* result = exec_call(context, pos, func, arg);
         if (result->is_error) {
 #ifdef ENABLE_DEBUG_LOG
-            if (context.is_debug) {
+            if (global_is_enable_debug_log) {
                 printf("exec_map: a child return with error: ");
                 object_print(result, '\n');
             }
@@ -214,7 +212,7 @@ object_t*
 exec_map(context_t context, linecol_t pos, const object_t* func, object_t* pair)
 {
 #ifdef ENABLE_DEBUG_LOG
-    if (context.is_debug) {
+    if (global_is_enable_debug_log) {
         printf("exec_map\n");
         printf("func=");
         object_print(func, '\n');
@@ -243,7 +241,7 @@ exec_map(context_t context, linecol_t pos, const object_t* func, object_t* pair)
         /* check */
         if (arg_left == NULL || arg_right == NULL) {
 #ifdef ENABLE_DEBUG_LOG
-            if (context.is_debug) {
+            if (global_is_enable_debug_log) {
                 printf("exec_map: bad pair - left or right is empty: ");
                 object_print(arg_pair, '\n');
             }
@@ -256,7 +254,7 @@ exec_map(context_t context, linecol_t pos, const object_t* func, object_t* pair)
             = map_process_node(context, pos, func, arg_left, res_left);
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
-            if (context.is_debug) {
+            if (global_is_enable_debug_log) {
                 printf("exec_map: a left child return with error: ");
                 object_print(*res_left, '\n');
             }
@@ -273,7 +271,7 @@ exec_map(context_t context, linecol_t pos, const object_t* func, object_t* pair)
             = map_process_node(context, pos, func, arg_right, res_right);
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
-            if (context.is_debug) {
+            if (global_is_enable_debug_log) {
                 printf("exec_map: a right child return with error: ");
                 object_print(*res_right, '\n');
             }
@@ -299,7 +297,7 @@ exec_map(context_t context, linecol_t pos, const object_t* func, object_t* pair)
 }
 
 object_t*
-filter_merge(object_t* pair_to_merge, const int is_debug)
+filter_merge(object_t* pair_to_merge)
 {
     if (pair_to_merge->type != TYPE_PAIR) {
         return pair_to_merge;
@@ -308,7 +306,7 @@ filter_merge(object_t* pair_to_merge, const int is_debug)
     object_t* left = pair_to_merge->data.pair.left;
     if (left->is_error && right->is_error) {
 #ifdef ENABLE_DEBUG_LOG
-        if (is_debug) {
+        if (global_is_enable_debug_log) {
             printf("filter_merge: pair removed\n");
         }
 #endif
@@ -316,7 +314,7 @@ filter_merge(object_t* pair_to_merge, const int is_debug)
         return (object_t*)ERR_OBJECT_PTR;
     } else if (left->is_error) {
 #ifdef ENABLE_DEBUG_LOG
-        if (is_debug) {
+        if (global_is_enable_debug_log) {
             printf("filter_merge: pair replaced by its right\n");
         }
 #endif
@@ -328,7 +326,7 @@ filter_merge(object_t* pair_to_merge, const int is_debug)
         return right_copy;
     } else if (right->is_error) {
 #ifdef ENABLE_DEBUG_LOG
-        if (is_debug) {
+        if (global_is_enable_debug_log) {
             printf("filter_merge: pair replaced by its left\n");
         }
 #endif
@@ -383,7 +381,7 @@ exec_filter(
 )
 {
 #ifdef ENABLE_DEBUG_LOG
-    if (context.is_debug) {
+    if (global_is_enable_debug_log) {
         printf("exec_filter\n");
         printf("func=");
         object_print(func, '\n');
@@ -413,7 +411,7 @@ exec_filter(
         /* check */
         if (arg_left == NULL || arg_right == NULL) {
 #ifdef ENABLE_DEBUG_LOG
-            if (context.is_debug) {
+            if (global_is_enable_debug_log) {
                 printf("exec_filter: bad pair - left or right is empty: ");
                 object_print(arg_pair, '\n');
             }
@@ -426,7 +424,7 @@ exec_filter(
             = filter_process_node(context, pos, func, arg_left, res_left);
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
-            if (context.is_debug) {
+            if (global_is_enable_debug_log) {
                 printf("exec_filter: a left child return with error: ");
                 object_print(result, '\n');
             }
@@ -443,7 +441,7 @@ exec_filter(
             = filter_process_node(context, pos, func, arg_right, res_right);
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
-            if (context.is_debug) {
+            if (global_is_enable_debug_log) {
                 printf("exec_filter: a right child return with error: ");
                 object_print(result, '\n');
             }
@@ -456,15 +454,18 @@ exec_filter(
             continue;
         }
         /* merge */
-        *res_left = filter_merge(*res_left, context.is_debug);
-        *res_right = filter_merge(*res_right, context.is_debug);
 #ifdef ENABLE_DEBUG_LOG
-        if (context.is_debug) {
+        *res_left = filter_merge(*res_left, global_is_enable_debug_log);
+        *res_right = filter_merge(*res_right, global_is_enable_debug_log);
+        if (global_is_enable_debug_log) {
             printf("exec_filter: pair=");
             object_print(arg_pair, '\n');
             printf("exec_filter: res_obj=");
             object_print(res_pair, '\n');
         }
+#else
+        *res_left = filter_merge(*res_left);
+        *res_right = filter_merge(*res_right);
 #endif
 
         pop(&arg_pair_stack);
@@ -475,7 +476,7 @@ exec_filter(
 
     if (is_error) {
 #ifdef ENABLE_DEBUG_LOG
-        if (context.is_debug) {
+        if (global_is_enable_debug_log) {
             printf("exec_filter: error\n");
         }
 #endif
@@ -486,12 +487,14 @@ exec_filter(
     /* final merge */
     if (result->type == TYPE_PAIR) {
 #ifdef ENABLE_DEBUG_LOG
-        if (context.is_debug) {
+        if (global_is_enable_debug_log) {
             printf("exec_filter: do final merge on ");
             object_print(result, '\n');
         }
+        result = filter_merge(result, global_is_enable_debug_log);
+#else
+        result = filter_merge(result);
 #endif
-        result = filter_merge(result, context.is_debug);;
     }
     /* if root is removed: return null object */
     if (result->is_error) {
@@ -526,7 +529,7 @@ exec_reduce(
 )
 {
 #ifdef ENABLE_DEBUG_LOG
-    if (context.is_debug) {
+    if (global_is_enable_debug_log) {
         printf("exec_reduce\n");
         printf("func=");
         object_print(func, '\n');
@@ -555,7 +558,7 @@ exec_reduce(
         /* check */
         if (arg_left == NULL || arg_right == NULL) {
 #ifdef ENABLE_DEBUG_LOG
-            if (context.is_debug) {
+            if (global_is_enable_debug_log) {
                 printf("exec_reduce: bad pair - left or right is empty: ");
                 object_print(arg_pair, '\n');
             }
@@ -567,7 +570,7 @@ exec_reduce(
         process_result_enum = reduce_process_node(arg_left, res_left);
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
-            if (context.is_debug) {
+            if (global_is_enable_debug_log) {
                 printf("exec_reduce: a left child return with error: ");
                 object_print(*res_left, '\n');
             }
@@ -583,7 +586,7 @@ exec_reduce(
         process_result_enum = reduce_process_node(arg_right, res_right);
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
-            if (context.is_debug) {
+            if (global_is_enable_debug_log) {
                 printf("exec_reduce: a right child return with error: ");
                 object_print(*res_right, '\n');
             }
@@ -599,7 +602,7 @@ exec_reduce(
         object_t* reduce_result = exec_call(context, token_pos, func, res_pair);
         if (reduce_result->is_error) {
 #ifdef ENABLE_DEBUG_LOG
-            if (context.is_debug) {
+            if (global_is_enable_debug_log) {
                 printf("exec_reduce: a child return with error: ");
                 object_print(reduce_result, '\n');
             }
@@ -898,7 +901,7 @@ eval(context_t context, const int entry_index)
     object_t* result;
 
 #ifdef ENABLE_DEBUG_LOG
-    if (context.is_debug) {
+    if (global_is_enable_debug_log) {
         printf("eval\n");
         printf("entry_index=%d cur_frame=%p ", entry_index, cur_frame);
         printf("obj_table_offset = %d ", obj_table_offset);
@@ -923,7 +926,7 @@ eval(context_t context, const int entry_index)
         object_t *left_obj = (left_index < 0) ? NULL : OBJ_TABLE(left_index),
                  *right_obj = (right_index < 0) ? NULL : OBJ_TABLE(right_index);
 #ifdef ENABLE_DEBUG_LOG
-        if (context.is_debug) {
+        if (global_is_enable_debug_log) {
             printf("> (node %d) ", cur_index);
             token_print(cur_token);
             printf(
@@ -946,7 +949,7 @@ eval(context_t context, const int entry_index)
             /* copy object from frame */
             OBJ_TABLE(cur_index) = object_copy(o);
 #ifdef ENABLE_DEBUG_LOG
-            if (context.is_debug) {
+            if (global_is_enable_debug_log) {
                 printf(
                     "  get identifiter '%s' (name=%d) from frame (addr=%p): ",
                     cur_token.str, cur_token.name, o
@@ -977,7 +980,7 @@ eval(context_t context, const int entry_index)
                 }
             );
 #ifdef ENABLE_DEBUG_LOG
-            if (context.is_debug) {
+            if (global_is_enable_debug_log) {
                 printf(is_macro ? " make function:" : " make macro:");
                 object_print(OBJ_TABLE(cur_index), '\n');
             }
@@ -1024,7 +1027,7 @@ eval(context_t context, const int entry_index)
             /* set frame */
             frame_set(cur_frame, left_token->name, right_obj);
 #ifdef ENABLE_DEBUG_LOG
-            if (context.is_debug) {
+            if (global_is_enable_debug_log) {
                 printf("initialized identifier '%s' to ", left_token->str);
                 object_print(right_obj, '\n');
             }
@@ -1090,7 +1093,7 @@ eval(context_t context, const int entry_index)
                 print_runtime_error(cur_token.pos, ERR_MSG_BUF);
             }
 #ifdef ENABLE_DEBUG_LOG
-            if (context.is_debug) {
+            if (global_is_enable_debug_log) {
                 printf(
                     "^ (node %d) exec_op %s returned\n", cur_index,
                     OP_STRS[cur_token.name]
@@ -1110,7 +1113,7 @@ eval(context_t context, const int entry_index)
             break; /* break the while loop */
         }
 #ifdef ENABLE_DEBUG_LOG
-        if (context.is_debug) {
+        if (global_is_enable_debug_log) {
             printf("< (node %d) eval result: ", cur_index);
             object_print(OBJ_TABLE(cur_index), '\n');
             fflush(stdout);
@@ -1122,7 +1125,7 @@ eval(context_t context, const int entry_index)
     /* prepare return object */
     if (is_error) {
 #ifdef ENABLE_DEBUG_LOG
-        if (context.is_debug) {
+        if (global_is_enable_debug_log) {
             printf("eval return with error\n");
         }
 #endif
@@ -1134,7 +1137,7 @@ eval(context_t context, const int entry_index)
     /* free things */
     dynarr_free(&token_index_stack);
 #ifdef ENABLE_DEBUG_LOG
-    if (context.is_debug) {
+    if (global_is_enable_debug_log) {
         printf("free obj_tables\n");
         fflush(stdout);
     }
@@ -1142,7 +1145,7 @@ eval(context_t context, const int entry_index)
     for (i = 0; i < tree_size; i++) {
         if (obj_table[i] != NULL) {
 #ifdef ENABLE_DEBUG_LOG
-            if (context.is_debug) {
+            if (global_is_enable_debug_log) {
                 printf("free [%d] addr: %p:", i, obj_table[i]);
                 object_print(obj_table[i], '\n');
                 fflush(stdout);
@@ -1153,7 +1156,7 @@ eval(context_t context, const int entry_index)
     }
     free(obj_table);
 #ifdef ENABLE_DEBUG_LOG
-    if (context.is_debug) {
+    if (global_is_enable_debug_log) {
         printf("eval returned ");
         object_print(result, '\n');
         fflush(stdout);

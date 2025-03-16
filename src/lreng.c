@@ -1,4 +1,5 @@
 #include "lreng.h"
+#include "arena.h"
 #include "dynarr.h"
 #include "errormsg.h"
 #include "objects.h"
@@ -8,28 +9,31 @@
 #include <stdlib.h>
 #include <string.h>
 
+int global_is_enable_debug_log = 0;
+
 int
 main(int argc, char** argv)
 {
     const char* usage = "Usage: lreng [-d] {file_path}\n";
-    int is_debug = 0;
     char* file_path = NULL;
     FILE* in_fp = NULL;
     unsigned long long fsize = 0;
     char* src = NULL;
 
-    int opt_c;
-    while ((opt_c = getopt(argc, argv, "d")) != -1) {
-        switch (opt_c) {
-        case 'd':
-            is_debug = 1;
-            break;
-        case '?':
-            printf("Unknown option: '-%c'(%d)\n", optopt, optopt);
-            puts(usage);
-            return 1;
-        default:
-            abort();
+    {
+        int opt_c;
+        while ((opt_c = getopt(argc, argv, "d")) != -1) {
+            switch (opt_c) {
+            case 'd':
+                global_is_enable_debug_log = 1;
+                break;
+            case '?':
+                printf("Unknown option: '-%c'(%d)\n", optopt, optopt);
+                puts(usage);
+                return 1;
+            default:
+                abort();
+            }
         }
     }
     if (optind != argc - 1 || argv[optind] == NULL) {
@@ -68,9 +72,9 @@ main(int argc, char** argv)
     int i;
     for (i = 0; i < PROFILE_REPEAT_NUM; i++) {
 #endif
-        dynarr_t tokens = tokenize(src, fsize, is_debug);
-        tree_t syntax_tree = tree_parse(tokens, is_debug);
-        int is_good_semantic = check_semantic(syntax_tree, is_debug);
+        dynarr_t tokens = tokenize(src, fsize);
+        tree_t syntax_tree = tree_parse(tokens);
+        int is_good_semantic = check_semantic(syntax_tree);
         if (!is_good_semantic) {
             return SEMANTIC_ERR_CODE;
         }
@@ -78,7 +82,6 @@ main(int argc, char** argv)
         context_t top_context = {
             .tree = &syntax_tree,
             .cur_frame = top_frame,
-            .is_debug = is_debug,
         };
         object_t* final_result = eval(top_context, syntax_tree.root_index);
         object_free(final_result);
@@ -86,6 +89,7 @@ main(int argc, char** argv)
         free(top_frame);
         tree_free(&syntax_tree);
         dynarr_free(&tokens);
+        arena_free(&token_str_arena);
 #ifdef IS_PROFILE
     }
 #endif

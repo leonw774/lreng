@@ -1,5 +1,5 @@
 CFLAGS = -I include/ -Wall -Wextra
-DEFAULT_FLAGS = -O2
+DEFAULT_FLAGS = -O3
 PROFILE_FLAGS = -fno-pie -no-pie -pg -O1 -D IS_PROFILE
 DEBUG_FLAGS = -g -D ENABLE_DEBUG_LOG \
 	-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
@@ -9,7 +9,7 @@ MEMCHECK_FLAGS = -include memcheck/memcheck.h -Wno-implicit-function-declaration
 TEST_DIR = tests
 
 SHARED_SRC = src/**/*.c
-TEST_SRC = $(wildcard $(TEST_DIR)/*.c) 
+TEST_SRC = $(wildcard $(TEST_DIR)/*.c)
 MAIN_SRC = src/*.c
 
 TEST_TARGET = $(patsubst %.c, %.out, $(TEST_SRC))

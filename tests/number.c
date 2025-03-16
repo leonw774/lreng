@@ -1,15 +1,18 @@
+#include "number.h"
+#include "assert.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "assert.h"
-#include "number.h"
 
 int
-main() {
+main()
+{
     number_t mone_hundred = number_from_str("-100");
     number_t one_quarter = number_from_str("0.25");
     number_print_frac(&mone_hundred, '\n');
     number_print_frac(&one_quarter, '\n');
-    number_t two_power_two_hundred = number_from_str("1606938044258990275541962092341162602522202993782792835301376");
+    number_t two_power_two_hundred = number_from_str(
+        "1606938044258990275541962092341162602522202993782792835301376"
+    );
     number_print_frac(&two_power_two_hundred, '\n');
 
     number_t a = number_from_str("1.1");
@@ -24,36 +27,44 @@ main() {
     number_t result;
 
     result = number_add(&a, &b);
-    number_print_frac(&a, '\0'); puts(" + ");
-    number_print_frac(&b, '\0'); puts(" =");
+    number_print_frac(&a, '\0');
+    puts(" + ");
+    number_print_frac(&b, '\0');
+    puts(" =");
     number_print_frac(&result, '\n');
     assert(number_eq(&result, &apb));
     number_free(&result);
 
     result = number_add(&c, &d);
-    number_print_frac(&c, '\0'); puts(" + ");
-    number_print_frac(&d, '\0'); puts(" =");
+    number_print_frac(&c, '\0');
+    puts(" + ");
+    number_print_frac(&d, '\0');
+    puts(" =");
     number_print_frac(&result, '\n');
     assert(number_eq(&result, &cpd));
     number_free(&result);
 
     result = number_sub(&c, &d);
-    number_print_frac(&c, '\0'); puts(" - ");
-    number_print_frac(&d, '\0'); puts(" =");
+    number_print_frac(&c, '\0');
+    puts(" - ");
+    number_print_frac(&d, '\0');
+    puts(" =");
     number_print_frac(&result, '\n');
     assert(number_eq(&result, &csd));
     number_free(&result);
 
     result = number_exp(&one_quarter, &mone_hundred);
-    number_print_frac(&one_quarter, '\0'); puts(" ^ ");
-    number_print_frac(&mone_hundred, '\0'); puts(" =");
+    number_print_frac(&one_quarter, '\0');
+    puts(" ^ ");
+    number_print_frac(&mone_hundred, '\0');
+    puts(" =");
     number_print_frac(&result, '\n');
     assert(number_eq(&result, &two_power_two_hundred));
 
     number_t pi = number_from_str("3.1415926535");
     number_print_dec(&pi, 4, '\n');
     number_print_dec(&pi, 7, '\n');
-    
+
     printf("all passed");
     return 0;
 }
