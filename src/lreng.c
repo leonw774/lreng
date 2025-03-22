@@ -11,6 +11,8 @@
 
 int global_is_enable_debug_log = 0;
 
+arena_t token_str_arena = (arena_t) { .cap = 0, .size = 0, .ptr = NULL, };
+
 int
 main(int argc, char** argv)
 {

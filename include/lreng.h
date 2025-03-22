@@ -1,11 +1,14 @@
 #include "frame.h"
 #include "token.h"
+#include "arena.h"
 #include "tree.h"
 
 #ifndef LRENG_H
 #define LRENG_H
 
 extern int global_is_enable_debug_log;
+
+extern arena_t token_str_arena;
 
 typedef struct context {
     const tree_t* tree;

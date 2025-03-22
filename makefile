@@ -1,9 +1,11 @@
 CFLAGS = -I include/ -Wall -Wextra
 DEFAULT_FLAGS = -O3
-PROFILE_FLAGS = -fno-pie -no-pie -pg -O3 -D IS_PROFILE -D PROFILE_REPEAT_NUM=100W
+PROFILE_FLAGS = -pg -O3 -D IS_PROFILE -D PROFILE_REPEAT_NUM=100W \
+	-fno-pie -no-pie
 DEBUG_FLAGS = -g -D ENABLE_DEBUG_LOG \
 	-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
-DEBUG_MORE_FLAGS = -D ENABLE_DEBUG_LOG_MORE
+DEBUG_MORE_FLAGS = -D ENABLE_DEBUG_LOG_MORE \
+	-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
 MEMCHECK_FLAGS = -include memcheck/memcheck.h -Wno-implicit-function-declaration
 
 TEST_DIR = tests

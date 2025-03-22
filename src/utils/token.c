@@ -4,16 +4,16 @@
 #include <stdlib.h>
 
 int
-token_print(token_t token)
+token_print(token_t* token)
 {
     const char* token_str;
     const char* type_str;
-    if (token.type == TOK_OP || token.type == TOK_LB || token.type == TOK_RB) {
-        token_str = OP_STRS[token.name];
+    if (token->type == TOK_OP || token->type == TOK_LB || token->type == TOK_RB) {
+        token_str = OP_STRS[token->name];
     } else {
-        token_str = token.str;
+        token_str = token->str;
     }
-    switch (token.type) {
+    switch (token->type) {
     case TOK_ID:
         type_str = "ID";
         break;
@@ -30,10 +30,10 @@ token_print(token_t token)
         type_str = "RB";
         break;
     default:
-        printf("printf_token: bad token type: %d\n", token.type);
+        printf("printf_token: bad token type: %d\n", token->type);
         type_str = "";
     }
-    return (token.name == -1)
+    return (token->name == -1)
         ? printf("[%s \"%s\"]", type_str, token_str)
-        : printf("[%s \"%s\" %d]", type_str, token_str, token.name);
+        : printf("[%s \"%s\" %d]", type_str, token_str, token->name);
 }

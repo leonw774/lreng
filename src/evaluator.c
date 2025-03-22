@@ -604,7 +604,6 @@ exec_reduce(
 #endif
             is_error = 1;
             object_free(reduce_result);
-            object_free(res_pair);
             break;
         }
         /* after reduce:
@@ -615,6 +614,9 @@ exec_reduce(
         object_free(*res_right);
         /* 2. replace res_pair with reduce_result so its parent can use it */
         *res_pair = *reduce_result;
+        if (res_pair->is_const) {
+            res_pair->is_const = 0;
+        }
         /* 3. free the space of reduce_result */
         object_free(reduce_result);
 
@@ -923,7 +925,7 @@ eval(context_t context, const int entry_index)
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
             printf("> (node %d) ", cur_index);
-            token_print(cur_token);
+            token_print(&cur_token);
             printf(
                 " (local=%d) left=%d right=%d\n", cur_index - obj_table_offset,
                 left_index, right_index

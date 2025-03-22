@@ -110,7 +110,7 @@ stack_pop(frame_t* f)
     }
     dynarr_t* last_pairs = back(&f->stack);
     for (i = 0; i < last_pairs->size; i++) {
-        object_free(((name_objptr_t*)last_pairs->data)[i].objptr);
+        object_free(((name_objptr_t*)at(last_pairs, i))->objptr);
     }
     dynarr_free(last_pairs);
     pop(&f->stack);
@@ -127,7 +127,7 @@ stack_clear(frame_t* f, const int can_free_pairs)
         for (i = 0; i < f->stack.size; i++) {
             dynarr_t* pairs = at(&f->stack, i);
             for (j = 0; j < pairs->size; j++) {
-                object_free(((name_objptr_t*)pairs->data)[j].objptr);
+                object_free(((name_objptr_t*)at(pairs, j))->objptr);
             }
             dynarr_free(pairs);
         }
@@ -169,8 +169,8 @@ frame_set(frame_t* f, const int name, object_t* obj)
         pairs = back(&f->stack);
     }
     for (i = 0; i < pairs->size; i++) {
-        if (name == ((name_objptr_t*)pairs->data)[i].name) {
-            found_object = ((name_objptr_t*)pairs->data)[i].objptr;
+        if (name == ((name_objptr_t*)at(pairs, i))->name) {
+            found_object = ((name_objptr_t*)at(pairs, i))->objptr;
             break;
         }
     }

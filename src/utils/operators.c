@@ -36,7 +36,7 @@ const int OP_TIER_LIST[][MAX_OPS_IN_TIER] = {
 
 const char* const OP_STRS[] = {
     /* ********** brackets ********** */
-    "{", "}", "@", "[", "]", "@!", "(", ")", "()",
+    "{", "}", "make_function", "[", "]", "make_macro", "(", ")", "call",
     /* ********** map filter reduce ********** */
     "$>", "$|", "$/",
     /* ********** unary operators ********** */

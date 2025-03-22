@@ -468,7 +468,7 @@ ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
     }
 
     /* transfrom cargo str char into its ascii number */
-    unsigned char lit_char = ((char*)cur_cargo.str.data)[0];
+    unsigned char lit_char = *(char*)at(&cur_cargo.str, 0);
     int digit_num = (lit_char < 10) ? 1 : ((lit_char < 100) ? 2 : 3);
     free(cur_cargo.str.data);
     cur_cargo.str.data = calloc(4, sizeof(char));
@@ -620,7 +620,7 @@ tokenize(const char* src, const unsigned long src_len)
             free(tmp_str);
             if (prev_tokens_count != size && size) {
                 printf("new_token=");
-                token_print(((token_t*)cur_cargo.tokens.data)[size - 1]);
+                token_print((token_t*)at(&cur_cargo.tokens, size - 1));
                 prev_tokens_count = size;
             }
             puts("");
@@ -632,7 +632,7 @@ tokenize(const char* src, const unsigned long src_len)
         int i;
         printf("tokens=");
         for (i = 0; i < cur_cargo.tokens.size; i++) {
-            token_print(((token_t*)cur_cargo.tokens.data)[i]);
+            token_print((token_t*)at(&cur_cargo.tokens, i));
             printf(" ");
         }
         puts("");
@@ -653,13 +653,13 @@ tokenize(const char* src, const unsigned long src_len)
         const char* cur_token_str = cur_token->str;
         int given_name = name_str_map.size;
         for (j = 0; j < name_str_map.size; j++) {
-            char* str = ((char**)name_str_map.data)[j];
+            char* str = *(char**)at(&name_str_map, j);
             if (cur_token_str && strcmp(str, cur_token_str) == 0) {
                 given_name = j;
                 break;
             }
         }
-        ((token_t*)cur_cargo.tokens.data)[i].name = given_name;
+        ((token_t*)at(&cur_cargo.tokens, i))->name = given_name;
         if (given_name == name_str_map.size) {
             append(&name_str_map, &cur_token_str);
         }

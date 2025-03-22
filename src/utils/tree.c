@@ -1,3 +1,4 @@
+#include "arena.h"
 #include "tree.h"
 #include "arena.h"
 #include "errormsg.h"
@@ -23,12 +24,9 @@ tree_create(dynarr_t tokens)
 
     /* max_id_name */
     for (i = tokens.size - 1; i >= 0; i--) {
-        token_t t = ((token_t*)tokens.data)[i];
-        if (t.type != TOK_ID) {
-            continue;
-        }
-        if (tree.max_id_name < t.name) {
-            tree.max_id_name = t.name;
+        token_t* t = at(&tokens, i);
+        if (t->type == TOK_ID && tree.max_id_name < t->name) {
+            tree.max_id_name = t->name;
         }
     }
 
@@ -62,10 +60,10 @@ tree_create(dynarr_t tokens)
             append(&stack, &i);
 #ifdef ENABLE_DEBUG_LOG_MORE
             printf(" L=");
-            token_print(*(token_t*)at(&tree.tokens, l_index));
+            token_print((token_t*)at(&tree.tokens, l_index));
             printf(" R=");
             if (r_index != -1) {
-                token_print(*(token_t*)at(&tree.tokens, r_index));
+                token_print((token_t*)at(&tree.tokens, r_index));
             }
 #endif
         } else {
@@ -88,7 +86,8 @@ tree_create(dynarr_t tokens)
         int n;
         printf("REMAINED IN STACK:\n");
         for (n = 0; n < stack.size; n++) {
-            token_print(((token_t*)tree.tokens.data)[((int*)stack.data)[n]]);
+            int index = *(int*)at(&stack, n);
+            token_print((token_t*)at(&tree.tokens, index));
             puts("");
         }
 #endif
@@ -101,7 +100,7 @@ tree_create(dynarr_t tokens)
     }
 
     /* root_index */
-    tree.root_index = ((int*)stack.data)[0];
+    tree.root_index = *(int*)at(&stack, 0);
 
     /* eval literal */
     /* TODO: extend this to a function and also find pair literal */
@@ -242,7 +241,7 @@ tree_print(const tree_t* tree)
         if (cur_index != -1) {
             /* print */
             printf("%*c", next_depth - 1, ' ');
-            token_print(*(token_t*)at(&tree->tokens, cur_index));
+            token_print((token_t*)at(&tree->tokens, cur_index));
             printf(" (%d)\n", cur_index);
             fflush(stdout);
 

@@ -35,14 +35,13 @@ object_t*
 builtin_func_output(const object_t* obj)
 {
     const char* err_msg_not_number
-        = "built-in function 'output': argument is not a number";
+        = "built-in function 'output': argument is not a number. Get %s.";
     const char* err_msg_not_byte_number
         = "built-in function 'output': argument is not integer in [0, 255], "
           "but [Number] (%s, %s)";
     /* check if obj is number */
     if (obj->type != TYPE_NUM) {
-        sprintf(ERR_MSG_BUF, err_msg_not_number);
-        object_print(obj, '\n');
+        sprintf(ERR_MSG_BUF, err_msg_not_number, OBJ_TYPE_STR[obj->type]);
         return (object_t*)ERR_OBJECT_PTR;
     }
     if (obj->data.number.numer.size == 0) {

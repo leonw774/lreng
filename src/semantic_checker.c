@@ -44,17 +44,16 @@ check_semantic(const tree_t tree)
             }
             /* check assign rule */
             if (cur_token->name == OP_ASSIGN) {
-                token_t* left_token
-                    = &((token_t*)tree.tokens.data)[tree.lefts[cur_index]];
+                token_t* left_token = at(&tree.tokens, tree.lefts[cur_index]);
 #ifdef ENABLE_DEBUG_LOG
                 if (global_is_enable_debug_log) {
                     printf(
                         "Line %d, col %d, checking identifier initialization: ",
                         cur_token->pos.line, cur_token->pos.col
                     );
-                    token_print(*left_token);
+                    token_print(left_token);
                     putchar(' ');
-                    token_print(*cur_token);
+                    token_print(cur_token);
                     putchar('\n');
                 }
 #endif
@@ -83,9 +82,9 @@ check_semantic(const tree_t tree)
                         "Line %d, col %d, checking argument binder: ",
                         cur_token->pos.line, cur_token->pos.col
                     );
-                    token_print(*left_token);
+                    token_print(left_token);
                     putchar(' ');
-                    token_print(*cur_token);
+                    token_print(cur_token);
                     putchar('\n');
                 }
 #endif
@@ -108,7 +107,7 @@ check_semantic(const tree_t tree)
                     "Line %d, col %d, checking identifier usage: ",
                     cur_token->pos.line, cur_token->pos.col
                 );
-                token_print(*cur_token);
+                token_print(cur_token);
                 putchar('\n');
                 fflush(stdout);
             }
