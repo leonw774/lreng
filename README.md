@@ -7,13 +7,15 @@ Lreng is a simple interpreted programming language. The main idea is to build a 
 
 `gcc` and `make` are required to build the program, and optionally `emscripten` if you want to build the web playground.
 
-Download this repo and run `make main` and then:
+Download this repo and run `make` to build the binary.
+
+Run a Lreng code with:
 
 ```
 ./lreng [-d] {code_file_path}
 ```
 
-The optional `-d` flag outputs debug information only when you build the program with `make debug`.
+The optional `-d` flag outputs debug information only when you build with `make debug`.
 
 
 ## Variable
