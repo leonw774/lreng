@@ -42,9 +42,7 @@ tree_create(dynarr_t tokens)
     for (i = 0; i < token_size; i++) {
         token_t* cur_token = at(&tree.tokens, i);
 #ifdef ENABLE_DEBUG_LOG_MORE
-        if (is_debug) {
-            token_print(*cur_token);
-        }
+        token_print(*cur_token);
 #endif
         if (cur_token->type == TOK_OP) {
             int l_index, r_index = -1;
@@ -63,13 +61,11 @@ tree_create(dynarr_t tokens)
             tree.lefts[i] = l_index;
             append(&stack, &i);
 #ifdef ENABLE_DEBUG_LOG_MORE
-            if (is_debug) {
-                printf(" L=");
-                token_print(*(token_t*)at(&tree.tokens, l_index));
-                printf(" R=");
-                if (r_index != -1) {
-                    token_print(*(token_t*)at(&tree.tokens, r_index));
-                }
+            printf(" L=");
+            token_print(*(token_t*)at(&tree.tokens, l_index));
+            printf(" R=");
+            if (r_index != -1) {
+                token_print(*(token_t*)at(&tree.tokens, r_index));
             }
 #endif
         } else {
