@@ -1,5 +1,6 @@
 #include "lreng.h"
 #include "arena.h"
+#include "my_arenas.h"
 #include "dynarr.h"
 #include "errormsg.h"
 #include "operators.h"
@@ -583,8 +584,6 @@ tokenize(const char* src, const unsigned long src_len)
     int i, j;
     cur_cargo.tokens = dynarr_new(sizeof(token_t));
     cur_cargo.str = dynarr_new(sizeof(char));
-
-    arena_init(&token_str_arena, src_len);
 
 #ifdef ENABLE_DEBUG_LOG
     int prev_tokens_count = 0;

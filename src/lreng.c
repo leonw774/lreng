@@ -1,5 +1,5 @@
 #include "lreng.h"
-#include "arena.h"
+#include "my_arenas.h"
 #include "dynarr.h"
 #include "errormsg.h"
 #include "objects.h"
@@ -10,8 +10,6 @@
 #include <string.h>
 
 int global_is_enable_debug_log = 0;
-
-arena_t token_str_arena = (arena_t) { .cap = 0, .size = 0, .ptr = NULL, };
 
 int
 main(int argc, char** argv)
@@ -74,6 +72,8 @@ main(int argc, char** argv)
     int i;
     for (i = 0; i < PROFILE_REPEAT_NUM; i++) {
 #endif
+        arena_init(&token_str_arena, fsize);
+        arena_init(&digit_arena, fsize * sizeof(u32));
         dynarr_t tokens = tokenize(src, fsize);
         tree_t syntax_tree = tree_parse(tokens);
         int is_good_semantic = check_semantic(syntax_tree);
@@ -92,6 +92,7 @@ main(int argc, char** argv)
         tree_free(&syntax_tree);
         dynarr_free(&tokens);
         arena_free(&token_str_arena);
+        arena_free(&digit_arena);
 #ifdef IS_PROFILE
     }
 #endif

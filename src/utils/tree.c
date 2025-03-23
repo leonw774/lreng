@@ -1,4 +1,3 @@
-#include "arena.h"
 #include "tree.h"
 #include "arena.h"
 #include "errormsg.h"
@@ -40,7 +39,7 @@ tree_create(dynarr_t tokens)
     for (i = 0; i < token_size; i++) {
         token_t* cur_token = at(&tree.tokens, i);
 #ifdef ENABLE_DEBUG_LOG_MORE
-        token_print(*cur_token);
+        token_print(cur_token);
 #endif
         if (cur_token->type == TOK_OP) {
             int l_index, r_index = -1;
@@ -74,9 +73,7 @@ tree_create(dynarr_t tokens)
             = (1 + ((tree.lefts[i] == -1) ? 0 : tree.sizes[tree.lefts[i]])
                + ((tree.rights[i] == -1) ? 0 : tree.sizes[tree.rights[i]]));
 #ifdef ENABLE_DEBUG_LOG_MORE
-        if (is_debug) {
-            putchar('\n');
-        }
+        putchar('\n');
 #endif
     }
 
@@ -130,6 +127,13 @@ tree_create(dynarr_t tokens)
                 );
             }
         }
+#ifdef ENABLE_DEBUG_LOG_MORE
+        if (tree.literals[i] != NULL) {
+            printf("created literal at node %d: ", i);
+            object_print(tree.literals[i], ' ');
+            printf("addr: %p\n", tree.literals[i]);
+        }
+#endif
     }
 
     /* free things */
@@ -151,11 +155,12 @@ tree_free(tree_t* tree)
         }
         if (tree->literals[i] != NULL) {
 #ifdef ENABLE_DEBUG_LOG_MORE
-            printf("freeing literal at node %d\n", i);
+            printf(
+                "freeing literal at node %d, addr: %p\n", i, tree->literals[i]
+            );
             object_print(tree->literals[i], '\n');
 #endif
-            /* dont worry about possible memory leak cause it is literal */
-            free(tree->literals[i]);
+            object_free(tree->literals[i]);
         }
     }
     dynarr_free(&tree->tokens);

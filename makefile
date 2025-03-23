@@ -3,11 +3,12 @@ DEFAULT_FLAGS = -O3
 PROFILE_FLAGS = -pg -O3 -D IS_PROFILE -D PROFILE_REPEAT_NUM=100W \
 	-fno-pie -no-pie
 DEBUG_FLAGS = -g -D ENABLE_DEBUG_LOG \
-	-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
+	# -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
 DEBUG_MORE_FLAGS = -D ENABLE_DEBUG_LOG_MORE \
 	-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
-MEMCHECK_FLAGS = -include memcheck/memcheck.h -Wno-implicit-function-declaration
-
+MEMCHECK_FLAGS = -include memcheck/memcheck.h \
+	-D ENABLE_DEBUG_LOG -D ENABLE_DEBUG_LOG_MORE \
+	-Wno-implicit-function-declaration -Wno-unused-function -Wno-unused-variable
 TEST_DIR = tests
 
 SHARED_SRC = src/**/*.c
@@ -60,16 +61,3 @@ web:
 
 clean_web:
 	rm -r webplayground/lreng.* || true
-
-# ================================
-# Others
-# ================================
-
-merge:
-	cat include/dynarr.h include/operators.h include/token.h include/tree.h \
-	    include/errormsg.h include/bigint.h include/number.h include/objects.h \
-		include/frame.h include/builtin_funcs.h include/lreng.h \
-		src/utils/*.c src/objects/*.c src/*.c \
-	| sed -e '1s/^/#include<string.h>\n#include<ctype.h>\n#include<getopt.h>\n/' \
-		-e '1s/^/#include<stdio.h>\n#include<stdlib.h>\n#include<stdint.h>\n/' \
-		-e '/^#include ["<>a-z_.]*/d' > lreng.c

@@ -17,7 +17,7 @@ static inline void
 arena_init(arena_t* arena, unsigned long cap)
 {
     if (arena->ptr != NULL) {
-        printf("init arena->ptr was not NULL\n");
+        printf("init arena->ptr was not NULL: %p\n", arena->ptr);
         exit(1);
     }
     /* printf("cap %ld\n", cap); */
@@ -37,6 +37,15 @@ arena_malloc(arena_t* arena, unsigned long size)
     }
     return res_ptr;
 };
+
+static inline void*
+arena_calloc(arena_t* arena, unsigned long size, unsigned long count)
+{
+    void* res_ptr = arena_malloc(arena, size * count);
+    memset(res_ptr, 0, size * count);
+    return res_ptr;
+};
+
 
 static inline void
 arena_free(arena_t* arena)

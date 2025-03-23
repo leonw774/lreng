@@ -91,7 +91,7 @@ shunting_yard(const dynarr_t tokens)
                 stack_top = back(&op_stack);
             }
             /* push */
-            append(&op_stack, &cur_token);
+            append(&op_stack, cur_token);
         }
         /* is a right bracket */
         else if (cur_token->type == TOK_RB) {
@@ -153,7 +153,7 @@ shunting_yard(const dynarr_t tokens)
                 throw_syntax_error(cur_token->pos, ERR_MSG_BUF);
             }
             expectation = INFIXER;
-            append(&output, &cur_token);
+            append(&output, cur_token);
         }
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {

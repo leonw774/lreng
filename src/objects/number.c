@@ -30,7 +30,8 @@ void
 number_normalize(number_t* x)
 {
     int sign = 0;
-    bigint_t a, b, t1 = ZERO_BIGINT, t2 = ZERO_BIGINT, one = BYTE_BIGINT(1);
+    bigint_t a = ZERO_BIGINT, b = ZERO_BIGINT, t1 = ZERO_BIGINT,
+             t2 = ZERO_BIGINT, one = BYTE_BIGINT(1);
 
     /* flags */
     if (x->numer.nan || x->denom.nan) {
@@ -153,7 +154,7 @@ inline number_t
 number_add(number_t* a, number_t* b)
 {
     number_t res = EMPTY_NUMBER;
-    bigint_t t1, t2;
+    bigint_t t1 = ZERO_BIGINT, t2 = ZERO_BIGINT;
     if (a->numer.nan || b->numer.nan) {
         return NAN_NUMBER;
     }
@@ -182,7 +183,7 @@ inline number_t
 number_sub(number_t* a, number_t* b)
 {
     number_t res = EMPTY_NUMBER;
-    bigint_t t1, t2;
+    bigint_t t1 = ZERO_BIGINT, t2 = ZERO_BIGINT;
     if (a->numer.nan || b->numer.nan) {
         return NAN_NUMBER;
     }
@@ -266,8 +267,9 @@ number_mod(number_t* a, number_t* b)
 number_t
 number_exp(number_t* a, number_t* b)
 {
-    number_t res, cur, t1;
-    bigint_t e, q = ZERO_BIGINT, r = ZERO_BIGINT, two = BYTE_BIGINT(2);
+    number_t res = EMPTY_NUMBER, cur = EMPTY_NUMBER, t1 = EMPTY_NUMBER;
+    bigint_t e = ZERO_BIGINT, q = ZERO_BIGINT, r = ZERO_BIGINT;
+    bigint_t two = BYTE_BIGINT(2);
     if (a->numer.nan || b->numer.nan) {
         return NAN_NUMBER;
     }
@@ -407,10 +409,9 @@ number_print_dec(const number_t* x, int precision, char end)
 {
     int printed_bytes_count = 0;
     int i, n_exp, d_exp, m;
-    dynarr_t n_str, d_str, res_str;
-    char *n_cstr, *d_cstr, *res_cstr;
+    dynarr_t res_str;
+    char* res_cstr = NULL;
     char dot = '.' - '0';
-    bigint_t ten_to_abs_e;
     number_t _x, t = EMPTY_NUMBER, q = EMPTY_NUMBER, r = EMPTY_NUMBER,
                  ten = number_from_i32(10), ten_to_e = EMPTY_NUMBER;
 
@@ -422,16 +423,19 @@ number_print_dec(const number_t* x, int precision, char end)
     }
 
     /* find the lowest m such that b^m >= abs(n/d) */
-    n_str = bi_to_dec_str(&x->numer);
-    d_str = bi_to_dec_str(&x->denom);
-    n_cstr = to_str(&n_str);
-    d_cstr = to_str(&d_str);
-    n_exp = strlen(n_cstr);
-    d_exp = strlen(d_cstr);
-    m = n_exp - d_exp + (strcmp(n_cstr, d_cstr) >= 0);
-    free(n_cstr);
-    free(d_cstr);
-
+    {
+        dynarr_t n_str = bi_to_dec_str(&x->numer);
+        dynarr_t d_str = bi_to_dec_str(&x->denom);
+        char* n_cstr = to_str(&n_str);
+        char* d_cstr = to_str(&d_str);
+        n_exp = strlen(n_cstr);
+        d_exp = strlen(d_cstr);
+        m = n_exp - d_exp + (strcmp(n_cstr, d_cstr) >= 0);
+        free(n_cstr);
+        free(d_cstr);
+        dynarr_free(&n_str);
+        dynarr_free(&d_str);
+    }
     /* round the number to 10^(m - precision):
        for each exponent i := 1 ~ precision,
          e = m - i
@@ -440,13 +444,15 @@ number_print_dec(const number_t* x, int precision, char end)
          x -= q * 10^e
     */
     i = 1;
-    ten_to_abs_e = bi_from_tens_power((m < 0) ? -m - i : m - i);
-    if (m < 0) {
-        ten_to_e.numer = BYTE_BIGINT(1);
-        ten_to_e.denom = ten_to_abs_e;
-    } else {
-        ten_to_e.numer = ten_to_abs_e;
-        ten_to_e.denom = BYTE_BIGINT(1);
+    {
+        bigint_t ten_to_abs_e = bi_from_tens_power((m < 0) ? -m - i : m - i);
+        if (m < 0) {
+            ten_to_e.numer = BYTE_BIGINT(1);
+            ten_to_e.denom = ten_to_abs_e;
+        } else {
+            ten_to_e.numer = ten_to_abs_e;
+            ten_to_e.denom = BYTE_BIGINT(1);
+        }
     }
     res_str = dynarr_new(1);
     number_copy(&_x, x);
@@ -489,8 +495,7 @@ number_print_dec(const number_t* x, int precision, char end)
         res_cstr[i] += '0';
     }
     printed_bytes_count = printf("[Number] %s", res_cstr);
-    dynarr_free(&n_str);
-    dynarr_free(&d_str);
+
     free(res_cstr);
     if (end != '\0') {
         printed_bytes_count += printf("%c", end);
@@ -503,7 +508,7 @@ number_from_str(const char* str)
 {
     number_t n = EMPTY_NUMBER;
     size_t str_length = strlen(str);
-    u32 i, j, dot_pos = str_length, is_less_one = 0;
+    u32 i = 0, j = 0, dot_pos = str_length, is_less_one = 0;
 
     if (str[0] == '0') {
         if (str_length == 1) {
@@ -520,27 +525,27 @@ number_from_str(const char* str)
             return NAN_NUMBER;
         }
     }
-
-    char* str_no_dot = (char*)malloc(str_length + 1);
-    i = j = 0;
-    for (i = 0; i < str_length; i++) {
-        if (is_less_one && i == 0) {
-            continue;
+    {
+        char* str_no_dot = (char*)malloc(str_length + 1);
+        for (i = 0; i < str_length; i++) {
+            if (is_less_one && i == 0) {
+                continue;
+            }
+            if (str[i] != '.') {
+                str_no_dot[j] = str[i];
+                j++;
+            } else {
+                dot_pos = i + 1;
+            }
         }
-        if (str[i] != '.') {
-            str_no_dot[j] = str[i];
-            j++;
-        } else {
-            dot_pos = i + 1;
-        }
+        str_no_dot[j] = '\0';
+        /* printf("%s %d %d\n", str_no_dot, dot_pos, str_length - dot_pos); */
+        n.numer = bi_from_str(str_no_dot);
+        n.denom = bi_from_tens_power(str_length - dot_pos);
+        /* print_bi_dec(&n.numer, '\n');
+        print_bi_dec(&n.denom, '\n'); */
+        free(str_no_dot);
     }
-    str_no_dot[j] = '\0';
-    /* printf("%s %d %d\n", str_no_dot, dot_pos, str_length - dot_pos); */
-    n.numer = bi_from_str(str_no_dot);
-    n.denom = bi_from_tens_power(str_length - dot_pos);
-    /* print_bi_dec(&n.numer, '\n');
-    print_bi_dec(&n.denom, '\n'); */
-    free(str_no_dot);
     number_normalize(&n);
     return n;
 }

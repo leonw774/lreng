@@ -1,3 +1,5 @@
+#include "arena.h"
+#include "my_arenas.h"
 #include "bigint.h"
 #include "dynarr.h"
 #include <assert.h>
@@ -55,14 +57,13 @@ static const u32 STATIC_BYTES[257] = {
     255, 256,
 };
 
-/* all 1 ~ 256 is shared */
+#define BYTE_BIGINT_MAX 256
+
+/* all 1 ~ BYTE_BIGINT_MAX is shared */
 inline bigint_t
 BYTE_BIGINT(u32 b)
 {
-    if (b == 0 || b > 256) {
-        printf("BYTE_BIGINT: b should be in [1, 256]\n");
-        exit(1);
-    }
+    assert(0 < b && b <= BYTE_BIGINT_MAX);
     return (bigint_t) {
         .sign = 0,
         .nan = 0,
@@ -142,7 +143,7 @@ bi_normalize(bigint_t* x)
         bi_free(x);
     }
     /* use byte number if possible */
-    else if (i == 0 && x->sign == 0 && x->digit[0] <= 256) {
+    else if (i == 0 && x->sign == 0 && x->digit[0] <= BYTE_BIGINT_MAX) {
         u32 tmp = x->digit[0];
         bi_free(x);
         *x = BYTE_BIGINT(tmp);
@@ -181,6 +182,7 @@ bi_shl(bigint_t* x, u32 n)
         return;
     }
     u32 i, new_digit, carry = 0;
+    u8 is_shared = x->shared;
     if (x->shared) {
         u32 tmp = x->digit[0];
         x->digit = (u32*)malloc(sizeof(u32));
@@ -195,6 +197,11 @@ bi_shl(bigint_t* x, u32 n)
     if (carry) {
         bi_extend(x, 1);
         x->digit[x->size - 1] = carry;
+    }
+    if (is_shared && x->size == 1 && x->digit[0] <= BYTE_BIGINT_MAX) {
+        u32 tmp = x->digit[0];
+        bi_free(x);
+        *x = BYTE_BIGINT(tmp);
     }
 }
 
@@ -986,7 +993,7 @@ print_bi_dec(const bigint_t* x, char end)
 bigint_t
 bi_from_str(const char* str)
 {
-    bigint_t x = ZERO_BIGINT, t1 = ZERO_BIGINT, t2 = ZERO_BIGINT;
+    bigint_t x = ZERO_BIGINT;
     size_t str_length = strlen(str), base = 10;
     u32 i = 0, j = 0, sign = 0, safe_size = 0;
 
@@ -994,23 +1001,23 @@ bi_from_str(const char* str)
         return ZERO_BIGINT;
     }
     /* before doing real decoding, use sscanf to check the str is presenting
-       number between 1~256
+       number between 1~BYTE_BIGINT_MAX
     */
     if (str_length <= 3) {
         u32 n;
         if (str[1] == 'x') {
             sscanf(str + 2, "%x", &n);
-            if (n == 1 && n <= 256) {
+            if (n == 1 && n <= BYTE_BIGINT_MAX) {
                 return BYTE_BIGINT(n);
             }
         } else if (str[1] == 'b') {
             sscanf(str + 2, "%x", &n);
-            if (n == 1 && n <= 256) {
+            if (n == 1 && n <= BYTE_BIGINT_MAX) {
                 return BYTE_BIGINT(n);
             }
         } else {
             sscanf(str, "%u", &n);
-            if (n == 1 && n <= 256) {
+            if (n == 1 && n <= BYTE_BIGINT_MAX) {
                 return BYTE_BIGINT(n);
             }
         }
@@ -1048,7 +1055,7 @@ bi_from_str(const char* str)
             }
         }
     } else {
-        u32 d = 0, carry = 0;
+        bigint_t t1 = ZERO_BIGINT, t2 = ZERO_BIGINT;
         bi_new(&x, (base == 10) ? 1 : safe_size);
         for (i = 0; i < str_length; i++) {
             /* x *= base */
@@ -1069,32 +1076,27 @@ bi_from_str(const char* str)
                 }
             }
             /* add string digit */
-            d = str[i];
-            if ('0' <= d && d <= '9') {
-                d -= '0';
-            } else if ('a' <= d && d <= 'f') {
-                d -= 'a' - 10;
-            } else if ('A' <= d && d <= 'F') {
-                d -= 'A' - 10;
-            } else {
-                printf("bi_from_str: invalid digit\n");
-                x.nan = 1;
-                break;
-            }
-            x.digit[0] += d;
-            carry = x.digit[0] >> BASE_SHIFT;
-            x.digit[0] &= DIGIT_MASK;
-            for (j = 1; j < x.size; ++j) {
-                x.digit[j] += carry;
-                carry = x.digit[j] >> BASE_SHIFT;
-                x.digit[j] &= DIGIT_MASK;
-                if (carry == 0) {
+            {
+                u32 d = str[i];
+                if ('0' <= d && d <= '9') {
+                    d -= '0';
+                } else if ('a' <= d && d <= 'f') {
+                    d -= 'a' - 10;
+                } else if ('A' <= d && d <= 'F') {
+                    d -= 'A' - 10;
+                } else {
+                    printf("bi_from_str: invalid digit\n");
+                    x.nan = 1;
                     break;
                 }
-            }
-            if (carry) {
-                bi_extend(&x, 1);
-                x.digit[j] = carry;
+                if (d != 0) {
+                    t2 = BYTE_BIGINT(d);
+                    bi_uadd(&t1, &x, &t2);
+                    bi_free(&x);
+                    bi_free(&t2);
+                    x = t1;
+                    t1.digit = NULL;
+                }
             }
             /*
             printf("%d\n", d);
@@ -1102,6 +1104,8 @@ bi_from_str(const char* str)
             print_bi_dec(&x, '\n');
             */
         }
+        bi_free(&t1);
+        bi_free(&t2);
         bi_normalize(&x);
     }
     x.sign = sign;
