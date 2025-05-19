@@ -31,15 +31,20 @@ There are 4 types:
 - Number: Numbers in lreng are all rational numbers 
   - You can represent numbers in decimal with point: `3.14159`
   - You can represent integers in binary and hexadecimal: `0b110011`, `0xc0de`
-  - You can represent the code of printable and escapable ASCII characters. For example, `'A'` evaluates to `65`, `'\\'` is `92`, and `'\n'` is `10`
+  - You can represent the code of printable and escapable ASCII characters. For example, `'A'` is `65`, `'\\'` is `92`, and `'\n'` is `10`
 - Pair: Store the reference to two data, tagged `left` and `right`;
 - Callable: A expression that can be called or jumped to.
-  - Function: A callable that own a stack and can pass in at most one argument.
-  - Macro: A callable that does not have its own stack and cannot pass in argument.
+  - Function: A callable that create a stack frame when called and can pass in at most one argument.
+  - Macro: A callable that does not create a stack frame when called and cannot pass in argument.
 
-### Global and Scoped
+### Global and scoped
 
-Variable is global when it is not initialized in a callable. Scoped variables are initialized in a callable.
+Variable is global when it is not initialized in a function, otherwise, it is scoped.
+
+
+## Expression
+
+Everything is expression. The code intepreted by lreng should be one big expression itself and will be evaluated to one object eventually.
 
 
 ## Operators
@@ -73,10 +78,10 @@ The comparison operators return number `1` if the result is true, otherwise `0`.
 
 The logic operators `!` (NOT), `&` (AND) and `|` (OR) return `0` and `1` like comparison operators.
 
-There is an implicit boolean function that casts any object into boolean number `0` and `1`.
-- Number becomes `1` if it is not zero.
+There is an implicit boolean function that maps any object into boolean number `0` and `1`.
+- Number `0` stays `0`; non-zero numbers become `1`.
 - Null becomes `0`.
-- Pair and callable become `1`.
+- Pairs and callables become `1`.
 
 These operator do *not* short-circuit.
 
@@ -104,7 +109,7 @@ The idiom `cond && t || f` does not work exactly the same as `if cond then t els
 
 The expression connector is `;`. It connects two expressions into one and evaluates to the right hand side value.
 
-### Pair maker, left getter and right getter
+### Pair maker, left getter, and right getter
 
 The pair maker `,` is right-associative, so that it can be used to make linked list conveniently. You can use `` `p `` and `~p` to get the left and right element of the pair `p`. For example, in `scripts/hello_world.txt`:
 
@@ -116,23 +121,25 @@ print = string => {
 print(hello_world)
 ```
 
-The `` `string `` is used to get data and `~string` is to get next.
+The `` `string `` accesses the data and `~string` accesses the next element.
 
 ### Function maker and argument binder
 
-The function makers `{ ... }` and macro maker turns the wrapped expression into a function. The created function has no argument by default. Empty function is not allowed.
+The function makers `{ ... }` turns the wrapped expression into a function. The created function has no argument by default.
 
 The argument binder `x => func` binds *one* argument identifier to a function. A function can have at most one argument.
 
 ### Macro maker
 
-Like the function, the macro maker `[ ... ]` turns the wrapped expression into a macro. Macro do not use argument and empty macro is also not allowed.  
+Like the function, the macro maker `[ ... ]` turns the wrapped expression into a macro. Macro do not use argument.
+
+Another different between macro and function is that function has it own stack and macro does not. Therefore, its body expression executes in the context of its caller.
 
 ### Callers
 
 The callers are `()` and `$`. The syntax is `foo(expr)` and `foo $ expr`. They assigns the evaluated result of the expression to the argument variable of the callable (if any) and evaluates the callable. If the callable `foo` is macro, it simply ignores the argument.
 
-The `$` is right-associative, just like in Haskell, designed to apply multiple callables on a value without too much parenthese. The following codes are equivalent: `f3 $ f2 $ f1 $ val` and `f3(f2(f1(val)))`.
+The `$` is right-associative, just like in Haskell, designed to apply multiple callables on a value without too much parenthese. The expressions: `f3 $ f2 $ f1 $ val` and `f3(f2(f1(val)))` are equivalent.
 
 The syntax `foo()` is valid and will be parsed as `foo(null)`.
 
@@ -185,9 +192,23 @@ reduce(f, x) =
     f(reduce(f, left(x)), reduce(f, right(x))) , otherwise
 ```
 
-## Expression
 
-Everything is expression. The code intepreted by lreng should be one big expression itself and will be evaluated to one object eventually.
+## Built-in functions
+
+- Input function `input()` gets a byte from the `stdin` as a number. It returns a number in the range `1` to `255` (inclusive) if there is data to read in stdin, otherwise it blocks the program and wait for the input to come. You can execute the example program with the command `echo '!@' | ./lreng scripts/read_stdin.txt`. It would output
+
+    ```
+    a=!
+    b=@
+    a+b=a
+    ```
+
+- Output function `output(i)` writes a number `i` as one byte to the `stdout`. The acceptable value are integers in range `0` to `255` (inclusive). Any other value will cause runtime error. It always returns `null`.
+
+- Error function `error(i)` are the same as output function, except it writes to the `stderr`. (Not implemented yet.)
+
+- Type checker functions: `is_number`, `is_callable`, and `is_pair`. They return number `1` or `0` when true or false. Null type has only `null` so just use `x == nul`.
+
 
 ## Closure
 
@@ -226,18 +247,3 @@ output $ '\n';
 output $ bar2(2) + '0'; # 7
 output $ '\n'
 ```
-
-## Built-in functions
-
-- Input function `input()` gets a byte from the `stdin` as a number. It returns a number in the range `1` to `255` (inclusive) if there is data to read in stdin, otherwise it blocks the program and wait for the input to come. You can execute the example program with the command `echo '!@' | ./lreng scripts/read_stdin.txt`. It would output
-
-    ```
-    a=!
-    b=@
-    a+b=a
-    ```
-
-- Output function `output(i)` writes a number `i` as one byte to the `stdout`. The acceptable value are integers in range `0` to `255` (inclusive). Any other value will cause runtime error. It always returns `null`.
-
-
-- Type checker functions: `is_number`, `is_callable`, and `is_pair`. They return number `1` or `0` when true or false. Null type has only `null` so just use `x == nul`.
