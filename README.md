@@ -205,7 +205,7 @@ reduce(f, x) =
 
 - Output function `output(i)` writes a number `i` as one byte to the `stdout`. The acceptable value are integers in range `0` to `255` (inclusive). Any other value will cause runtime error. It always returns `null`.
 
-- Error function `error(i)` are the same as output function, except it writes to the `stderr`. (Not implemented yet.)
+- Error function `error(i)` are the same as output function, except it writes to the `stderr`.
 
 - Type checker functions: `is_number`, `is_callable`, and `is_pair`. They return number `1` or `0` when true or false. Null type has only `null` so just use `x == nul`.
 

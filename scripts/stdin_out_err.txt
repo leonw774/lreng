@@ -4,6 +4,9 @@ add = p => {
 print = string => {
     string != null && (output(`string); print(~string))
 };
+print_error = string => {
+    string != null && (error(`string); print(~string))
+};
 print('a', '=', null);
 a = input();
 print(a, '\n', null);
@@ -12,6 +15,6 @@ print('b', '=', null);
 b = input();
 print(b, '\n', null);
 
-print('a', '+', 'b', '=', null);
-output $ add(a, b);
+print_error('a', '+', 'b', '=', null);
+error $ add(a, b);
 output $ '\n'
