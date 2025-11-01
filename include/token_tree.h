@@ -6,7 +6,7 @@
 
 typedef struct object object_t;
 
-typedef struct tree {
+typedef struct token_tree {
     dynarr_t tokens; /* type: token_t */
     object_t** literals;
     int* lefts; /* index of left child, -1 of none */
@@ -14,26 +14,26 @@ typedef struct tree {
     int* sizes; /* number of nodes under a node */
     int root_index; /* index of the root node */
     int max_id_name; /* number of ids in tree */
-} tree_t;
+} token_tree_t;
 
-extern tree_t tree_create(dynarr_t tokens);
+extern token_tree_t token_tree_create(dynarr_t tokens);
 
-extern void tree_free(tree_t* tree);
+extern void token_tree_free(token_tree_t* tree);
 
-extern void tree_print(const tree_t* tree);
+extern void token_tree_print(const token_tree_t* tree);
 
 typedef struct tree_preorder_iterator {
-    const tree_t* tree;
+    const token_tree_t* tree;
     dynarr_t index_stack; /* type: int */
     dynarr_t depth_stack; /* type: int */
 } tree_preorder_iterator_t;
 
-extern tree_preorder_iterator_t tree_iter_init(const tree_t*, int entry_index);
+extern tree_preorder_iterator_t token_tree_iter_init(const token_tree_t*, int entry_index);
 
-extern token_t* tree_iter_get(tree_preorder_iterator_t*);
+extern token_t* token_tree_iter_get(tree_preorder_iterator_t*);
 
-extern void tree_iter_next(tree_preorder_iterator_t*);
+extern void token_tree_iter_next(tree_preorder_iterator_t*);
 
-extern void tree_iter_free(tree_preorder_iterator_t*);
+extern void token_tree_iter_free(tree_preorder_iterator_t*);
 
 #endif

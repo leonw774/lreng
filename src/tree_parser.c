@@ -1,6 +1,6 @@
 #include "errormsg.h"
 #include "lreng.h"
-#include "tree.h"
+#include "token_tree.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -193,15 +193,15 @@ shunting_yard(const dynarr_t tokens)
     return output;
 }
 
-tree_t
+token_tree_t
 tree_parse(const dynarr_t tokens)
 {
     /* tokens */
-    tree_t tree = tree_create(shunting_yard(tokens));
+    token_tree_t tree = token_tree_create(shunting_yard(tokens));
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf("final_tree=\n");
-        tree_print(&tree);
+        token_tree_print(&tree);
     }
 #endif
     return tree;

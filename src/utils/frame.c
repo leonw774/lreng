@@ -51,7 +51,7 @@ frame_copy(const frame_t* f)
             name_objptr_t src_pair = *(name_objptr_t*)at(src_pairs, j);
             name_objptr_t dst_pair = {
                 .name = src_pair.name,
-                .objptr = object_copy(src_pair.objptr),
+                .objptr = object_ref(src_pair.objptr),
             };
             append(dst_pairs, &dst_pair);
         }
@@ -69,7 +69,7 @@ frame_free(frame_t* f)
 #endif
     int i;
     for (i = 0; i < f->global_pairs.size; i++) {
-        object_free(((name_objptr_t*)at(&f->global_pairs, i))->objptr);
+        object_deref(((name_objptr_t*)at(&f->global_pairs, i))->objptr);
     }
     dynarr_free(&f->global_pairs);
     stack_clear(f, 1);
@@ -110,7 +110,7 @@ stack_pop(frame_t* f)
     }
     dynarr_t* last_pairs = back(&f->stack);
     for (i = 0; i < last_pairs->size; i++) {
-        object_free(((name_objptr_t*)at(last_pairs, i))->objptr);
+        object_deref(((name_objptr_t*)at(last_pairs, i))->objptr);
     }
     dynarr_free(last_pairs);
     pop(&f->stack);
@@ -127,7 +127,7 @@ stack_clear(frame_t* f, const int can_free_pairs)
         for (i = 0; i < f->stack.size; i++) {
             dynarr_t* pairs = at(&f->stack, i);
             for (j = 0; j < pairs->size; j++) {
-                object_free(((name_objptr_t*)at(pairs, j))->objptr);
+                object_deref(((name_objptr_t*)at(pairs, j))->objptr);
             }
             dynarr_free(pairs);
         }
@@ -157,11 +157,11 @@ frame_get(const frame_t* f, const int name)
     return NULL;
 }
 
-inline void
+inline object_t**
 frame_set(frame_t* f, const int name, object_t* obj)
 {
     int i;
-    object_t* found_object = NULL;
+    object_t* found_obj = NULL;
     dynarr_t* pairs;
     if (f->indexs.size == 0) {
         pairs = &f->global_pairs;
@@ -170,18 +170,18 @@ frame_set(frame_t* f, const int name, object_t* obj)
     }
     for (i = 0; i < pairs->size; i++) {
         if (name == ((name_objptr_t*)at(pairs, i))->name) {
-            found_object = ((name_objptr_t*)at(pairs, i))->objptr;
+            found_obj = ((name_objptr_t*)at(pairs, i))->objptr;
             break;
         }
     }
-    if (found_object == NULL) {
-        name_objptr_t new_pair = {
-            .name = name,
-            .objptr = object_copy(obj),
-        };
-        append(pairs, &new_pair);
-    } else {
-        object_free(found_object);
-        found_object = object_copy(obj);
+    /* found collision: return NULL */
+    if (found_obj) {
+        return NULL;
     }
+    name_objptr_t new_pair = {
+        .name = name,
+        .objptr = object_ref(obj),
+    };
+    append(pairs, &new_pair);
+    return &((name_objptr_t*)back((const dynarr_t*) pairs))->objptr;
 }

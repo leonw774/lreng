@@ -1,4 +1,4 @@
-#include "tree.h"
+#include "token_tree.h"
 #include "arena.h"
 #include "errormsg.h"
 #include "frame.h"
@@ -7,11 +7,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-tree_t
-tree_create(dynarr_t tokens)
+token_tree_t
+token_tree_create(dynarr_t tokens)
 {
     int i, token_size = tokens.size;
-    tree_t tree = {
+    token_tree_t tree = {
         .tokens = tokens,
         .lefts = NULL,
         .rights = NULL,
@@ -120,8 +120,8 @@ tree_create(dynarr_t tokens)
                     TYPE_PAIR,
                     (object_data_t) {
                         .pair = (pair_t) {
-                            .left = tree.literals[tree.lefts[i]],
-                            .right = tree.literals[tree.rights[i]],
+                            .left = object_ref(tree.literals[tree.lefts[i]]),
+                            .right = object_ref(tree.literals[tree.rights[i]]),
                         }
                     }
                 );
@@ -142,7 +142,7 @@ tree_create(dynarr_t tokens)
 }
 
 inline void
-tree_free(tree_t* tree)
+token_tree_free(token_tree_t* tree)
 {
     int i;
     /* iterate from back because literal could be pair and we waant to free
@@ -160,15 +160,13 @@ tree_free(tree_t* tree)
             );
             object_print(tree->literals[i], '\n');
 #endif
-            object_free(tree->literals[i]);
+            object_deref(tree->literals[i]);
         }
     }
     dynarr_free(&tree->tokens);
     free(tree->lefts);
-    /* lefts, rights, sizes share same heap chunk so freeing left is enough */
-    /*
-    free(tree->rights);
-    free(tree->sizes);
+    /* lefts, rights, and sizes share same heap chunk and left is the head
+       so only need to free left
     */
     free(tree->literals);
     tree->root_index = -1;
@@ -176,7 +174,7 @@ tree_free(tree_t* tree)
 
 /* set entry_index to -1 to use tree's root index */
 inline tree_preorder_iterator_t
-tree_iter_init(const tree_t* tree, int entry_index)
+token_tree_iter_init(const token_tree_t* tree, int entry_index)
 {
     static int one = 1;
     tree_preorder_iterator_t iter = {
@@ -193,7 +191,7 @@ tree_iter_init(const tree_t* tree, int entry_index)
 }
 
 inline token_t*
-tree_iter_get(tree_preorder_iterator_t* iter)
+token_tree_iter_get(tree_preorder_iterator_t* iter)
 {
     if (iter->index_stack.size == 0) {
         return NULL;
@@ -202,7 +200,7 @@ tree_iter_get(tree_preorder_iterator_t* iter)
 }
 
 inline void
-tree_iter_next(tree_preorder_iterator_t* iter)
+token_tree_iter_next(tree_preorder_iterator_t* iter)
 {
     if (iter->index_stack.size == 0) {
         return;
@@ -226,16 +224,16 @@ tree_iter_next(tree_preorder_iterator_t* iter)
 }
 
 inline void
-tree_iter_free(tree_preorder_iterator_t* tree_iter)
+token_tree_iter_free(tree_preorder_iterator_t* tree_iter)
 {
     dynarr_free(&tree_iter->index_stack);
     dynarr_free(&tree_iter->depth_stack);
 }
 
 void
-tree_print(const tree_t* tree)
+token_tree_print(const token_tree_t* tree)
 {
-    tree_preorder_iterator_t iter = tree_iter_init(tree, -1);
+    tree_preorder_iterator_t iter = token_tree_iter_init(tree, -1);
     while (iter.index_stack.size != 0) {
         /* get */
         int cur_index = *(int*)back(&iter.index_stack),
@@ -261,5 +259,5 @@ tree_print(const tree_t* tree)
             }
         }
     }
-    tree_iter_free(&iter);
+    token_tree_iter_free(&iter);
 }

@@ -33,6 +33,6 @@ extern void stack_clear(frame_t* f, const int can_free_pairs);
 
 extern object_t* frame_get(const frame_t* f, const int name);
 
-extern void frame_set(frame_t* f, const int name, object_t* obj);
+extern object_t** frame_set(frame_t* f, const int name, object_t* obj);
 
 #endif

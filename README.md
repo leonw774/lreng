@@ -3,7 +3,7 @@
 Lreng is a simple interpreted programming language. The main idea is to build a minimal language that works on binary tree: it is parsed into a binary AST and has "Pair" as its only container data type. It has strong, dynamic typing and supports first-class citizen anonymous function and closure.
 
 
-## Usage
+## Build & Usage
 
 `gcc` and `make` are required to build the program, and optionally `emscripten` if you want to build the web playground.
 

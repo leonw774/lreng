@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 int
-token_print(token_t* token)
+token_print(const token_t* token)
 {
     const char* token_str;
     const char* type_str;

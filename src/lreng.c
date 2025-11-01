@@ -3,7 +3,7 @@
 #include "dynarr.h"
 #include "errormsg.h"
 #include "objects.h"
-#include "tree.h"
+#include "token_tree.h"
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -73,9 +73,10 @@ main(int argc, char** argv)
     for (i = 0; i < PROFILE_REPEAT_NUM; i++) {
 #endif
         arena_init(&token_str_arena, fsize);
-        arena_init(&digit_arena, fsize * sizeof(u32));
+        /* digit area not used for now */
+        /* arena_init(&digit_arena, fsize * sizeof(u32)); */
         dynarr_t tokens = tokenize(src, fsize);
-        tree_t syntax_tree = tree_parse(tokens);
+        token_tree_t syntax_tree = tree_parse(tokens);
         int is_good_semantic = check_semantic(syntax_tree);
         if (!is_good_semantic) {
             return SEMANTIC_ERR_CODE;
@@ -86,13 +87,13 @@ main(int argc, char** argv)
             .cur_frame = top_frame,
         };
         object_t* final_result = eval(top_context, syntax_tree.root_index);
-        object_free(final_result);
+        object_deref(final_result);
         frame_free(top_frame);
         free(top_frame);
-        tree_free(&syntax_tree);
+        token_tree_free(&syntax_tree);
         dynarr_free(&tokens);
         arena_free(&token_str_arena);
-        arena_free(&digit_arena);
+        /* arena_free(&digit_arena); */
 #ifdef IS_PROFILE
     }
 #endif

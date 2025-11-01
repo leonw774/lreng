@@ -25,6 +25,6 @@ typedef struct token {
     linecol_t pos;
 } token_t;
 
-extern int token_print(token_t* token);
+extern int token_print(const token_t* token);
 
 #endif

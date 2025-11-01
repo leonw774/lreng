@@ -5,12 +5,12 @@
 #include "objects.h"
 #include "operators.h"
 #include "reserved.h"
-#include "tree.h"
+#include "token_tree.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 int
-check_semantic(const tree_t tree)
+check_semantic(const token_tree_t tree)
 {
     int i, is_passed = 1;
     unsigned char* id_usage
@@ -22,8 +22,8 @@ check_semantic(const tree_t tree)
     frame_t* cur_frame = frame_new();
     object_t objnull = RESERVED_OBJS[RESERVED_ID_NAME_NULL];
 
-    tree_preorder_iterator_t tree_iter = tree_iter_init(&tree, -1);
-    token_t* cur_token = tree_iter_get(&tree_iter);
+    tree_preorder_iterator_t tree_iter = token_tree_iter_init(&tree, -1);
+    token_t* cur_token = token_tree_iter_get(&tree_iter);
     int cur_depth = -1, cur_index = -1, cur_func_depth = -1;
     dynarr_t func_depth_stack = dynarr_new(sizeof(int));
 #ifdef ENABLE_DEBUG_LOG
@@ -114,11 +114,11 @@ check_semantic(const tree_t tree)
 #endif
             id_usage[cur_token->name] = (unsigned char)1;
         }
-        tree_iter_next(&tree_iter);
-        cur_token = tree_iter_get(&tree_iter);
+        token_tree_iter_next(&tree_iter);
+        cur_token = token_tree_iter_get(&tree_iter);
     }
 
-    tree_iter_free(&tree_iter);
+    token_tree_iter_free(&tree_iter);
     dynarr_free(&func_depth_stack);
     frame_free(cur_frame);
     free(cur_frame);

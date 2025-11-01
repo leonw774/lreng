@@ -38,7 +38,7 @@ object_create(object_type_enum type, object_data_t data)
 }
 
 object_t*
-object_copy(object_t* obj)
+object_ref(object_t* obj)
 {
 #ifdef ENABLE_DEBUG_LOG_MORE
     printf("object_copy: obj_addr=%p ref_count=%d\n", obj, obj->ref_count);
@@ -51,7 +51,7 @@ object_copy(object_t* obj)
 }
 
 inline void
-object_free(object_t* obj)
+object_deref(object_t* obj)
 {
 #ifdef ENABLE_DEBUG_LOG_MORE
     printf("object_free: addr=%p, ref_count=%d print: ", obj, obj->ref_count);
@@ -69,10 +69,10 @@ object_free(object_t* obj)
         number_free(&obj->data.number);
     } else if (obj->type == TYPE_PAIR) {
         if (obj->data.pair.left != NULL) {
-            object_free(obj->data.pair.left);
+            object_deref(obj->data.pair.left);
         }
         if (obj->data.pair.right != NULL) {
-            object_free(obj->data.pair.right);
+            object_deref(obj->data.pair.right);
         }
     } else if (obj->type == TYPE_CALL) {
         /* if is builtin function, it doesn't have frame */

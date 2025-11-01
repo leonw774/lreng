@@ -2,7 +2,7 @@
 #include "bigint.h"
 #include "number.h"
 #include "token.h"
-#include "tree.h"
+#include "token_tree.h"
 
 #ifndef OBJECT_H
 #define OBJECT_H
@@ -60,8 +60,8 @@ extern const object_t ERR_OBJECT;
 extern const char* OBJ_TYPE_STR[OBJECT_TYPE_NUM + 1];
 
 extern object_t* object_create(object_type_enum type, object_data_t data);
-extern object_t* object_copy(object_t* obj);
-extern void object_free(object_t* obj);
+extern object_t* object_ref(object_t* obj);
+extern void object_deref(object_t* obj);
 extern int object_print(const object_t* obj, char end);
 
 extern int object_eq(object_t* a, object_t* b);
