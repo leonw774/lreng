@@ -219,7 +219,7 @@ It enables the currying since the deeper function can use the identifiers outsid
 ```
 foo = a => {
   # initializing 'a' here is not allowed as the argument identifier is implicitly initialized as you enter the function
-  #a = 3
+  #a = 3;
   b => {
     # initializing 'a' here is allowed since it is not in the same function
     #a = 3
@@ -229,8 +229,8 @@ foo = a => {
 bar = foo(1);
 bar2 = foo(2);
 
-# you can initialize identifier with the same name as a function's argument as long as they would be initialized in the same scope
-a = 2;
+# you can initialize the same name identifier as a function's argument as long as it is not initialized in the same scope
+#a = 3;
 
 # you cannot access 'b' outside of the closure
 #output $ b + '0';
