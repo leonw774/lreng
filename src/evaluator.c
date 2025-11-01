@@ -889,6 +889,39 @@ exec_op(
     }
 }
 
+static inline eval_tree_t*
+eval_tree_node_create(int token_index)
+{
+    eval_tree_t* node = calloc(1, sizeof(eval_tree_t));
+    node->token_index = token_index;
+    return node;
+}
+
+/* recursively delete a node and its children, deref the objects they hold */
+void
+eval_tree_node_free(eval_tree_t* node)
+{
+#ifdef ENABLE_DEBUG_LOG
+    printf("eval_tree_node_free: freeing node %p and object ", node);
+    if (node->object) {
+        object_print(node->object, '\n');
+    } else {
+        printf("nullptr");
+    }
+    fflush(stdout);
+#endif
+    if (node->left) {
+        eval_tree_node_free(node->left);
+    }
+    if (node->right) {
+        eval_tree_node_free(node->right);
+    }
+    if (node->object) {
+        object_deref(node->object);
+    }
+    free(node);
+}
+
 object_t*
 eval(context_t context, const int entry_index)
 {
@@ -904,8 +937,8 @@ eval(context_t context, const int entry_index)
     object_t* result;
 
     /* type: eval_tree_node* */
-    dynarr_t eval_node_stack = dynarr_new(sizeof(eval_tree_node_t*));
-    eval_tree_node_t* root_eval_node = eval_tree_node_create(entry_index);
+    dynarr_t eval_node_stack = dynarr_new(sizeof(eval_tree_t*));
+    eval_tree_t* root_eval_node = eval_tree_node_create(entry_index);
 
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
@@ -919,14 +952,13 @@ eval(context_t context, const int entry_index)
     /* begin evaluation */
     append(&eval_node_stack, &root_eval_node);
     while (eval_node_stack.size > 0) {
-        eval_tree_node_t* cur_eval_node 
-            = *(eval_tree_node_t**)back(&eval_node_stack);
+        eval_tree_t* cur_eval_node = *(eval_tree_t**)back(&eval_node_stack);
         int cur_index = cur_eval_node->token_index,
-        left_index = token_tree->lefts[cur_index],
-        right_index = token_tree->rights[cur_index];
+            left_index = token_tree->lefts[cur_index],
+            right_index = token_tree->rights[cur_index];
         const token_t cur_token = tokens[cur_eval_node->token_index];
 
-        object_t *left_obj
+        object_t* left_obj
             = (cur_eval_node->left) ? cur_eval_node->left->object : NULL;
         object_t* right_obj
             = (cur_eval_node->right) ? cur_eval_node->right->object : NULL;
@@ -942,7 +974,10 @@ eval(context_t context, const int entry_index)
         }
 #endif
 
-        if (cur_token.type == TOK_ID) {
+        if (token_tree->literals[cur_index]) {
+            /* if it is a literal, use it */
+            cur_eval_node->object = object_ref(token_tree->literals[cur_index]);
+        } else if (cur_token.type == TOK_ID) {
             object_t* o = frame_get(cur_frame, cur_token.name);
             if (o == NULL) {
                 const char* err_msg = "Identifier '%s' used uninitialized";
@@ -963,19 +998,15 @@ eval(context_t context, const int entry_index)
             }
 #endif
         } else if (cur_token.type == TOK_NUM) {
-            /* we sure number is pre eval when creating tree so just
-               copy object from tree
+            /* we are sure numbers are all pre-evaled when creating token tree
+               so this line will almost never run, but just keep it in case
             */
             cur_eval_node->object = object_ref(token_tree->literals[cur_index]);
-            /* not id or num or op: error */
         } else if (cur_token.type != TOK_OP) {
-            printf("eval: bad token type: %d\n", cur_token.type);
+            /* not id or num or op: error */
+            sprintf(ERR_MSG_BUF, "eval: bad token type: %d\n", cur_token.type);
+            print_runtime_error(tokens[cur_index].pos, ERR_MSG_BUF);
             exit(RUNTIME_ERR_CODE);
-        } else if (token_tree->literals[cur_index] != NULL) {
-            /* we are sure this token is operator: copy object from token tree
-               if it is pre-evaled
-            */
-            cur_eval_node->object = object_ref(token_tree->literals[cur_index]);
         } else if (cur_token.name == OP_FMAKE || cur_token.name == OP_MMAKE) {
             /* function and macro maker */
             int is_macro = cur_token.name == OP_MMAKE;
@@ -1019,13 +1050,14 @@ eval(context_t context, const int entry_index)
                 is_error = 1;
                 break;
             }
-            /* set arg_name */
-            right_obj->data.callable.arg_name = tokens[left_index].name;
             /* move right object to current and free right sub-tree */
             cur_eval_node->object = right_obj;
             cur_eval_node->right->object = NULL;
             eval_tree_node_free(cur_eval_node->right);
             cur_eval_node->right = NULL;
+            /* set arg_name */
+            cur_eval_node->object->data.callable.arg_name
+                = tokens[left_index].name;
         } else if (cur_token.name == OP_ASSIGN) {
             /* assignment */
             if (right_obj == NULL) {

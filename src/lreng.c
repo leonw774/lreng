@@ -65,6 +65,7 @@ main(int argc, char** argv)
     fsize = fread(src, 1, fsize, in_fp);
     src[fsize] = '\0';
     fclose(in_fp);
+
 #ifdef IS_PROFILE
 #ifndef PROFILE_REPEAT_NUM
 #define PROFILE_REPEAT_NUM 10
@@ -97,9 +98,11 @@ main(int argc, char** argv)
 #ifdef IS_PROFILE
     }
 #endif
+
     free(src);
 #ifdef IS_WASM
     putchar('\n');
 #endif
+
     return 0;
 }

@@ -61,7 +61,7 @@ object_deref(object_t* obj)
     if (obj->is_const) {
         return;
     }
-    if (obj->ref_count > 1) {
+    if (obj->ref_count != 1) {
         obj->ref_count--;
         return;
     }
@@ -123,8 +123,7 @@ object_print(const object_t* obj, char end)
         } else {
             printed_bytes_count = printf(
                 "[Func] arg_name=%d, entry_index=%d, frame=%p",
-                obj->data.callable.arg_name,
-                obj->data.callable.index,
+                obj->data.callable.arg_name, obj->data.callable.index,
                 obj->data.callable.init_time_frame
             );
         }
@@ -169,8 +168,6 @@ object_eq(object_t* a, object_t* b)
 inline int
 object_to_bool(object_t* obj)
 {
-    if (obj->type == TYPE_NUM) {
-        return obj->data.number.numer.size != 0;
-    }
-    return obj->type != TYPE_NULL;
+    return (obj->type == TYPE_NUM) ? (obj->data.number.numer.size != 0)
+                                   : (obj->type != TYPE_NULL);
 }

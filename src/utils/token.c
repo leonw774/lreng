@@ -8,7 +8,8 @@ token_print(const token_t* token)
 {
     const char* token_str;
     const char* type_str;
-    if (token->type == TOK_OP || token->type == TOK_LB || token->type == TOK_RB) {
+    if (token->type == TOK_OP || token->type == TOK_LB
+        || token->type == TOK_RB) {
         token_str = OP_STRS[token->name];
     } else {
         token_str = token->str;
