@@ -1,0 +1,23 @@
+read_list = {
+  c = input();
+  is_number(c) ? [
+    c == '\n' ? [
+      null
+    ], [
+      (c, read_list())
+    ]
+  ], [
+    null
+  ]
+};
+
+print_reverse = list => {
+  list && (
+    print_reverse(~list);
+    output(`list)
+  )
+};
+
+my_list = read_list();
+print_reverse(my_list);
+output('\n')

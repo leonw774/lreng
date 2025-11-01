@@ -112,10 +112,6 @@ shunting_yard(const dynarr_t tokens)
                 pop(&op_stack);
                 stack_top = back(&op_stack);
             }
-            /* pop out the left bracket */
-            pop(&op_stack);
-            top_op = stack_top->name;
-            cur_op = cur_token->name;
             /* check */
             if (stack_top == NULL) {
                 throw_syntax_error(
@@ -123,8 +119,12 @@ shunting_yard(const dynarr_t tokens)
                     "Unmatched closing bracket: Cannot find opening bracket"
                 );
             }
+            /* pop out the left bracket */
+            pop(&op_stack);
+            top_op = stack_top->name;
+            cur_op = cur_token->name;
             /* special operators replacement */
-            else if (top_op == OP_FCALL && cur_op == OP_RPAREN) {
+            if (top_op == OP_FCALL && cur_op == OP_RPAREN) {
                 /* create function call */
                 token_t fcall = { NULL, OP_FCALL, TOK_OP, stack_top->pos };
                 append(&output, &fcall);
