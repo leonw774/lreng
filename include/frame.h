@@ -14,7 +14,7 @@ typedef struct frame {
     /* indexs & stack stores the name obj pairs for call stack */
     dynarr_t indexs; /* type: int */
     dynarr_t stack; /* type: dynarr_t of name_obj_pair_t */
-    int ref_count;
+    unsigned int ref_count;
 } frame_t;
 
 extern frame_t* frame_new();

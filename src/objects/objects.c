@@ -80,11 +80,10 @@ object_deref(object_t* obj)
             return;
         }
         if (obj->data.callable.init_time_frame != NULL) {
-            if (obj->data.callable.init_time_frame->ref_count <= 1) {
+            obj->data.callable.init_time_frame->ref_count--;
+            if (obj->data.callable.init_time_frame->ref_count == 1) {
                 stack_clear(obj->data.callable.init_time_frame, 1);
                 free(obj->data.callable.init_time_frame);
-            } else {
-                obj->data.callable.init_time_frame->ref_count--;
             }
         }
     }

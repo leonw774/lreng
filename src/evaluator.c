@@ -622,12 +622,13 @@ exec_reduce(
         */
         object_deref(*res_left);
         object_deref(*res_right);
-        /* 2. replace res_pair with reduce_result so its parent can use it */
+        /* 2. copy reduce_result to res_pair so its parent can use it */
         *res_pair = *reduce_result;
+        /* because it is a copy, so const object is not const any more */
         if (res_pair->is_const) {
             res_pair->is_const = 0;
         }
-        /* 3. free the space of reduce_result */
+        /* 3. de-ref reduce_result */
         object_deref(reduce_result);
 
         pop(&arg_pair_stack);
