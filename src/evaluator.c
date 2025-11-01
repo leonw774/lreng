@@ -163,6 +163,7 @@ exec_call(context_t context, linecol_t pos, const object_t* func, object_t* arg)
     context_t new_context = {
         .tree = context.tree,
         .cur_frame = call_frame,
+        .call_depth = context.call_depth + 1,
     };
     result = eval(new_context, callable.index);
     if (!callable.is_macro) {
@@ -901,12 +902,12 @@ eval_tree_node_create(int token_index)
 void
 eval_tree_node_free(eval_tree_t* node)
 {
-#ifdef ENABLE_DEBUG_LOG
+#ifdef ENABLE_DEBUG_MORE_LOG
     printf("eval_tree_node_free: freeing node %p and object ", node);
     if (node->object) {
         object_print(node->object, '\n');
     } else {
-        printf("nullptr");
+        printf("nullptr\n");
     }
     fflush(stdout);
 #endif
@@ -928,6 +929,13 @@ eval(context_t context, const int entry_index)
     frame_t* cur_frame = context.cur_frame;
     const token_tree_t* token_tree = context.tree;
     const token_t* tokens = token_tree->tokens.data;
+    if (context.call_depth > 1000) {
+        print_runtime_error(
+            tokens[entry_index].pos, "Call stack too deep (> 1000)"
+        );
+        exit(RUNTIME_ERR_CODE);
+    }
+
 #ifdef ENABLE_DEBUG_LOG
     const int tree_size = token_tree->sizes[entry_index];
     const int obj_table_offset = entry_index - tree_size + 1;
@@ -944,6 +952,7 @@ eval(context_t context, const int entry_index)
     if (global_is_enable_debug_log) {
         printf("eval\n");
         printf("entry_index=%d cur_frame=%p ", entry_index, cur_frame);
+        printf("stack depth=%d ", context.call_depth );
         printf("obj_table_offset=%d ", obj_table_offset);
         printf("tree_size = %d\n", tree_size);
     }

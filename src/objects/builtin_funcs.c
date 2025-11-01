@@ -28,7 +28,10 @@ builtin_func_input(const object_t* obj)
         return (object_t*)ERR_OBJECT_PTR;
     }
     c = getchar();
-    return object_create(TYPE_NUM, (object_data_t)number_from_i32(c));
+    if (c != EOF) {
+        return object_create(TYPE_NUM, (object_data_t)number_from_i32(c));
+    }
+    return (object_t*)NULL_OBJECT_PTR;
 }
 
 object_t*

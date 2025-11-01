@@ -86,6 +86,7 @@ main(int argc, char** argv)
         context_t top_context = {
             .tree = &syntax_tree,
             .cur_frame = top_frame,
+            .call_depth = 0,
         };
         object_t* final_result = eval(top_context, syntax_tree.root_index);
         object_deref(final_result);

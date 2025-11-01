@@ -11,6 +11,7 @@ extern int global_is_enable_debug_log;
 typedef struct context {
     const token_tree_t* tree;
     frame_t* cur_frame;
+    int call_depth;
 } context_t;
 
 dynarr_t tokenize(const char* src, const unsigned long src_len);

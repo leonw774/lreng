@@ -195,7 +195,7 @@ reduce(f, x) =
 
 ## Built-in functions
 
-- Input function `input()` gets a byte from the `stdin` as a number. It returns a number in the range `1` to `255` (inclusive) if there is data to read in stdin, otherwise it blocks the program and wait for the input to come. You can execute the example program with the command `echo '!@' | ./lreng scripts/read_stdin.txt`. It would output
+- Input function `input()` gets a byte from the `stdin` as a number or null. It returns a number in the range `0` to `255` (inclusive) if there is data to read in stdin, otherwise it blocks the program and wait for the input to come. If it received `EOF`, it returns `null`. You can execute the example program with the command `echo '!@' | ./lreng scripts/read_stdin.txt`. It would output
 
     ```
     a=!
