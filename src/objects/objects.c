@@ -41,7 +41,7 @@ object_t*
 object_ref(object_t* obj)
 {
 #ifdef ENABLE_DEBUG_LOG_MORE
-    printf("object_copy: obj_addr=%p ref_count=%d\n", obj, obj->ref_count);
+    printf("object_ref: obj_addr=%p ref_count=%d\n", obj, obj->ref_count);
     fflush(stdout);
 #endif
     if (!obj->is_const) {
@@ -54,7 +54,7 @@ inline void
 object_deref(object_t* obj)
 {
 #ifdef ENABLE_DEBUG_LOG_MORE
-    printf("object_free: addr=%p, ref_count=%d print: ", obj, obj->ref_count);
+    printf("object_deref: addr=%p, ref_count=%d print: ", obj, obj->ref_count);
     object_print(obj, '\n');
     fflush(stdout);
 #endif
@@ -80,10 +80,11 @@ object_deref(object_t* obj)
             return;
         }
         if (obj->data.callable.init_time_frame != NULL) {
-            obj->data.callable.init_time_frame->ref_count--;
             if (obj->data.callable.init_time_frame->ref_count == 1) {
                 stack_clear(obj->data.callable.init_time_frame, 1);
                 free(obj->data.callable.init_time_frame);
+            } else {
+                obj->data.callable.init_time_frame->ref_count--;
             }
         }
     }
@@ -121,8 +122,10 @@ object_print(const object_t* obj, char end)
             );
         } else {
             printed_bytes_count = printf(
-                "[Func] arg_name=%d, entry_index=%d, frame=%p",
-                obj->data.callable.arg_name, obj->data.callable.index,
+                "[Func] arg_name=%d, entry_index=%d, frame=",
+                obj->data.callable.arg_name, obj->data.callable.index
+            );
+            printed_bytes_count += frame_print(
                 obj->data.callable.init_time_frame
             );
         }

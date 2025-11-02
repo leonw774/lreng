@@ -185,3 +185,33 @@ frame_set(frame_t* f, const int name, object_t* obj)
     append(pairs, &new_pair);
     return &((name_objptr_t*)back((const dynarr_t*) pairs))->objptr;
 }
+
+int
+frame_print(frame_t* f)
+{
+    int printed_bytes_count = 0;
+    if (!f) {
+        return printf("[Frame NULL]\n");
+    }
+    printed_bytes_count = printf(
+        "[FRAME %p\n  ref_count=%d\n", (void*)f, f->ref_count
+    );
+
+    printed_bytes_count += printf("  globals (%d):\n", f->global_pairs.size);
+    for (int i = 0; i < f->global_pairs.size; i++) {
+        name_objptr_t* p = (name_objptr_t*)at(&f->global_pairs, i);
+        printed_bytes_count += printf(
+            "    name=%d obj=%p\n", p->name, (void*)p->objptr
+        );
+    }
+
+    printed_bytes_count += printf("  entry_indexs (%d):\n  ", f->indexs.size);
+    for (int i = 0; i < f->indexs.size; i++) {
+        int e = *(int*)at(&f->indexs, i);
+        printed_bytes_count += printf("%d, ", e);
+    }
+
+    printed_bytes_count += printf("  stack depth=%d\n]\n", f->stack.size);
+    return printed_bytes_count;
+}
+

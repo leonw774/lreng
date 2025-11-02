@@ -35,4 +35,6 @@ extern object_t* frame_get(const frame_t* f, const int name);
 
 extern object_t** frame_set(frame_t* f, const int name, object_t* obj);
 
+extern int frame_print(frame_t* f);
+
 #endif
