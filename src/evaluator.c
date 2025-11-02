@@ -32,10 +32,9 @@ is_bad_type(
     } else {
         right_passed = right_obj != NULL && right_obj->type == right_good_type;
     }
-    if (left_passed & right_passed) {
+    if (left_passed && right_passed) {
         return 0;
     }
-    printf("%d", op_token.name);
     sprintf(
         ERR_MSG_BUF,
         "Bad type for operator \"%s\": expect (%s, %s), get (%s, %s)",
@@ -306,6 +305,15 @@ exec_map(context_t context, linecol_t pos, const object_t* func, object_t* pair)
     return result;
 }
 
+const object_t FILTER_EMPTY_OBJECT = ((object_t) {
+    .is_error = 0,
+    .is_const = 1,
+    .type = TYPE_NULL,
+    .ref_count = 0,
+    .data = (object_data_t)(0x00454d505459ULL),
+    /* this magic value is just the string "EMPTY" */
+});
+
 object_t*
 filter_merge(object_t* pair_to_merge)
 {
@@ -314,32 +322,31 @@ filter_merge(object_t* pair_to_merge)
     }
     object_t* right = pair_to_merge->data.pair.right;
     object_t* left = pair_to_merge->data.pair.left;
-    if (left->is_error && right->is_error) {
+    if (left == &FILTER_EMPTY_OBJECT && right == &FILTER_EMPTY_OBJECT) {
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
             printf("filter_merge: pair removed\n");
         }
 #endif
         object_deref(pair_to_merge);
-        return (object_t*)ERR_OBJECT_PTR;
-    } else if (left->is_error) {
+        return (object_t*)&FILTER_EMPTY_OBJECT;
+    } else if (left == &FILTER_EMPTY_OBJECT) {
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
             printf("filter_merge: pair replaced by its right\n");
         }
 #endif
-        /* we free parent but don't want to free children so increase 1 here to
-           counter the decrease in object_free
-        */
+        /* free parent but not a child */
         object_t* right_copy = object_ref(right);
         object_deref(pair_to_merge);
         return right_copy;
-    } else if (right->is_error) {
+    } else if (right == &FILTER_EMPTY_OBJECT) {
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
             printf("filter_merge: pair replaced by its left\n");
         }
 #endif
+        /* free parent but not a child */
         object_t* left_copy = object_ref(left);
         object_deref(pair_to_merge);
         return left_copy;
@@ -373,7 +380,7 @@ filter_process_node(
             *res = object_ref(arg);
         } else {
             /* removed */
-            *res = (object_t*)ERR_OBJECT_PTR;
+            *res = (object_t*)&FILTER_EMPTY_OBJECT;
         }
         object_deref(result);
         return NEW_LEAF;
@@ -410,11 +417,13 @@ exec_filter(
 
     while (arg_pair_stack.size > 0) {
         object_t* arg_pair = *(object_t**)back(&arg_pair_stack);
-        object_t* res_pair = *(object_t**)back(&res_pair_stack);
         object_t* arg_left = arg_pair->data.pair.left;
         object_t* arg_right = arg_pair->data.pair.right;
+
+        object_t* res_pair = *(object_t**)back(&res_pair_stack);
         object_t** res_left = &res_pair->data.pair.left;
         object_t** res_right = &res_pair->data.pair.right;
+
         int process_result_enum;
 
         /* use ERROR_OBJ to indecate a child is removed */
@@ -502,7 +511,7 @@ exec_filter(
         result = filter_merge(result);
     }
     /* if root is removed: return null object */
-    if (result->is_error) {
+    if (result == &FILTER_EMPTY_OBJECT) {
         result = (object_t*)NULL_OBJECT_PTR;
     }
     return result;
@@ -527,7 +536,8 @@ reduce_process_node(object_t* arg, object_t** res)
     return VISITED_LEAF;
 }
 
-/* apply function (taking a pair) recursively in postfix order to the pair */
+/* apply function (taking a pair) recursively in postfix order to the pair
+ */
 object_t*
 exec_reduce(
     context_t context, linecol_t token_pos, const object_t* func, object_t* pair
@@ -546,18 +556,24 @@ exec_reduce(
     object_t* result = object_create(
         TYPE_PAIR, (object_data_t) { .pair = (pair_t) { NULL, NULL } }
     );
+    object_t** input_pair_ptr = &pair;
+    object_t** result_ptr = &result;
     dynarr_t arg_pair_stack, res_pair_stack;
-    arg_pair_stack = dynarr_new(sizeof(object_t*));
-    res_pair_stack = dynarr_new(sizeof(object_t*));
-    append(&arg_pair_stack, &pair);
-    append(&res_pair_stack, &result);
+    arg_pair_stack = dynarr_new(sizeof(object_t**));
+    res_pair_stack = dynarr_new(sizeof(object_t**));
+    append(&arg_pair_stack, &input_pair_ptr);
+    append(&res_pair_stack, &result_ptr);
     while (arg_pair_stack.size > 0) {
-        object_t* arg_pair = *(object_t**)back(&arg_pair_stack);
-        object_t* res_pair = *(object_t**)back(&res_pair_stack);
-        object_t* arg_left = arg_pair->data.pair.left;
-        object_t* arg_right = arg_pair->data.pair.right;
-        object_t** res_left = &res_pair->data.pair.left;
-        object_t** res_right = &res_pair->data.pair.right;
+        object_t** arg_pair_ptr = *(object_t***)back(&arg_pair_stack);
+        object_t** arg_left_ptr = &((*arg_pair_ptr)->data.pair.left);
+        object_t** arg_right_ptr = &((*arg_pair_ptr)->data.pair.right);
+        object_t* arg_left = *arg_left_ptr;
+        object_t* arg_right = *arg_right_ptr;
+
+        object_t** res_pair_ptr = *(object_t***)back(&res_pair_stack);
+        object_t** res_left_ptr = &((*res_pair_ptr)->data.pair.left);
+        object_t** res_right_ptr = &((*res_pair_ptr)->data.pair.right);
+
         int process_result_enum;
 
         /* check */
@@ -565,46 +581,47 @@ exec_reduce(
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
                 printf("exec_reduce: bad pair - left or right is empty: ");
-                object_print(arg_pair, '\n');
+                object_print(*arg_pair_ptr, '\n');
             }
 #endif
             is_error = 1;
             break;
         }
         /* left */
-        process_result_enum = reduce_process_node(arg_left, res_left);
+        process_result_enum = reduce_process_node(arg_left, res_left_ptr);
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
                 printf("exec_reduce: a left child return with error: ");
-                object_print(*res_left, '\n');
+                object_print(*res_left_ptr, '\n');
             }
 #endif
             is_error = 1;
             break;
         } else if (process_result_enum == NEW_PAIR) {
-            append(&arg_pair_stack, &arg_left);
-            append(&res_pair_stack, res_left);
+            append(&arg_pair_stack, &arg_left_ptr);
+            append(&res_pair_stack, &res_left_ptr);
             continue;
         }
         /* right */
-        process_result_enum = reduce_process_node(arg_right, res_right);
+        process_result_enum = reduce_process_node(arg_right, res_right_ptr);
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
                 printf("exec_reduce: a right child return with error: ");
-                object_print(*res_right, '\n');
+                object_print(*res_right_ptr, '\n');
             }
 #endif
             is_error = 1;
             break;
         } else if (process_result_enum == NEW_PAIR) {
-            append(&arg_pair_stack, &arg_right);
-            append(&res_pair_stack, res_right);
+            append(&arg_pair_stack, &arg_right_ptr);
+            append(&res_pair_stack, &res_right_ptr);
             continue;
         }
         /* reduce */
-        object_t* reduce_result = exec_call(context, token_pos, func, res_pair);
+        object_t* reduce_result
+            = exec_call(context, token_pos, func, *res_pair_ptr);
         if (reduce_result->is_error) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
@@ -616,20 +633,15 @@ exec_reduce(
             object_deref(reduce_result);
             break;
         }
-        /* after reduce:
-           1. de-ref res_left and res_right from res_pair because we only want
-              keep the result of the reduce function
+        /* after reduce, we want to use res_pair_ptr's space to store result so
+           that its parent can use it:
+           1. de-ref the original result pair
         */
-        object_deref(*res_left);
-        object_deref(*res_right);
-        /* 2. copy reduce_result to res_pair so its parent can use it */
-        *res_pair = *reduce_result;
-        /* because it is a copy, so const object is not const any more */
-        if (res_pair->is_const) {
-            res_pair->is_const = 0;
-        }
-        /* 3. de-ref reduce_result */
-        object_deref(reduce_result);
+        object_deref(*res_pair_ptr);
+        /* 2. point the res_pair_ptr to reduce_result
+           don't need to increase ref because reduce_result is temp pointer
+        */
+        *res_pair_ptr = reduce_result;
 
         pop(&arg_pair_stack);
         pop(&res_pair_stack);
@@ -676,8 +688,12 @@ exec_op(
         if (is_bad_type(op_token, TYPE_NUM, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         }
-        tmp_obj = object_create(left_obj->type, left_obj->data);
-        tmp_obj->data.number.numer.sign = !tmp_obj->data.number.numer.sign;
+        {
+            number_t neg_number = EMPTY_NUMBER;
+            number_copy(&neg_number, &left_obj->data.number);
+            neg_number.numer.sign = !neg_number.numer.sign;
+            tmp_obj = object_create(left_obj->type, (object_data_t)neg_number);
+        }
         return tmp_obj;
     case OP_NOT:
         if (is_bad_type(op_token, TYPE_ANY, NO_OPRAND, left_obj, right_obj)) {
@@ -943,7 +959,7 @@ eval(context_t context, const int entry_index)
 #endif
 
     int is_error = 0;
-    object_t* result;
+    object_t* result = NULL;
 
     /* type: eval_tree_node* */
     dynarr_t eval_node_stack = dynarr_new(sizeof(eval_tree_t*));
@@ -953,7 +969,7 @@ eval(context_t context, const int entry_index)
     if (global_is_enable_debug_log) {
         printf("eval\n");
         printf("entry_index=%d cur_frame=%p ", entry_index, cur_frame);
-        printf("stack depth=%d ", context.call_depth );
+        printf("stack depth=%d ", context.call_depth);
         printf("obj_table_offset=%d ", obj_table_offset);
         printf("tree_size = %d\n", tree_size);
     }
@@ -1185,6 +1201,7 @@ eval(context_t context, const int entry_index)
             }
             /* don't need to copy cause it is created or refed in exec_op */
             cur_eval_node->object = result;
+            result = NULL;
         }
         /* end if-else */
         if (is_error) {
