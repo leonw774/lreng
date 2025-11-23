@@ -95,7 +95,7 @@ main(int argc, char** argv)
         free(top_frame);
         token_tree_free(&syntax_tree);
         dynarr_free(&tokens);
-        arena_free(&my_arena);
+        arena_free(&token_str_arena);
         /* arena_free(&digit_arena); */
 #ifdef IS_PROFILE
     }
