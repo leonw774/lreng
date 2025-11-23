@@ -48,67 +48,13 @@ is_bad_type(
     return 1;
 }
 
-void
-construct_call_frame(
-    frame_t* call_frame, const frame_t* cur_frame, const object_t* func
-)
-{
-    /* if is direct recursion, copy the current stack except the last */
-    if (cur_frame->stack.size > 0
-        && *(int*)back(&cur_frame->indexs) == func->data.callable.index) {
-        call_frame->indexs = dynarr_copy(&cur_frame->indexs);
-        pop(&call_frame->indexs);
-        call_frame->stack = dynarr_copy(&cur_frame->stack);
-        pop(&call_frame->stack);
-    }
-    /* if the i-th stack of the function's init-time frame and current frame is
-       the same, call-frame's i-th stack equals current frame's i-th stack. but
-       once the entry_index is different, they are in different closure path,
-       so only the rest of init-time-frame stack is used
-    */
-    else {
-        int i, cur_frame_index = -1, init_frame_index = -1, is_forked = 0;
-        const frame_t* f_init_frame = func->data.callable.init_time_frame;
-        stack_new(call_frame);
-        for (i = 0; i < f_init_frame->stack.size; i++) {
-            dynarr_t* src_pairs = NULL;
-            init_frame_index = *(int*)at(&f_init_frame->indexs, i);
-            cur_frame_index = -1;
-            if (i < cur_frame->stack.size) {
-                cur_frame_index = *(int*)at(&cur_frame->indexs, i);
-            }
-            /* push the entry_index */
-            append(&call_frame->indexs, &init_frame_index);
 
-            if (!is_forked && cur_frame_index == init_frame_index) {
-#ifdef ENABLE_DEBUG_LOG
-                if (global_is_enable_debug_log) {
-                    printf("exec_call: stack[%d] use current\n", i);
-                }
-#endif
-                src_pairs = (dynarr_t*)at(&cur_frame->stack, i);
-            } else {
-#ifdef ENABLE_DEBUG_LOG
-                if (global_is_enable_debug_log) {
-                    printf("exec_call: stack[%d] use init-time\n", i);
-                }
-#endif
-                is_forked = 1;
-                src_pairs = (dynarr_t*)at(&f_init_frame->stack, i);
-            }
-            /* push the shallow copy of source pairs */
-            append(&call_frame->stack, src_pairs);
-        }
-    }
-    /* push new stack to call_frame */
-    stack_push(call_frame, func->data.callable.index);
-}
 
 static inline object_t*
 exec_call(context_t context, linecol_t pos, const object_t* func, object_t* arg)
 {
     object_t* result;
-    frame_t* cur_frame = context.cur_frame;
+    frame_t* caller_frame = context.cur_frame;
     /* if is builtin */
     if (func->data.callable.builtin_name != -1) {
         object_t* (*func_ptr)(const object_t*)
@@ -129,17 +75,15 @@ exec_call(context_t context, linecol_t pos, const object_t* func, object_t* arg)
         printf("exec_call: prepare call frame\n");
     }
 #endif
-    frame_t* call_frame;
+    frame_t* callee_frame;
     callable_t callable = func->data.callable;
     if (callable.is_macro) {
-        call_frame = cur_frame;
+        callee_frame = caller_frame;
     } else {
         int arg_name = callable.arg_name;
-        call_frame = calloc(1, sizeof(frame_t));
-        call_frame->global_pairs = cur_frame->global_pairs;
-        construct_call_frame(call_frame, cur_frame, func);
+        callee_frame = frame_call_with_closure(caller_frame, func);
         /* set argument to call-frame */
-        if (arg_name != -1 && frame_set(call_frame, arg_name, arg) == NULL) {
+        if (arg_name != -1 && frame_set(callee_frame, arg_name, arg) == NULL) {
             int arg_token_index = context.tree->lefts[callable.index];
             const char* arg_str
                 = ((token_t*)at(&context.tree->tokens, arg_token_index))->str;
@@ -152,7 +96,7 @@ exec_call(context_t context, linecol_t pos, const object_t* func, object_t* arg)
 
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
-        printf("exec_call: call_frame=%p\nfunc_obj=", call_frame);
+        printf("exec_call: callee_frame=%p\nfunc_obj=", callee_frame);
         object_print(func, '\n');
         printf("arg=");
         object_print(arg, '\n');
@@ -161,16 +105,16 @@ exec_call(context_t context, linecol_t pos, const object_t* func, object_t* arg)
     /* eval from function's entry index */
     context_t new_context = {
         .tree = context.tree,
-        .cur_frame = call_frame,
+        .cur_frame = callee_frame,
         .call_depth = context.call_depth + 1,
     };
     result = eval(new_context, callable.index);
     if (!callable.is_macro) {
         /* free the objects own by this function call */
-        stack_pop(call_frame);
-        /* free the rest of stack but not free bollowed pairs */
-        stack_clear(call_frame, 0);
-        free(call_frame);
+        frame_return(callee_frame);
+        /* free the rest of stack */
+        frame_free_stack(callee_frame);
+        free(callee_frame);
     }
     return result;
 }
@@ -968,7 +912,7 @@ eval(context_t context, const int entry_index)
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf("eval\n");
-        printf("entry_index=%d cur_frame=%p ", entry_index, cur_frame);
+        printf("entry_index=%d caller_frame=%p ", entry_index, cur_frame);
         printf("stack depth=%d ", context.call_depth);
         printf("obj_table_offset=%d ", obj_table_offset);
         printf("tree_size = %d\n", tree_size);

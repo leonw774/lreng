@@ -40,7 +40,7 @@ check_semantic(const token_tree_t tree)
             if (cur_depth <= cur_func_depth) {
                 /* we left a function */
                 pop(&func_depth_stack);
-                stack_pop(cur_frame);
+                frame_return(cur_frame);
             }
             /* check assign rule */
             if (cur_token->name == OP_ASSIGN) {
@@ -97,7 +97,7 @@ check_semantic(const token_tree_t tree)
             }
             /* walk into a function */
             else if (cur_token->name == OP_FMAKE) {
-                stack_push(cur_frame, cur_index);
+                frame_call(cur_frame, cur_index);
                 append(&func_depth_stack, &cur_depth);
             }
         } else if (cur_token->type == TOK_ID) {

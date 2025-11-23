@@ -9,9 +9,9 @@
 #define DYN_ARR_INIT_CAP 2
 
 typedef struct dynarr {
-    unsigned short elem_size;
-    unsigned short size;
-    unsigned short cap;
+    int elem_size;
+    int size;
+    int cap;
     void* data;
 } dynarr_t;
 

@@ -581,7 +581,7 @@ tokenize(const char* src, const unsigned long src_len)
     linecol_iterator_t pos_iter = { src, src_len, 0, pos };
     cargo cur_cargo;
     state_ret (*state_func)(linecol_iterator_t*, cargo) = ws_state;
-    int i, j;
+    int i;
     cur_cargo.tokens = dynarr_new(sizeof(token_t));
     cur_cargo.str = dynarr_new(sizeof(char));
 
@@ -628,10 +628,10 @@ tokenize(const char* src, const unsigned long src_len)
     }
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
-        int i;
+        int k;
         printf("tokens=");
-        for (i = 0; i < cur_cargo.tokens.size; i++) {
-            token_print((token_t*)at(&cur_cargo.tokens, i));
+        for (k = 0; k < cur_cargo.tokens.size; k++) {
+            token_print((token_t*)at(&cur_cargo.tokens, k));
             printf(" ");
         }
         puts("");
@@ -645,6 +645,7 @@ tokenize(const char* src, const unsigned long src_len)
         append(&name_str_map, &RESERVED_IDS[i]);
     }
     for (i = 0; i < cur_cargo.tokens.size; i++) {
+        int j;
         token_t* cur_token = at(&cur_cargo.tokens, i);
         if (cur_token->type != TOK_ID) {
             continue;

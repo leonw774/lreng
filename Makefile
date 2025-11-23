@@ -3,9 +3,9 @@ DEFAULT_FLAGS = -O3
 PROFILE_FLAGS = -pg -O3 -D IS_PROFILE -D PROFILE_REPEAT_NUM=100 \
 	-fno-pie -no-pie
 DEBUG_FLAGS = -g -D ENABLE_DEBUG_LOG \
-	# -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
+	#-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
 DEBUG_MORE_FLAGS = -D ENABLE_DEBUG_LOG_MORE \
-# 	-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
+	#-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
 MEMCHECK_FLAGS = -include memcheck/memcheck.h \
 	-D ENABLE_DEBUG_LOG -D ENABLE_DEBUG_LOG_MORE \
 	-Wno-implicit-function-declaration -Wno-unused-function -Wno-unused-variable

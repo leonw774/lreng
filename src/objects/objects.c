@@ -81,7 +81,7 @@ object_deref(object_t* obj)
         }
         if (obj->data.callable.init_time_frame != NULL) {
             if (obj->data.callable.init_time_frame->ref_count == 1) {
-                stack_clear(obj->data.callable.init_time_frame, 1);
+                frame_free_stack(obj->data.callable.init_time_frame);
                 free(obj->data.callable.init_time_frame);
             } else {
                 obj->data.callable.init_time_frame->ref_count--;

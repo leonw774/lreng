@@ -668,7 +668,7 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r)
         /* printf("utop2 %lld vnm1 %lld\n", utop2, vnm1); */
         qj = (u32)(utop2 / vnm1);
         rj = (u32)(utop2 % vnm1);
-        while (qj == DIGIT_BASE
+        while (qj == DIGIT_BASE 
                || (u64)qj * vnm2 > ((u64)rj << BASE_SHIFT) + ujnm2) {
             qj--;
             rj += vnm1;
@@ -679,7 +679,7 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r)
         /* printf("qj rj %lld %lld \n", qj, rj); */
 
         /* 4. Substract u[j:j+n] by qj * v[0:n-1]
-           because qj could be larger byone, the borrow need to be signed to
+           because qj could be larger by one, the borrow need to be signed to
            detect that
         */
         borrow = 0;
