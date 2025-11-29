@@ -17,7 +17,6 @@
 #define IS_NUM(c) (isdigit(c) || c == '.')
 #define IS_ID_HEAD(c) (isalpha(c) || c == '_')
 #define IS_ID_BODY(c) (isalnum(c) || c == '_')
-#define IS_OP(c) strchr(OP_CHARS, c)
 #define IS_HEX(c)                                                              \
     (((c) >= '0' && (c) <= '9') || ((c) >= 'a' && (c) <= 'f')                  \
      || ((c) >= 'A' && (c) <= 'F'))
@@ -279,7 +278,7 @@ ws_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
     } else if (IS_ID_HEAD(c)) {
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &id_state, cur_cargo };
-    } else if (IS_OP(c)) {
+    } else if (is_op_char(c)) {
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
@@ -325,7 +324,7 @@ zero_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
     } else if (c == 'b') {
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &bin_state, cur_cargo };
-    } else if (IS_OP(c)) {
+    } else if (is_op_char(c)) {
         harvest(&cur_cargo, TOK_NUM, pos);
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
@@ -356,7 +355,7 @@ num_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         }
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &num_state, cur_cargo };
-    } else if (IS_OP(c)) {
+    } else if (is_op_char(c)) {
         harvest(&cur_cargo, TOK_NUM, pos);
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
@@ -384,7 +383,7 @@ hex_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
     } else if (IS_HEX(c)) {
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &hex_state, cur_cargo };
-    } else if (IS_OP(c)) {
+    } else if (is_op_char(c)) {
         harvest(&cur_cargo, TOK_NUM, pos);
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
@@ -412,7 +411,7 @@ bin_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
     } else if (c == '0' || c == '1') {
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &hex_state, cur_cargo };
-    } else if (IS_OP(c)) {
+    } else if (is_op_char(c)) {
         harvest(&cur_cargo, TOK_NUM, pos);
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
@@ -497,7 +496,7 @@ ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         return (state_ret) { &ws_state, cur_cargo };
     } else if (c == COMMENT_CHAR) {
         return (state_ret) { &comment_state, cur_cargo };
-    } else if (IS_OP(c)) {
+    } else if (is_op_char(c)) {
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
@@ -524,7 +523,7 @@ id_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
     } else if (IS_ID_BODY(c)) {
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &id_state, cur_cargo };
-    } else if (IS_OP(c)) {
+    } else if (is_op_char(c)) {
         harvest(&cur_cargo, TOK_ID, pos);
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
@@ -567,7 +566,7 @@ op_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         harvest(&cur_cargo, type, pos);
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &id_state, cur_cargo };
-    } else if (IS_OP(c)) {
+    } else if (is_op_char(c)) {
         if (cur_cargo.tmp_str.size == 2
             || (cur_cargo.tmp_str.size == 1
                 && !is_2char_op(*(char*)at(&cur_cargo.tmp_str, 0), c))) {

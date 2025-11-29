@@ -2,41 +2,29 @@
 #include "stdlib.h"
 #include "string.h"
 
-#define MAX_OPS_IN_TIER 10
-const int OP_TIER_LIST[][MAX_OPS_IN_TIER] = {
-    /* ********** brackets ********** */
-    { OP_LCURLY, OP_RCURLY, OP_FMAKE, OP_LSQUARE, OP_RSQUARE, OP_MMAKE, -1 },
-    { OP_LPAREN, OP_RPAREN, OP_FCALL, -1 },
-    /* ********** map filter reduce ********** */
-    { OP_MAP, OP_FILTER, OP_REDUCE, -1 },
-    /* ********** unary ********** */
-    { OP_POS, OP_NEG, OP_NOT, OP_CEIL, OP_FLOOR, OP_GETL, OP_GETR, OP_CONDCALL,
-      OP_SWAP, -1 },
-    /* ********** arithmetic ********** */
-    { OP_EXP, -1 },
-    { OP_MUL, OP_DIV, OP_MOD, -1 },
-    { OP_ADD, OP_SUB, -1 },
-    /* ********** comparison ********** */
-    { OP_LT, OP_LE, OP_GT, OP_GE, -1 },
-    { OP_EQ, OP_NE, -1 },
-    /* ********** logical ********** */
-    { OP_AND, -1 },
-    { OP_OR, -1 },
-    /* ********** pair and callables ********** */
-    { OP_PAIR, -1 },
-    { OP_FCALLR, -1 },
-    { OP_ARG, -1 },
-    /* ********** conditional and assignment ********** */
-    { OP_CONDAND, -1 },
-    { OP_CONDOR, -1 },
-    { OP_ASSIGN, OP_CONDPCALL, -1 },
-    /* expression separator */
-    { OP_EXPRSEP, -1 }
-};
-#define TIER_COUNT sizeof(OP_TIER_LIST) / MAX_OPS_IN_TIER / sizeof(int)
+/* is this charactor appear in any of the operator token */
+int
+is_op_char(char c)
+{
+    /* offset by 32 just to save a little space */
+    static unsigned char IS_OP_CHAR[256 - 32] = {0};
+    static int is_initialized = 0;
+    int i, j;
+    if (!is_initialized) {
+        for (i = 0; i < OPERATOR_COUNT; i++) {
+            for (j = 0; OP_STRS[i][j] != '\0'; j++) {
+                if (OP_STRS[i][j] > 32) {
+                    IS_OP_CHAR[OP_STRS[i][j] - 32] = 1;
+                }
+            }
+        }
+        is_initialized = 1;
+    }
+    return c < 32 ? 0 : IS_OP_CHAR[c - 32];
+}
 
 /* if the left and right chars make up to an operator */
-unsigned char
+int
 is_2char_op(char left, char right)
 {
     static int OP_HASH_ARRAY[OPERATOR_COUNT];
@@ -51,6 +39,7 @@ is_2char_op(char left, char right)
                 OP_HASH_ARRAY[i] = 0;
             }
         }
+        is_initialized = 1;
     }
     for (i = 0; i < OPERATOR_COUNT; i++) {
         if (OP_HASH_ARRAY[i] != 0) {
@@ -62,8 +51,6 @@ is_2char_op(char left, char right)
     }
     return 0;
 }
-
-const char OP_CHARS[] = "!$%&()*+,-./;<=>?[\\]^`{|}~";
 
 int
 get_op_precedence(op_name_enum op)
@@ -88,15 +75,7 @@ get_op_precedence(op_name_enum op)
     return PRECEDENCES_ARRAY[op];
 };
 
-const int UNARY_OPS[] = {
-    /* callable makers are also unary operators */
-    OP_FMAKE, OP_MMAKE,
-    /* other unary operators */
-    OP_POS, OP_NEG, OP_NOT, OP_CEIL, OP_FLOOR, OP_GETL, OP_GETR, OP_CONDCALL,
-    OP_SWAP
-};
-
-unsigned char
+int
 is_unary_op(op_name_enum op)
 {
     static unsigned char IS_UNARY_OP_ARRAY[OPERATOR_COUNT];
@@ -115,7 +94,7 @@ is_unary_op(op_name_enum op)
     return IS_UNARY_OP_ARRAY[op];
 };
 
-unsigned char
+int
 is_prefixable_op(op_name_enum op)
 {
     unsigned int i;
@@ -130,13 +109,8 @@ is_prefixable_op(op_name_enum op)
     return 0;
 };
 
-const int BINARY_R_ASSO_OPS[] = {
-    /* exponent, pair, special call operations, and assignment */
-    OP_EXP, OP_PAIR, OP_FCALLR, OP_ARG, OP_CONDPCALL, OP_ASSIGN
-};
-
-unsigned char
-is_r_asso_op(op_name_enum op)
+int
+is_right_associative_op(op_name_enum op)
 {
     unsigned int i;
     for (i = 0; i < sizeof(UNARY_OPS) / sizeof(int); i++) {
@@ -144,8 +118,8 @@ is_r_asso_op(op_name_enum op)
             return 1;
         }
     }
-    for (i = 0; i < sizeof(BINARY_R_ASSO_OPS) / sizeof(int); i++) {
-        if (BINARY_R_ASSO_OPS[i] == (int)op) {
+    for (i = 0; i < sizeof(BINARY_RIGHT_ASSOCIATIVE_OPS) / sizeof(int); i++) {
+        if (BINARY_RIGHT_ASSOCIATIVE_OPS[i] == (int)op) {
             return 1;
         }
     }
