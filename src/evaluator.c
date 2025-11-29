@@ -820,14 +820,14 @@ exec_op(
             return (object_t*)ERR_OBJECT_PTR;
         }
         return exec_call(context, op_token.pos, left_obj, right_obj);
-    case OP_CONDFCALL:
+    case OP_CONDPCALL:
         if (is_bad_type(op_token, TYPE_ANY, TYPE_PAIR, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         }
         /* check inside the pair */
         {
             token_t tmp_op_token = (token_t) {
-                .name = OP_CONDFCALL,
+                .name = OP_CONDPCALL,
                 .pos = op_token.pos,
                 .type = TOK_OP,
                 .str = "the members in the conditional function caller",
@@ -846,7 +846,8 @@ exec_op(
             );
         }
     default:
-        print_runtime_error(op_token.pos, "exec_op: bad op name");
+        sprintf(ERR_MSG_BUF, "exec_op: bad op name: %d", op_token.name);
+        print_runtime_error(op_token.pos, ERR_MSG_BUF);
         return (object_t*)ERR_OBJECT_PTR;
     }
 }

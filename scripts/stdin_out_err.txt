@@ -1,11 +1,11 @@
 add = p => {
-    `p + ~p
+    <p + >p
 };
 print = string => {
-    string != null && (output(`string); print(~string))
+    string != null && (output(<string); print(>string))
 };
 print_error = string => {
-    string != null && (error(`string); print(~string))
+    string != null && (error(<string); print_error(>string))
 };
 print('a', '=', null);
 a = input();

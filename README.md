@@ -59,7 +59,7 @@ The `+`, `-`, `*`, `/`, `%` (modulo), `^` (exponent) only accept numbers.
 
 ### Ceiling and floor
 
-The ceiling `>>` and floor `<<` operators only accept number and do what they normally do. They are quite useful since the there is no rounding with division and modulo. For example: `<<(8 / 3)` is `2`.
+The ceiling `^` and floor `\` operators only accept number and do what they normally do. They are quite useful since the there is no rounding with division and modulo. For example: `\(8 / 3)` is `2`.
 
 ### Assignment
 
@@ -109,19 +109,23 @@ The idiom `cond && t || f` does not work exactly the same as `if cond then t els
 
 The expression connector is `;`. It connects two expressions into one and evaluates to the right hand side value.
 
-### Pair maker, left getter, and right getter
+### Pair operations
 
-The pair maker `,` is right-associative, so that it can be used to make linked list conveniently. You can use `` `p `` and `~p` to get the left and right element of the pair `p`. For example, in `scripts/hello_world.txt`:
+The **pair maker** `,` is right-associative, so that it can be used to make linked list conveniently.
+
+You can use the **left ans right getters** `<p` and `>p` to get the left and right element of the pair `p`. For example, in `scripts/hello_world.txt`:
 
 ```
 hello_world = 'H', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '\n', null;
 print = string => {
-    string && (output(`string); print(~string))
+    string && (output(<string); print(>string))
 };
 print(hello_world)
 ```
 
-The `` `string `` accesses the data and `~string` accesses the next element.
+The `<string` accesses the data and `>string` accesses the next element.
+
+The **swap operator** `~` creates a new pair that swaps the left and right element of the source pair.
 
 ### Function maker and argument binder
 
@@ -145,7 +149,11 @@ The syntax `foo()` is valid and will be parsed as `foo(null)`.
 
 ### Conditional pair caller
 
-The `?` operator is designed to do proper conditional expression evaluation. The syntax is `cond ? callable_pair`. If `cond` is true, the `` `callable_pair `` is called, otherwise, the `~callable_pair` is called. The passed argument is always null.
+The `?` operator is designed to do proper conditional expression evaluation. The syntax is `cond ? callable_pair`. If `cond` is true, the `<callable_pair` is called, otherwise, the `<callable_pair` is called. The passed argument is always null.
+
+### Conditional caller
+
+The unary operator `` `foo `` is an useful short hand for `is_callable(foo) && foo() || foo `. 
 
 ### Map, filter, and reduce
 

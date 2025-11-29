@@ -1,8 +1,8 @@
-#include "lreng.h"
 #include "arena.h"
-#include "my_arenas.h"
 #include "dynarr.h"
 #include "errormsg.h"
+#include "lreng.h"
+#include "my_arenas.h"
 #include "operators.h"
 #include "reserved.h"
 #include "token.h"
@@ -83,7 +83,17 @@ get_op_enum(token_t* last_token, char* op_str)
             continue;
         }
         if (strcmp(OP_STRS[op], op_str) == 0) {
-            return op;
+            /* handle special */
+            if (op == OP_RCURLY || op == OP_RSQUARE || op == OP_RPAREN) {
+                return op;
+            }
+            /* if we expect prefixer */
+            int is_expect_prefixer = last_token == NULL
+                || last_token->type == TOK_OP || last_token->type == TOK_LB;
+            int is_prefixable = is_prefixable_op(op);
+            if (is_expect_prefixer == is_prefixable) {
+                return op;
+            }
         }
     }
     return -1;
@@ -120,7 +130,7 @@ linecol_read(linecol_iterator_t* const s)
    - tokens: parsed tokens
 */
 typedef struct cargo {
-    dynarr_t str;
+    dynarr_t tmp_str;
     dynarr_t tokens;
 } cargo;
 
@@ -128,14 +138,15 @@ typedef struct cargo {
 void
 harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos)
 {
-    char* tok_str = (char*)to_str(&cur_cargo->str);
+    char* tok_str = (char*)to_str(&cur_cargo->tmp_str);
     if (type == TOK_OP || type == TOK_LB || type == TOK_RB) {
         op_name_enum op
             = get_op_enum((token_t*)back(&cur_cargo->tokens), tok_str);
-        free(tok_str);
         if ((int)op == -1) {
-            throw_syntax_error(pos, "bad op name");
+            sprintf(ERR_MSG_BUF, "token '%s' is not a valid operator", tok_str);
+            throw_syntax_error(pos, ERR_MSG_BUF);
         }
+        free(tok_str);
         /* if is a empty function call, add null */
         token_t* last_token = back(&cur_cargo->tokens);
         if (last_token != NULL && last_token->name == OP_FCALL
@@ -152,7 +163,7 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos)
         append(&cur_cargo->tokens, &new_token);
     } else {
         int i, is_in_reserved_ids = 0;
-        if (cur_cargo->str.size > MAX_TOKEN_STR_LEN) {
+        if (cur_cargo->tmp_str.size > MAX_TOKEN_STR_LEN) {
             sprintf(
                 ERR_MSG_BUF, "token length cannot exceed %d", MAX_TOKEN_STR_LEN
             );
@@ -188,7 +199,7 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos)
         };
         append(&cur_cargo->tokens, &new_token);
     }
-    dynarr_reset(&cur_cargo->str);
+    dynarr_reset(&cur_cargo->tmp_str);
 }
 
 /* finite state machine: state: input & cargo => state & cargo */
@@ -258,18 +269,18 @@ ws_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
     } else if (c == COMMENT_CHAR) {
         return (state_ret) { &comment_state, cur_cargo };
     } else if (c == '0') {
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &zero_state, cur_cargo };
     } else if (IS_NUM(c)) {
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &num_state, cur_cargo };
     } else if (c == '\'') {
         return (state_ret) { &ch_open_state, cur_cargo };
     } else if (IS_ID_HEAD(c)) {
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &id_state, cur_cargo };
     } else if (IS_OP(c)) {
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
@@ -306,17 +317,17 @@ zero_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         harvest(&cur_cargo, TOK_NUM, pos);
         return (state_ret) { &comment_state, cur_cargo };
     } else if (IS_NUM(c)) {
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &num_state, cur_cargo };
     } else if (c == 'x') {
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &hex_state, cur_cargo };
     } else if (c == 'b') {
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &bin_state, cur_cargo };
     } else if (IS_OP(c)) {
         harvest(&cur_cargo, TOK_NUM, pos);
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
@@ -340,14 +351,14 @@ num_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         harvest(&cur_cargo, TOK_NUM, pos);
         return (state_ret) { &comment_state, cur_cargo };
     } else if (IS_NUM(c)) {
-        if (c == '.' && strchr(cur_cargo.str.data, '.')) {
+        if (c == '.' && strchr(cur_cargo.tmp_str.data, '.')) {
             throw_syntax_error(pos, "Second decimal dot in number");
         }
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &num_state, cur_cargo };
     } else if (IS_OP(c)) {
         harvest(&cur_cargo, TOK_NUM, pos);
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
@@ -371,11 +382,11 @@ hex_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         harvest(&cur_cargo, TOK_NUM, pos);
         return (state_ret) { &comment_state, cur_cargo };
     } else if (IS_HEX(c)) {
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &hex_state, cur_cargo };
     } else if (IS_OP(c)) {
         harvest(&cur_cargo, TOK_NUM, pos);
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
@@ -399,11 +410,11 @@ bin_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         harvest(&cur_cargo, TOK_NUM, pos);
         return (state_ret) { &comment_state, cur_cargo };
     } else if (c == '0' || c == '1') {
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &hex_state, cur_cargo };
     } else if (IS_OP(c)) {
         harvest(&cur_cargo, TOK_NUM, pos);
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
@@ -421,7 +432,7 @@ ch_open_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         return (state_ret) { &ch_esc_state, cur_cargo };
     }
     if (isprint(c)) {
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &ch_lit_state, cur_cargo };
     } else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
@@ -453,7 +464,7 @@ ch_esc_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         sprintf(ERR_MSG_BUF, INVALID_ESCCHAR_MSG, c);
         throw_syntax_error(pos, ERR_MSG_BUF);
     }
-    append(&cur_cargo.str, &c);
+    append(&cur_cargo.tmp_str, &c);
     return (state_ret) { &ch_lit_state, cur_cargo };
 }
 
@@ -469,13 +480,13 @@ ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
     }
 
     /* transfrom cargo str char into its ascii number */
-    unsigned char lit_char = *(char*)at(&cur_cargo.str, 0);
+    unsigned char lit_char = *(char*)at(&cur_cargo.tmp_str, 0);
     int digit_num = (lit_char < 10) ? 1 : ((lit_char < 100) ? 2 : 3);
-    free(cur_cargo.str.data);
-    cur_cargo.str.data = calloc(4, sizeof(char));
-    cur_cargo.str.size = digit_num;
-    cur_cargo.str.cap = 4;
-    snprintf(cur_cargo.str.data, 4, "%u", lit_char);
+    free(cur_cargo.tmp_str.data);
+    cur_cargo.tmp_str.data = calloc(4, sizeof(char));
+    cur_cargo.tmp_str.size = digit_num;
+    cur_cargo.tmp_str.cap = 4;
+    snprintf(cur_cargo.tmp_str.data, 4, "%u", lit_char);
     harvest(&cur_cargo, TOK_NUM, pos);
 
     /* next state */
@@ -487,7 +498,7 @@ ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
     } else if (c == COMMENT_CHAR) {
         return (state_ret) { &comment_state, cur_cargo };
     } else if (IS_OP(c)) {
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_LIT_MSG, c);
@@ -511,11 +522,11 @@ id_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         harvest(&cur_cargo, TOK_ID, pos);
         return (state_ret) { &comment_state, cur_cargo };
     } else if (IS_ID_BODY(c)) {
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &id_state, cur_cargo };
     } else if (IS_OP(c)) {
         harvest(&cur_cargo, TOK_ID, pos);
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
@@ -531,40 +542,40 @@ op_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
     char c = linecol_read(pos_iter);
     token_type_enum type;
     if (c == '\0') {
-        type = get_op_tok_type(cur_cargo.str.data);
+        type = get_op_tok_type(cur_cargo.tmp_str.data);
         harvest(&cur_cargo, type, pos);
         return (state_ret) { NULL, cur_cargo };
     } else if (isspace(c)) {
-        type = get_op_tok_type(cur_cargo.str.data);
+        type = get_op_tok_type(cur_cargo.tmp_str.data);
         harvest(&cur_cargo, type, pos);
         return (state_ret) { &ws_state, cur_cargo };
     } else if (c == COMMENT_CHAR) {
-        type = get_op_tok_type(cur_cargo.str.data);
+        type = get_op_tok_type(cur_cargo.tmp_str.data);
         harvest(&cur_cargo, type, pos);
         return (state_ret) { &comment_state, cur_cargo };
     } else if (IS_NUM(c)) {
-        type = get_op_tok_type(cur_cargo.str.data);
+        type = get_op_tok_type(cur_cargo.tmp_str.data);
         harvest(&cur_cargo, type, pos);
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &num_state, cur_cargo };
     } else if (c == '\'') {
-        type = get_op_tok_type(cur_cargo.str.data);
+        type = get_op_tok_type(cur_cargo.tmp_str.data);
         harvest(&cur_cargo, type, pos);
         return (state_ret) { &ch_open_state, cur_cargo };
     } else if (IS_ID_BODY(c)) {
-        type = get_op_tok_type(cur_cargo.str.data);
+        type = get_op_tok_type(cur_cargo.tmp_str.data);
         harvest(&cur_cargo, type, pos);
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &id_state, cur_cargo };
     } else if (IS_OP(c)) {
-        if (cur_cargo.str.size == 2
-            || (cur_cargo.str.size == 1
-                && !is_2char_op(*(char*)at(&cur_cargo.str, 0), c))) {
+        if (cur_cargo.tmp_str.size == 2
+            || (cur_cargo.tmp_str.size == 1
+                && !is_2char_op(*(char*)at(&cur_cargo.tmp_str, 0), c))) {
             /* if is already a 2-char operator or cannot be a 2-char operator */
-            type = get_op_tok_type(cur_cargo.str.data);
+            type = get_op_tok_type(cur_cargo.tmp_str.data);
             harvest(&cur_cargo, type, pos);
         }
-        append(&cur_cargo.str, &c);
+        append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
         sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
@@ -583,7 +594,7 @@ tokenize(const char* src, const unsigned long src_len)
     state_ret (*state_func)(linecol_iterator_t*, cargo) = ws_state;
     int i;
     cur_cargo.tokens = dynarr_new(sizeof(token_t));
-    cur_cargo.str = dynarr_new(sizeof(char));
+    cur_cargo.tmp_str = dynarr_new(sizeof(char));
 
 #ifdef ENABLE_DEBUG_LOG
     int prev_tokens_count = 0;
@@ -665,6 +676,6 @@ tokenize(const char* src, const unsigned long src_len)
         }
     }
     dynarr_free(&name_str_map);
-    dynarr_free(&cur_cargo.str);
+    dynarr_free(&cur_cargo.tmp_str);
     return cur_cargo.tokens;
 }

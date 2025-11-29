@@ -1,24 +1,24 @@
 list_append = list_elem => {
-    list = `list_elem;
-    elem = ~list_elem;
+    list = <list_elem;
+    elem = >list_elem;
     list == null ? [
         elem, null
     ], [
-        ~list == null
-            && (`list, elem, null)
-            || (`list, list_append(~list, elem))
+        >list == null
+            && (<list, elem, null)
+            || (<list, list_append(>list, elem))
     ]
 };
 format_int = i => {
     i < 10 && ((i + '0'), null) || (
         list_append(
-            format_int(<<(i / 10)),
+            format_int(\(i / 10)),
             ((i % 10) + '0')
         )
     )
 };
 print = string => {
-    string != null && (output(`string); print(~string))
+    string != null && (output(<string); print(>string))
 };
 fizz_str = 'F', 'I', 'Z', 'Z', null;
 buzz_str = 'B', 'U', 'Z', 'Z', null;

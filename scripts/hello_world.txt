@@ -1,5 +1,5 @@
 hello_world = 'H', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '\n', null;
 print = string => {
-    string != null && (output(`string); print(~string))
+    string != null && (output(<string); print(>string))
 };
 print(hello_world)

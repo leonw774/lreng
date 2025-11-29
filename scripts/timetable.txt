@@ -1,6 +1,6 @@
 timetable = ab => {
-  a = `ab;
-  b = ~ab;
+  a = <ab;
+  b = >ab;
   output(a + '0');
   output('x');
   output(b + '0');

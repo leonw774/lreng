@@ -11,4 +11,5 @@ use_output_newline = {
     { output $ '\n' }
 };
 print_num $ half $ squared $ 4;
-use_output_newline()()
+use_output_newline()();
+# ``use_output_newline
