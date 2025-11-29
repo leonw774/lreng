@@ -623,7 +623,7 @@ tokenize(const char* src, const unsigned long src_len)
         state_func = res.state_func;
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
-            char* tmp_str = to_str(&cur_cargo.str);
+            char* tmp_str = to_str(&cur_cargo.tmp_str);
             int size = cur_cargo.tokens.size;
             print_state_name(state_func);
             printf("str=\"%s\" ", tmp_str);

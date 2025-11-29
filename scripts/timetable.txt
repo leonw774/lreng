@@ -9,7 +9,9 @@ timetable = ab => {
   d = (c - c % 10) / 10;
   d && output(d + '0');
   output(c % 10 + '0');
-  output('\n');
+  c < 10 && output(' ');
+  b == 9 && output('\n');
+  b != 9 && output(' ');
   ((a != 9) | (b != 9)) && (
     b == 9 && timetable(a + 1, 1);
     b != 9 && timetable(a, b + 1)

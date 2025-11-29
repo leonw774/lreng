@@ -147,13 +147,13 @@ The `$` is right-associative, just like in Haskell, designed to apply multiple c
 
 The syntax `foo()` is valid and will be parsed as `foo(null)`.
 
-### Conditional pair caller
-
-The `?` operator is designed to do proper conditional expression evaluation. The syntax is `cond ? callable_pair`. If `cond` is true, the `<callable_pair` is called, otherwise, the `<callable_pair` is called. The passed argument is always null.
-
 ### Conditional caller
 
 The unary operator `` `foo `` is an useful short hand for `is_callable(foo) && foo() || foo `. 
+
+### Conditional pair caller
+
+The `?` operator is designed to do proper conditional expression evaluation. The syntax is `cond ? callable_pair`. If `cond` is true, the `<callable_pair` is called, otherwise, the `<callable_pair` is called. The passed argument is always null.
 
 ### Map, filter, and reduce
 

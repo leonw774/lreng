@@ -130,10 +130,8 @@ is_prefixable_op(op_name_enum op)
     return 0;
 };
 
-const int R_ASSO_OPS[] = {
-    /* ********** unary operators ********** */
-    OP_POS, OP_NEG, OP_NOT, OP_CEIL, OP_FLOOR, OP_GETL, OP_GETR,
-    /* ********** exponent, pair and callables, assignment ********** */
+const int BINARY_R_ASSO_OPS[] = {
+    /* exponent, pair, special call operations, and assignment */
     OP_EXP, OP_PAIR, OP_FCALLR, OP_ARG, OP_CONDPCALL, OP_ASSIGN
 };
 
@@ -141,8 +139,13 @@ unsigned char
 is_r_asso_op(op_name_enum op)
 {
     unsigned int i;
-    for (i = 0; i < sizeof(R_ASSO_OPS) / sizeof(int); i++) {
-        if (R_ASSO_OPS[i] == (int)op) {
+    for (i = 0; i < sizeof(UNARY_OPS) / sizeof(int); i++) {
+        if (UNARY_OPS[i] == (int)op) {
+            return 1;
+        }
+    }
+    for (i = 0; i < sizeof(BINARY_R_ASSO_OPS) / sizeof(int); i++) {
+        if (BINARY_R_ASSO_OPS[i] == (int)op) {
             return 1;
         }
     }

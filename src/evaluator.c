@@ -48,17 +48,17 @@ is_bad_type(
     return 1;
 }
 
-
-
 static inline object_t*
-exec_call(context_t context, linecol_t pos, const object_t* func, object_t* arg)
+exec_call(
+    context_t context, linecol_t pos, const object_t* call, object_t* arg
+)
 {
     object_t* result;
     frame_t* caller_frame = context.cur_frame;
     /* if is builtin */
-    if (func->data.callable.builtin_name != -1) {
+    if (call->data.callable.builtin_name != -1) {
         object_t* (*func_ptr)(const object_t*)
-            = BUILDTIN_FUNC_ARRAY[func->data.callable.builtin_name];
+            = BUILDTIN_FUNC_ARRAY[call->data.callable.builtin_name];
         if (func_ptr == NULL) {
             return (object_t*)ERR_OBJECT_PTR;
         }
@@ -76,12 +76,12 @@ exec_call(context_t context, linecol_t pos, const object_t* func, object_t* arg)
     }
 #endif
     frame_t* callee_frame;
-    callable_t callable = func->data.callable;
+    callable_t callable = call->data.callable;
     if (callable.is_macro) {
         callee_frame = caller_frame;
     } else {
         int arg_name = callable.arg_name;
-        callee_frame = frame_call_with_closure(caller_frame, func);
+        callee_frame = frame_call_with_closure(caller_frame, call);
         /* set argument to call-frame */
         if (arg_name != -1 && frame_set(callee_frame, arg_name, arg) == NULL) {
             int arg_token_index = context.tree->lefts[callable.index];
@@ -97,7 +97,7 @@ exec_call(context_t context, linecol_t pos, const object_t* func, object_t* arg)
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf("exec_call: callee_frame=%p\nfunc_obj=", callee_frame);
-        object_print(func, '\n');
+        object_print(call, '\n');
         printf("arg=");
         object_print(arg, '\n');
     }
@@ -129,7 +129,7 @@ enum pair_traverse_code_enum {
 
 int
 map_process_node(
-    context_t context, linecol_t pos, const object_t* func, object_t* arg,
+    context_t context, linecol_t pos, const object_t* call, object_t* arg,
     object_t** res
 )
 {
@@ -143,7 +143,7 @@ map_process_node(
         return VISITED_PAIR;
     }
     if (*res == NULL) {
-        object_t* result = exec_call(context, pos, func, arg);
+        object_t* result = exec_call(context, pos, call, arg);
         if (result->is_error) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
@@ -160,15 +160,15 @@ map_process_node(
     return VISITED_LEAF;
 }
 
-/* apply function recursively in postfix order and return a new pair */
+/* apply callable recursively in postfix order and return a new pair */
 object_t*
-exec_map(context_t context, linecol_t pos, const object_t* func, object_t* pair)
+exec_map(context_t context, linecol_t pos, const object_t* call, object_t* pair)
 {
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf("exec_map\n");
-        printf("func=");
-        object_print(func, '\n');
+        printf("call=");
+        object_print(call, '\n');
         printf("pair=");
         object_print(pair, '\n');
     }
@@ -204,7 +204,7 @@ exec_map(context_t context, linecol_t pos, const object_t* func, object_t* pair)
         }
         /* left */
         process_result_enum
-            = map_process_node(context, pos, func, arg_left, res_left);
+            = map_process_node(context, pos, call, arg_left, res_left);
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
@@ -221,7 +221,7 @@ exec_map(context_t context, linecol_t pos, const object_t* func, object_t* pair)
         }
         /* right */
         process_result_enum
-            = map_process_node(context, pos, func, arg_right, res_right);
+            = map_process_node(context, pos, call, arg_right, res_right);
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
@@ -332,20 +332,20 @@ filter_process_node(
     return VISITED_LEAF;
 }
 
-/* apply function recursively in postfix order to the children. if the return
+/* apply callable recursively in postfix order to the children. if the return
    value is true, keep the child, otherwise, set it to NULL.
    if a pair's two children's return value is all false, the pair itself becomes
    NULL as well. */
 object_t*
 exec_filter(
-    context_t context, linecol_t pos, const object_t* func, object_t* pair
+    context_t context, linecol_t pos, const object_t* call, object_t* pair
 )
 {
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf("exec_filter\n");
-        printf("func=");
-        object_print(func, '\n');
+        printf("call=");
+        object_print(call, '\n');
         printf("pair=");
         object_print(pair, '\n');
     }
@@ -384,7 +384,7 @@ exec_filter(
         }
         /* left */
         process_result_enum
-            = filter_process_node(context, pos, func, arg_left, res_left);
+            = filter_process_node(context, pos, call, arg_left, res_left);
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
@@ -401,7 +401,7 @@ exec_filter(
         }
         /* right */
         process_result_enum
-            = filter_process_node(context, pos, func, arg_right, res_right);
+            = filter_process_node(context, pos, call, arg_right, res_right);
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
@@ -480,18 +480,18 @@ reduce_process_node(object_t* arg, object_t** res)
     return VISITED_LEAF;
 }
 
-/* apply function (taking a pair) recursively in postfix order to the pair
+/* apply callable (taking a pair) recursively in postfix order to the pair
  */
 object_t*
 exec_reduce(
-    context_t context, linecol_t token_pos, const object_t* func, object_t* pair
+    context_t context, linecol_t token_pos, const object_t* call, object_t* pair
 )
 {
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf("exec_reduce\n");
-        printf("func=");
-        object_print(func, '\n');
+        printf("call=");
+        object_print(call, '\n');
         printf("pair=");
         object_print(pair, '\n');
     }
@@ -565,7 +565,7 @@ exec_reduce(
         }
         /* reduce */
         object_t* reduce_result
-            = exec_call(context, token_pos, func, *res_pair_ptr);
+            = exec_call(context, token_pos, call, *res_pair_ptr);
         if (reduce_result->is_error) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
@@ -671,6 +671,22 @@ exec_op(
             return (object_t*)ERR_OBJECT_PTR;
         }
         return object_ref(left_obj->data.pair.right);
+    case OP_CONDCALL:
+        if (left_obj->type == TYPE_CALL) {
+            return exec_call(
+                context, op_token.pos, left_obj,
+                (object_t*)&RESERVED_OBJS[RESERVED_ID_NAME_NULL]
+            );
+        }
+        return object_ref(left_obj);
+    case OP_SWAP:
+        if (is_bad_type(op_token, TYPE_PAIR, NO_OPRAND, left_obj, right_obj)) {
+            return (object_t*)ERR_OBJECT_PTR;
+        }
+        return object_create(TYPE_PAIR, (object_data_t)(pair_t){
+            .left = object_ref(left_obj->data.pair.right),
+            .right = object_ref(left_obj->data.pair.left),
+        });
     case OP_EXP:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
