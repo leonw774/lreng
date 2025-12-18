@@ -56,9 +56,9 @@ exec_call(
     object_t* result;
     frame_t* caller_frame = context.cur_frame;
     /* if is builtin */
-    if (call->data.callable.builtin_name != -1) {
+    if (call->as.callable.builtin_name != -1) {
         object_t* (*func_ptr)(const object_t*)
-            = BUILDTIN_FUNC_ARRAY[call->data.callable.builtin_name];
+            = BUILDTIN_FUNC_ARRAY[call->as.callable.builtin_name];
         if (func_ptr == NULL) {
             return (object_t*)ERR_OBJECT_PTR;
         }
@@ -76,7 +76,7 @@ exec_call(
     }
 #endif
     frame_t* callee_frame;
-    callable_t callable = call->data.callable;
+    callable_t callable = call->as.callable;
     if (callable.is_macro) {
         callee_frame = caller_frame;
     } else {
@@ -136,7 +136,7 @@ map_process_node(
     if (arg->type == TYPE_PAIR) {
         if (*res == NULL) {
             *res = object_create(
-                TYPE_PAIR, (object_data_t) { .pair = (pair_t) { NULL, NULL } }
+                TYPE_PAIR, (object_data_union) { .pair = (pair_t) { NULL, NULL } }
             );
             return NEW_PAIR;
         }
@@ -175,7 +175,7 @@ exec_map(context_t context, linecol_t pos, const object_t* call, object_t* pair)
 #endif
     int is_error = 0;
     object_t* result = object_create(
-        TYPE_PAIR, (object_data_t) { .pair = (pair_t) { NULL, NULL } }
+        TYPE_PAIR, (object_data_union) { .pair = (pair_t) { NULL, NULL } }
     );
     dynarr_t arg_pair_stack, res_pair_stack;
     arg_pair_stack = dynarr_new(sizeof(object_t*));
@@ -185,10 +185,10 @@ exec_map(context_t context, linecol_t pos, const object_t* call, object_t* pair)
     while (arg_pair_stack.size > 0) {
         object_t* arg_pair = *(object_t**)back(&arg_pair_stack);
         object_t* res_pair = *(object_t**)back(&res_pair_stack);
-        object_t* arg_left = arg_pair->data.pair.left;
-        object_t* arg_right = arg_pair->data.pair.right;
-        object_t** res_left = &res_pair->data.pair.left;
-        object_t** res_right = &res_pair->data.pair.right;
+        object_t* arg_left = arg_pair->as.pair.left;
+        object_t* arg_right = arg_pair->as.pair.right;
+        object_t** res_left = &res_pair->as.pair.left;
+        object_t** res_right = &res_pair->as.pair.right;
         int process_result_enum;
 
         /* check */
@@ -254,7 +254,7 @@ const object_t FILTER_EMPTY_OBJECT = ((object_t) {
     .is_const = 1,
     .type = TYPE_NULL,
     .ref_count = 0,
-    .data = (object_data_t)(0x00454d505459ULL),
+    .as = (object_data_union)(0x00454d505459ULL),
     /* this magic value is just the string "EMPTY" */
 });
 
@@ -264,8 +264,8 @@ filter_merge(object_t* pair_to_merge)
     if (pair_to_merge->type != TYPE_PAIR) {
         return pair_to_merge;
     }
-    object_t* right = pair_to_merge->data.pair.right;
-    object_t* left = pair_to_merge->data.pair.left;
+    object_t* right = pair_to_merge->as.pair.right;
+    object_t* left = pair_to_merge->as.pair.left;
     if (left == &FILTER_EMPTY_OBJECT && right == &FILTER_EMPTY_OBJECT) {
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
@@ -307,7 +307,7 @@ filter_process_node(
     if (arg->type == TYPE_PAIR) {
         if (*res == NULL) {
             *res = object_create(
-                TYPE_PAIR, (object_data_t) { .pair = (pair_t) { NULL, NULL } }
+                TYPE_PAIR, (object_data_union) { .pair = (pair_t) { NULL, NULL } }
             );
             return NEW_PAIR;
         }
@@ -352,7 +352,7 @@ exec_filter(
 #endif
     int is_error = 0;
     object_t* result = object_create(
-        TYPE_PAIR, (object_data_t) { .pair = (pair_t) { NULL, NULL } }
+        TYPE_PAIR, (object_data_union) { .pair = (pair_t) { NULL, NULL } }
     );
     dynarr_t arg_pair_stack = dynarr_new(sizeof(object_t*));
     dynarr_t res_pair_stack = dynarr_new(sizeof(object_t*));
@@ -361,12 +361,12 @@ exec_filter(
 
     while (arg_pair_stack.size > 0) {
         object_t* arg_pair = *(object_t**)back(&arg_pair_stack);
-        object_t* arg_left = arg_pair->data.pair.left;
-        object_t* arg_right = arg_pair->data.pair.right;
+        object_t* arg_left = arg_pair->as.pair.left;
+        object_t* arg_right = arg_pair->as.pair.right;
 
         object_t* res_pair = *(object_t**)back(&res_pair_stack);
-        object_t** res_left = &res_pair->data.pair.left;
-        object_t** res_right = &res_pair->data.pair.right;
+        object_t** res_left = &res_pair->as.pair.left;
+        object_t** res_right = &res_pair->as.pair.right;
 
         int process_result_enum;
 
@@ -467,7 +467,7 @@ reduce_process_node(object_t* arg, object_t** res)
     if (arg->type == TYPE_PAIR) {
         if (*res == NULL) {
             *res = object_create(
-                TYPE_PAIR, (object_data_t) { .pair = (pair_t) { NULL, NULL } }
+                TYPE_PAIR, (object_data_union) { .pair = (pair_t) { NULL, NULL } }
             );
             return NEW_PAIR;
         }
@@ -498,7 +498,7 @@ exec_reduce(
 #endif
     int is_error = 0;
     object_t* result = object_create(
-        TYPE_PAIR, (object_data_t) { .pair = (pair_t) { NULL, NULL } }
+        TYPE_PAIR, (object_data_union) { .pair = (pair_t) { NULL, NULL } }
     );
     object_t** input_pair_ptr = &pair;
     object_t** result_ptr = &result;
@@ -509,14 +509,14 @@ exec_reduce(
     append(&res_pair_stack, &result_ptr);
     while (arg_pair_stack.size > 0) {
         object_t** arg_pair_ptr = *(object_t***)back(&arg_pair_stack);
-        object_t** arg_left_ptr = &((*arg_pair_ptr)->data.pair.left);
-        object_t** arg_right_ptr = &((*arg_pair_ptr)->data.pair.right);
+        object_t** arg_left_ptr = &((*arg_pair_ptr)->as.pair.left);
+        object_t** arg_right_ptr = &((*arg_pair_ptr)->as.pair.right);
         object_t* arg_left = *arg_left_ptr;
         object_t* arg_right = *arg_right_ptr;
 
         object_t** res_pair_ptr = *(object_t***)back(&res_pair_stack);
-        object_t** res_left_ptr = &((*res_pair_ptr)->data.pair.left);
-        object_t** res_right_ptr = &((*res_pair_ptr)->data.pair.right);
+        object_t** res_left_ptr = &((*res_pair_ptr)->as.pair.left);
+        object_t** res_right_ptr = &((*res_pair_ptr)->as.pair.right);
 
         int process_result_enum;
 
@@ -634,9 +634,9 @@ exec_op(
         }
         {
             number_t neg_number = EMPTY_NUMBER;
-            number_copy(&neg_number, &left_obj->data.number);
+            number_copy(&neg_number, &left_obj->as.number);
             neg_number.numer.sign = !neg_number.numer.sign;
-            tmp_obj = object_create(left_obj->type, (object_data_t)neg_number);
+            tmp_obj = object_create(left_obj->type, (object_data_union)neg_number);
         }
         return tmp_obj;
     case OP_NOT:
@@ -645,32 +645,32 @@ exec_op(
         }
         return object_create(
             TYPE_NUM,
-            (object_data_t)(object_to_bool(left_obj) ? ONE_NUMBER : ZERO_NUMBER)
+            (object_data_union)(object_to_bool(left_obj) ? ONE_NUMBER : ZERO_NUMBER)
         );
     case OP_CEIL:
         if (is_bad_type(op_token, TYPE_NUM, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         }
         return object_create(
-            TYPE_NUM, (object_data_t)number_ceil(&left_obj->data.number)
+            TYPE_NUM, (object_data_union)number_ceil(&left_obj->as.number)
         );
     case OP_FLOOR:
         if (is_bad_type(op_token, TYPE_NUM, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         }
         return object_create(
-            TYPE_NUM, (object_data_t)number_floor(&left_obj->data.number)
+            TYPE_NUM, (object_data_union)number_floor(&left_obj->as.number)
         );
     case OP_GETL:
         if (is_bad_type(op_token, TYPE_PAIR, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         }
-        return object_ref(left_obj->data.pair.left);
+        return object_ref(left_obj->as.pair.left);
     case OP_GETR:
         if (is_bad_type(op_token, TYPE_PAIR, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         }
-        return object_ref(left_obj->data.pair.right);
+        return object_ref(left_obj->as.pair.right);
     case OP_CONDCALL:
         if (left_obj->type == TYPE_CALL) {
             return exec_call(
@@ -683,23 +683,23 @@ exec_op(
         if (is_bad_type(op_token, TYPE_PAIR, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         }
-        return object_create(TYPE_PAIR, (object_data_t)(pair_t){
-            .left = object_ref(left_obj->data.pair.right),
-            .right = object_ref(left_obj->data.pair.left),
+        return object_create(TYPE_PAIR, (object_data_union)(pair_t){
+            .left = object_ref(left_obj->as.pair.right),
+            .right = object_ref(left_obj->as.pair.left),
         });
     case OP_EXP:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         }
-        if (right_obj->data.number.denom.size != 1
-            || right_obj->data.number.denom.digit[0] != 1) {
+        if (right_obj->as.number.denom.size != 1
+            || right_obj->as.number.denom.digit[0] != 1) {
             print_runtime_error(op_token.pos, "Exponent must be integer");
             return (object_t*)ERR_OBJECT_PTR;
         }
         return object_create(
             TYPE_NUM,
-            (object_data_t)
-                number_exp(&left_obj->data.number, &right_obj->data.number)
+            (object_data_union)
+                number_exp(&left_obj->as.number, &right_obj->as.number)
         );
     case OP_MUL:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
@@ -707,21 +707,21 @@ exec_op(
         }
         return object_create(
             TYPE_NUM,
-            (object_data_t)
-                number_mul(&left_obj->data.number, &right_obj->data.number)
+            (object_data_union)
+                number_mul(&left_obj->as.number, &right_obj->as.number)
         );
     case OP_DIV:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         }
-        if (right_obj->data.number.numer.size == 0) {
+        if (right_obj->as.number.numer.size == 0) {
             print_runtime_error(op_token.pos, "Divided by zero");
             return (object_t*)ERR_OBJECT_PTR;
         }
         return object_create(
             TYPE_NUM,
-            (object_data_t)
-                number_div(&left_obj->data.number, &right_obj->data.number)
+            (object_data_union)
+                number_div(&left_obj->as.number, &right_obj->as.number)
         );
     case OP_MOD:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
@@ -729,8 +729,8 @@ exec_op(
         }
         return object_create(
             TYPE_NUM,
-            (object_data_t)
-                number_mod(&left_obj->data.number, &right_obj->data.number)
+            (object_data_union)
+                number_mod(&left_obj->as.number, &right_obj->as.number)
         );
     case OP_ADD:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
@@ -738,8 +738,8 @@ exec_op(
         }
         return object_create(
             TYPE_NUM,
-            (object_data_t)
-                number_add(&left_obj->data.number, &right_obj->data.number)
+            (object_data_union)
+                number_add(&left_obj->as.number, &right_obj->as.number)
         );
     case OP_SUB:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
@@ -747,8 +747,8 @@ exec_op(
         }
         return object_create(
             TYPE_NUM,
-            (object_data_t)
-                number_sub(&left_obj->data.number, &right_obj->data.number)
+            (object_data_union)
+                number_sub(&left_obj->as.number, &right_obj->as.number)
         );
     case OP_LT:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
@@ -756,8 +756,8 @@ exec_op(
         }
         return object_create(
             TYPE_NUM,
-            (object_data_t)number_from_i32(
-                number_lt(&left_obj->data.number, &right_obj->data.number)
+            (object_data_union)number_from_i32(
+                number_lt(&left_obj->as.number, &right_obj->as.number)
             )
         );
     case OP_LE:
@@ -766,8 +766,8 @@ exec_op(
         }
         return object_create(
             TYPE_NUM,
-            (object_data_t)number_from_i32(
-                !number_lt(&right_obj->data.number, &left_obj->data.number)
+            (object_data_union)number_from_i32(
+                !number_lt(&right_obj->as.number, &left_obj->as.number)
             )
         );
     case OP_GT:
@@ -776,8 +776,8 @@ exec_op(
         }
         return object_create(
             TYPE_NUM,
-            (object_data_t)number_from_i32(
-                number_lt(&right_obj->data.number, &left_obj->data.number)
+            (object_data_union)number_from_i32(
+                number_lt(&right_obj->as.number, &left_obj->as.number)
             )
         );
     case OP_GE:
@@ -786,19 +786,19 @@ exec_op(
         }
         return object_create(
             TYPE_NUM,
-            (object_data_t)number_from_i32(
-                !number_lt(&left_obj->data.number, &right_obj->data.number)
+            (object_data_union)number_from_i32(
+                !number_lt(&left_obj->as.number, &right_obj->as.number)
             )
         );
     case OP_EQ:
         return object_create(
             TYPE_NUM,
-            (object_data_t)number_from_i32(object_eq(left_obj, right_obj))
+            (object_data_union)number_from_i32(object_eq(left_obj, right_obj))
         );
     case OP_NE:
         return object_create(
             TYPE_NUM,
-            (object_data_t)number_from_i32(!object_eq(left_obj, right_obj))
+            (object_data_union)number_from_i32(!object_eq(left_obj, right_obj))
         );
     case OP_AND:
         if (is_bad_type(op_token, TYPE_ANY, TYPE_ANY, left_obj, right_obj)) {
@@ -806,7 +806,7 @@ exec_op(
         }
         return object_create(
             TYPE_NUM,
-            (object_data_t)number_from_i32(
+            (object_data_union)number_from_i32(
                 object_to_bool(left_obj) && object_to_bool(right_obj)
             )
         );
@@ -816,7 +816,7 @@ exec_op(
         }
         return object_create(
             TYPE_NUM,
-            (object_data_t)number_from_i32(
+            (object_data_union)number_from_i32(
                 object_to_bool(left_obj) || object_to_bool(right_obj)
             )
         );
@@ -826,7 +826,7 @@ exec_op(
         }
         return object_create(
             TYPE_PAIR,
-            (object_data_t)(pair_t) {
+            (object_data_union)(pair_t) {
                 .left = object_ref(left_obj),
                 .right = object_ref(right_obj),
             }
@@ -848,8 +848,8 @@ exec_op(
                 .type = TOK_OP,
                 .str = "the members in the conditional function caller",
             };
-            object_t* right_left = right_obj->data.pair.left;
-            object_t* right_right = right_obj->data.pair.right;
+            object_t* right_left = right_obj->as.pair.left;
+            object_t* right_right = right_obj->as.pair.right;
             if (is_bad_type(
                     tmp_op_token, TYPE_CALL, TYPE_CALL, right_left, right_right
                 )) {
@@ -998,15 +998,15 @@ eval(context_t context, const int entry_index)
             /* function and macro maker */
             int is_macro = cur_token.name == OP_MMAKE;
             /* function will owns a deep copy of the frame it created under */
-            frame_t* init_time_frame = is_macro ? NULL : frame_copy(cur_frame);
+            frame_t* init_frame = is_macro ? NULL : frame_copy(cur_frame);
             cur_eval_node->object = object_create(
                 TYPE_CALL,
-                (object_data_t)(callable_t) {
+                (object_data_union)(callable_t) {
                     .is_macro = is_macro,
                     .builtin_name = NOT_BUILTIN_FUNC,
                     .arg_name = -1,
                     .index = left_index,
-                    .init_time_frame = init_time_frame,
+                    .init_frame = init_frame,
                 }
             );
 #ifdef ENABLE_DEBUG_LOG
@@ -1023,14 +1023,14 @@ eval(context_t context, const int entry_index)
                 continue;
             }
             if (right_obj->type != TYPE_CALL
-                || right_obj->data.callable.is_macro) {
+                || right_obj->as.callable.is_macro) {
                 const char* err_msg
                     = "Right side of argument binder should be function";
                 print_runtime_error(cur_token.pos, err_msg);
                 is_error = 1;
                 break;
             }
-            if (right_obj->data.callable.arg_name != -1) {
+            if (right_obj->as.callable.arg_name != -1) {
                 const char* err_msg
                     = "Bind argument to a function that already has one";
                 print_runtime_error(cur_token.pos, err_msg);
@@ -1043,7 +1043,7 @@ eval(context_t context, const int entry_index)
             eval_tree_node_free(cur_eval_node->right);
             cur_eval_node->right = NULL;
             /* set arg_name */
-            cur_eval_node->object->data.callable.arg_name
+            cur_eval_node->object->as.callable.arg_name
                 = tokens[left_index].name;
         } else if (cur_token.name == OP_ASSIGN) {
             /* assignment */

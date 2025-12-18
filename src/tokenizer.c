@@ -2,7 +2,6 @@
 #include "dynarr.h"
 #include "errormsg.h"
 #include "lreng.h"
-#include "my_arenas.h"
 #include "operators.h"
 #include "reserved.h"
 #include "token.h"
@@ -30,6 +29,8 @@
 #define INVALID_CHAR_LIT_MSG                                                   \
     (isprint(c) && !isspace(c) ? "Expect single quote, get '%c'"               \
                                : "Expect single quote, get: 0x%x")
+
+extern arena_t token_str_arena; // declared in lreng.c 
 
 static inline token_type_enum
 get_op_tok_type(char* op_str)

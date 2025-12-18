@@ -12,7 +12,9 @@ typedef enum reserved_id_name {
     RESERVED_ID_NAME_IS_CALLABLE,
     RESERVED_ID_NAME_IS_PAIR
 } reserved_id_name_enum;
+
 #define RESERVED_ID_NUM RESERVED_ID_NAME_IS_PAIR + 1
+
 extern const char* RESERVED_IDS[RESERVED_ID_NUM];
 
 extern const object_t RESERVED_OBJS[RESERVED_ID_NUM];

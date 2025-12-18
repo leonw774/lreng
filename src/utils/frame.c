@@ -1,7 +1,6 @@
 #include "frame.h"
 #include "arena.h"
 #include "lreng.h"
-#include "my_arenas.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -230,7 +229,7 @@ frame_call_with_closure(const frame_t* caller_frame, const object_t* func)
 
     /* if is direct recursion, copy caller frame except last stack section */
     if (caller_frame->stack.size > 0
-        && caller_last_entry_index == func->data.callable.index) {
+        && caller_last_entry_index == func->as.callable.index) {
         callee_frame = frame_copy(caller_frame);
         frame_return(callee_frame);
     }
@@ -242,7 +241,7 @@ frame_call_with_closure(const frame_t* caller_frame, const object_t* func)
     */
     else {
         int i, caller_frame_index = -1, init_frame_index = -1, is_forked = 0;
-        const frame_t* f_init_frame = func->data.callable.init_time_frame;
+        const frame_t* f_init_frame = func->as.callable.init_frame;
         callee_frame = frame_copy_globals(caller_frame);
 
         /* for every function's init-time frame */
@@ -288,6 +287,6 @@ frame_call_with_closure(const frame_t* caller_frame, const object_t* func)
         }
     }
     /* then push the new stack section and entry index to callee frame */
-    frame_call(callee_frame, func->data.callable.index);
+    frame_call(callee_frame, func->as.callable.index);
     return callee_frame;
 }

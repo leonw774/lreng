@@ -1,5 +1,4 @@
 #include "lreng.h"
-#include "my_arenas.h"
 #include "dynarr.h"
 #include "errormsg.h"
 #include "objects.h"
@@ -9,6 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+arena_t token_str_arena = (arena_t) { .cap = 0, .size = 0, .ptr = NULL, };
 
 int global_is_enable_debug_log = 0;
 

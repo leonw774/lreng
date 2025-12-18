@@ -31,27 +31,27 @@ typedef struct callable {
     int builtin_name; /* -1 if is not builtin function */
     int index; /* the index on tree */
     int arg_name; /* -1 if no arg */
-    frame_t* init_time_frame;
+    frame_t* init_frame;
 } callable_t;
 
 #define NOT_BUILTIN_FUNC -1
 
-typedef union object_data {
+typedef union object_data_union {
     unsigned long long null;
     number_t number;
     pair_t pair;
     callable_t callable;
-} object_data_t;
+} object_data_union;
 
 typedef struct object {
     unsigned char is_error;
     unsigned char is_const;
     unsigned char type;
     unsigned int ref_count;
-    object_data_t data;
+    object_data_union as;
 } object_t;
 
-#define object_data_size sizeof(object_data_t)
+#define object_data_size sizeof(object_data_union)
 #define object_struct_size sizeof(object_t)
 
 extern const object_t* ERR_OBJECT_PTR;
@@ -59,7 +59,7 @@ extern const object_t ERR_OBJECT;
 
 extern const char* OBJ_TYPE_STR[OBJECT_TYPE_NUM + 1];
 
-extern object_t* object_create(object_type_enum type, object_data_t data);
+extern object_t* object_create(object_type_enum type, object_data_union data);
 extern object_t* object_ref(object_t* obj);
 extern void object_deref(object_t* obj);
 extern int object_print(const object_t* obj, char end);

@@ -107,7 +107,9 @@ token_tree_create(dynarr_t tokens)
         if (cur_token->type == TOK_NUM) {
             tree.literals[i] = object_create(
                 TYPE_NUM,
-                (object_data_t) { .number = number_from_str(cur_token->str) }
+                (object_data_union) {
+                    .number = number_from_str(cur_token->str),
+                }
             );
         } else if (cur_token->type == TOK_OP && cur_token->name == OP_PAIR) {
             if (tree.lefts[i] == -1 || tree.rights[i] == -1) {
@@ -118,12 +120,11 @@ token_tree_create(dynarr_t tokens)
                        && tree.literals[tree.rights[i]] != NULL) {
                 tree.literals[i] = object_create(
                     TYPE_PAIR,
-                    (object_data_t) {
+                    (object_data_union) {
                         .pair = (pair_t) {
                             .left = object_ref(tree.literals[tree.lefts[i]]),
                             .right = object_ref(tree.literals[tree.rights[i]]),
-                        }
-                    }
+                        } }
                 );
             }
         }

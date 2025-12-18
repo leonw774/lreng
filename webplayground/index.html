@@ -208,13 +208,11 @@
             }
         );
         function putHelloWorld() {
-            editor.setValue(`
-hello_world = 'H', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '\\n', null;
+            editor.setValue(`hello_world = 'H', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '\\n', null;
 print = string => {
-    string != null && (output(\`string); print(~string))
+    string != null && (output(<string); print(>string))
 };
-print(hello_world)
-            `.trim())
+print(hello_world)`.trim())
         }
     </script>
 

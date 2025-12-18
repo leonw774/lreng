@@ -24,7 +24,7 @@ const char* OBJ_TYPE_STR[OBJECT_TYPE_NUM + 1] = {
 };
 
 object_t*
-object_create(object_type_enum type, object_data_t data)
+object_create(object_type_enum type, object_data_union data)
 {
     object_t* objptr = malloc(sizeof(object_t));
     *objptr = (object_t) {
@@ -32,7 +32,7 @@ object_create(object_type_enum type, object_data_t data)
         .is_const = 0,
         .type = type,
         .ref_count = 1,
-        .data = data,
+        .as = data,
     };
     return objptr;
 }
@@ -66,25 +66,25 @@ object_deref(object_t* obj)
         return;
     }
     if (obj->type == TYPE_NUM) {
-        number_free(&obj->data.number);
+        number_free(&obj->as.number);
     } else if (obj->type == TYPE_PAIR) {
-        if (obj->data.pair.left != NULL) {
-            object_deref(obj->data.pair.left);
+        if (obj->as.pair.left != NULL) {
+            object_deref(obj->as.pair.left);
         }
-        if (obj->data.pair.right != NULL) {
-            object_deref(obj->data.pair.right);
+        if (obj->as.pair.right != NULL) {
+            object_deref(obj->as.pair.right);
         }
     } else if (obj->type == TYPE_CALL) {
         /* if is builtin function, it doesn't have frame */
-        if (obj->data.callable.builtin_name != NOT_BUILTIN_FUNC) {
+        if (obj->as.callable.builtin_name != NOT_BUILTIN_FUNC) {
             return;
         }
-        if (obj->data.callable.init_time_frame != NULL) {
-            if (obj->data.callable.init_time_frame->ref_count == 1) {
-                frame_free_stack(obj->data.callable.init_time_frame);
-                free(obj->data.callable.init_time_frame);
+        if (obj->as.callable.init_frame != NULL) {
+            if (obj->as.callable.init_frame->ref_count == 1) {
+                frame_free_stack(obj->as.callable.init_frame);
+                free(obj->as.callable.init_frame);
             } else {
-                obj->data.callable.init_time_frame->ref_count--;
+                obj->as.callable.init_frame->ref_count--;
             }
         }
     }
@@ -100,34 +100,32 @@ object_print(const object_t* obj, char end)
     } else if (obj->type == TYPE_NULL) {
         printed_bytes_count = printf("[Null]");
     } else if (obj->type == TYPE_NUM) {
-        printed_bytes_count = number_print_frac(&obj->data.number, '\0');
+        printed_bytes_count = number_print_frac(&obj->as.number, '\0');
     } else if (obj->type == TYPE_PAIR) {
         printed_bytes_count = printf("[Pair] (");
-        if (obj->data.pair.left == NULL) {
+        if (obj->as.pair.left == NULL) {
             printed_bytes_count += printf("(empty)");
         } else {
-            printed_bytes_count += object_print(obj->data.pair.left, '\0');
+            printed_bytes_count += object_print(obj->as.pair.left, '\0');
         }
         printed_bytes_count += printf(", ");
-        if (obj->data.pair.right == NULL) {
+        if (obj->as.pair.right == NULL) {
             printed_bytes_count += printf("(empty)");
         } else {
-            printed_bytes_count += object_print(obj->data.pair.right, '\0');
+            printed_bytes_count += object_print(obj->as.pair.right, '\0');
         }
         printed_bytes_count += printf(")");
     } else if (obj->type == TYPE_CALL) {
-        if (obj->data.callable.builtin_name != NOT_BUILTIN_FUNC) {
+        if (obj->as.callable.builtin_name != NOT_BUILTIN_FUNC) {
             printed_bytes_count = printf(
-                "[Func] builtin_name=%d", obj->data.callable.builtin_name
+                "[Func] builtin_name=%d", obj->as.callable.builtin_name
             );
         } else {
             printed_bytes_count = printf(
                 "[Func] arg_name=%d, entry_index=%d, frame=",
-                obj->data.callable.arg_name, obj->data.callable.index
+                obj->as.callable.arg_name, obj->as.callable.index
             );
-            printed_bytes_count += frame_print(
-                obj->data.callable.init_time_frame
-            );
+            printed_bytes_count += frame_print(obj->as.callable.init_frame);
         }
     } else {
         printf("object_print: bad object type: %d\n", obj->type);
@@ -146,21 +144,21 @@ object_eq(object_t* a, object_t* b)
     if (a->type != b->type) {
         return 0;
     } else if (a->type == TYPE_CALL) {
-        callable_t *a_func = &a->data.callable, *b_func = &b->data.callable;
+        callable_t *a_func = &a->as.callable, *b_func = &b->as.callable;
         return (
             a_func->is_macro == b_func->is_macro
             && a_func->arg_name == b_func->arg_name
             && a_func->builtin_name == b_func->builtin_name
-            && a_func->init_time_frame == b_func->init_time_frame
+            && a_func->init_frame == b_func->init_frame
             && a_func->index == b_func->index
         );
     } else if (a->type == TYPE_NULL) {
         return 1;
     } else if (a->type == TYPE_NUM) {
-        return number_eq(&a->data.number, &b->data.number);
+        return number_eq(&a->as.number, &b->as.number);
     } else if (a->type == TYPE_PAIR) {
-        return object_eq(a->data.pair.left, b->data.pair.left)
-            && object_eq(a->data.pair.right, b->data.pair.right);
+        return object_eq(a->as.pair.left, b->as.pair.left)
+            && object_eq(a->as.pair.right, b->as.pair.right);
     } else {
         printf("object_eq: bad type\n");
         exit(1);
@@ -170,6 +168,9 @@ object_eq(object_t* a, object_t* b)
 inline int
 object_to_bool(object_t* obj)
 {
-    return (obj->type == TYPE_NUM) ? (obj->data.number.numer.size != 0)
-                                   : (obj->type != TYPE_NULL);
+    if (obj->type == TYPE_NUM) {
+        return obj->as.number.numer.size != 0;
+    } else {
+        return obj->type != TYPE_NULL;
+    }
 }
