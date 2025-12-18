@@ -1,5 +1,5 @@
 #include "errormsg.h"
-#include "lreng.h"
+#include "main.h"
 #include "token_tree.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,7 +45,7 @@ shunting_yard(const dynarr_t tokens)
 #ifdef ENABLE_DEBUG_LOG
     int prev_output_count = 0;
     if (global_is_enable_debug_log) {
-        puts("tree_parse");
+        printf("shunting_yard\n");
     }
 #endif
     int i;
@@ -55,7 +55,7 @@ shunting_yard(const dynarr_t tokens)
         if (global_is_enable_debug_log) {
             printf("expect=%s token=", (expectation ? "INFIX" : "PREFIX"));
             token_print(cur_token);
-            puts("");
+            printf("\n");
         }
 #endif
         /* is an operator or left bracket */
@@ -188,14 +188,14 @@ shunting_yard(const dynarr_t tokens)
             token_print((token_t*)at(&output, i));
             printf(" ");
         }
-        puts("");
+        printf("\n");
     }
 #endif
     return output;
 }
 
 token_tree_t
-tree_parse(const dynarr_t tokens)
+parse_tokens_to_tree(const dynarr_t tokens)
 {
     /* tokens */
     token_tree_t tree = token_tree_create(shunting_yard(tokens));

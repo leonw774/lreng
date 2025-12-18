@@ -1,15 +1,20 @@
-#include "lreng.h"
+#include "main.h"
+#include "arena.h"
 #include "dynarr.h"
 #include "errormsg.h"
 #include "objects.h"
-#include "token_tree.h"
 #include "reserved.h"
+#include "token_tree.h"
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-arena_t token_str_arena = (arena_t) { .cap = 0, .size = 0, .ptr = NULL, };
+arena_t token_str_arena = (arena_t) {
+    .cap = 0,
+    .size = 0,
+    .ptr = NULL,
+};
 
 int global_is_enable_debug_log = 0;
 
@@ -79,7 +84,7 @@ main(int argc, char** argv)
         /* digit area not used for now */
         /* arena_init(&digit_arena, fsize * sizeof(u32)); */
         dynarr_t tokens = tokenize(src, fsize);
-        token_tree_t syntax_tree = tree_parse(tokens);
+        token_tree_t syntax_tree = parse_tokens_to_tree(tokens);
         int is_good_semantic = check_semantic(syntax_tree);
         if (!is_good_semantic) {
             return SEMANTIC_ERR_CODE;

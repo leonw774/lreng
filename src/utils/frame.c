@@ -1,6 +1,5 @@
 #include "frame.h"
 #include "arena.h"
-#include "lreng.h"
 
 #include <stdio.h>
 #include <stdlib.h>

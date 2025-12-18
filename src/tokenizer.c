@@ -1,7 +1,7 @@
 #include "arena.h"
 #include "dynarr.h"
 #include "errormsg.h"
-#include "lreng.h"
+#include "main.h"
 #include "operators.h"
 #include "reserved.h"
 #include "token.h"
@@ -17,20 +17,19 @@
 #define IS_ID_HEAD(c) (isalpha(c) || c == '_')
 #define IS_ID_BODY(c) (isalnum(c) || c == '_')
 #define IS_HEX(c)                                                              \
-    (((c) >= '0' && (c) <= '9') || ((c) >= 'a' && (c) <= 'f')                  \
-     || ((c) >= 'A' && (c) <= 'F'))
+    ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
 
-#define INVALID_CHAR_MSG                                                       \
+#define INVALID_CHAR_MSG(c)                                                    \
     (isprint(c) && !isspace(c) ? "Invalid character: '%c'"                     \
                                : "Invalid character: 0x%x")
-#define INVALID_ESCCHAR_MSG                                                    \
+#define INVALID_ESCCHAR_MSG(c)                                                 \
     (isprint(c) && !isspace(c) ? "Invalid escape character: '%c'"              \
                                : "Invalid escape character: 0x%x")
-#define INVALID_CHAR_LIT_MSG                                                   \
+#define INVALID_CHAR_LIT_MSG(c)                                                \
     (isprint(c) && !isspace(c) ? "Expect single quote, get '%c'"               \
                                : "Expect single quote, get: 0x%x")
 
-extern arena_t token_str_arena; // declared in lreng.c 
+extern arena_t token_str_arena; // declared in main.c
 
 static inline token_type_enum
 get_op_tok_type(char* op_str)
@@ -283,7 +282,7 @@ ws_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }
@@ -330,7 +329,7 @@ zero_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }
@@ -361,7 +360,7 @@ num_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }
@@ -389,7 +388,7 @@ hex_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }
@@ -417,7 +416,7 @@ bin_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }
@@ -435,7 +434,7 @@ ch_open_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &ch_lit_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }
@@ -461,7 +460,7 @@ ch_esc_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
     } else if (c == 'v') {
         c = '\v';
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_ESCCHAR_MSG, c);
+        sprintf(ERR_MSG_BUF, INVALID_ESCCHAR_MSG(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
     }
     append(&cur_cargo.tmp_str, &c);
@@ -501,7 +500,7 @@ ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_LIT_MSG, c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_LIT_MSG(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }
@@ -529,7 +528,7 @@ id_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }
@@ -578,7 +577,7 @@ op_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG, c);
+        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }

@@ -1,7 +1,7 @@
 #include "dynarr.h"
 #include "errormsg.h"
 #include "frame.h"
-#include "lreng.h"
+#include "main.h"
 #include "objects.h"
 #include "operators.h"
 #include "reserved.h"

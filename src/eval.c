@@ -3,7 +3,7 @@
 #include "errormsg.h"
 #include "eval_tree.h"
 #include "frame.h"
-#include "lreng.h"
+#include "main.h"
 #include "token_tree.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,9 +49,7 @@ is_bad_type(
 }
 
 static inline object_t*
-exec_call(
-    context_t context, linecol_t pos, const object_t* call, object_t* arg
-)
+exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
 {
     object_t* result;
     frame_t* caller_frame = context.cur_frame;
@@ -136,7 +134,8 @@ map_process_node(
     if (arg->type == TYPE_PAIR) {
         if (*res == NULL) {
             *res = object_create(
-                TYPE_PAIR, (object_data_union) { .pair = (pair_t) { NULL, NULL } }
+                TYPE_PAIR,
+                (object_data_union) { .pair = (pair_t) { NULL, NULL } }
             );
             return NEW_PAIR;
         }
@@ -307,7 +306,8 @@ filter_process_node(
     if (arg->type == TYPE_PAIR) {
         if (*res == NULL) {
             *res = object_create(
-                TYPE_PAIR, (object_data_union) { .pair = (pair_t) { NULL, NULL } }
+                TYPE_PAIR,
+                (object_data_union) { .pair = (pair_t) { NULL, NULL } }
             );
             return NEW_PAIR;
         }
@@ -467,7 +467,8 @@ reduce_process_node(object_t* arg, object_t** res)
     if (arg->type == TYPE_PAIR) {
         if (*res == NULL) {
             *res = object_create(
-                TYPE_PAIR, (object_data_union) { .pair = (pair_t) { NULL, NULL } }
+                TYPE_PAIR,
+                (object_data_union) { .pair = (pair_t) { NULL, NULL } }
             );
             return NEW_PAIR;
         }
@@ -636,7 +637,8 @@ exec_op(
             number_t neg_number = EMPTY_NUMBER;
             number_copy(&neg_number, &left_obj->as.number);
             neg_number.numer.sign = !neg_number.numer.sign;
-            tmp_obj = object_create(left_obj->type, (object_data_union)neg_number);
+            tmp_obj
+                = object_create(left_obj->type, (object_data_union)neg_number);
         }
         return tmp_obj;
     case OP_NOT:
@@ -645,7 +647,8 @@ exec_op(
         }
         return object_create(
             TYPE_NUM,
-            (object_data_union)(object_to_bool(left_obj) ? ONE_NUMBER : ZERO_NUMBER)
+            (object_data_union)(object_to_bool(left_obj) ? ONE_NUMBER
+                                                         : ZERO_NUMBER)
         );
     case OP_CEIL:
         if (is_bad_type(op_token, TYPE_NUM, NO_OPRAND, left_obj, right_obj)) {
@@ -683,10 +686,13 @@ exec_op(
         if (is_bad_type(op_token, TYPE_PAIR, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         }
-        return object_create(TYPE_PAIR, (object_data_union)(pair_t){
-            .left = object_ref(left_obj->as.pair.right),
-            .right = object_ref(left_obj->as.pair.left),
-        });
+        return object_create(
+            TYPE_PAIR,
+            (object_data_union)(pair_t) {
+                .left = object_ref(left_obj->as.pair.right),
+                .right = object_ref(left_obj->as.pair.left),
+            }
+        );
     case OP_EXP:
         if (is_bad_type(op_token, TYPE_NUM, TYPE_NUM, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
@@ -866,39 +872,6 @@ exec_op(
         print_runtime_error(op_token.pos, ERR_MSG_BUF);
         return (object_t*)ERR_OBJECT_PTR;
     }
-}
-
-static inline eval_tree_t*
-eval_tree_node_create(int token_index)
-{
-    eval_tree_t* node = calloc(1, sizeof(eval_tree_t));
-    node->token_index = token_index;
-    return node;
-}
-
-/* recursively delete a node and its children, deref the objects they hold */
-void
-eval_tree_node_free(eval_tree_t* node)
-{
-#ifdef ENABLE_DEBUG_MORE_LOG
-    printf("eval_tree_node_free: freeing node %p and object ", node);
-    if (node->object) {
-        object_print(node->object, '\n');
-    } else {
-        printf("nullptr\n");
-    }
-    fflush(stdout);
-#endif
-    if (node->left) {
-        eval_tree_node_free(node->left);
-    }
-    if (node->right) {
-        eval_tree_node_free(node->right);
-    }
-    if (node->object) {
-        object_deref(node->object);
-    }
-    free(node);
 }
 
 object_t*
