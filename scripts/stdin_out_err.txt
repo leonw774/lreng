@@ -7,6 +7,8 @@ print = string => {
 print_error = string => {
     string != null && (error(<string); print_error(>string))
 };
+print_newline = [ output('\n') ];
+
 print('a', '=', null);
 a = input();
 print(a, '\n', null);
@@ -17,4 +19,12 @@ print(b, '\n', null);
 
 print_error('a', '+', 'b', '=', null);
 error $ add(a, b);
-output $ '\n'
+print_newline();
+
+debug(null);
+debug('A'); # int
+debug(87 / 15); # rational
+debug(a, b); # pair
+debug(print); # function
+debug(print_newline); # macro
+debug(debug) # builtin function

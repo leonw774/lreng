@@ -215,6 +215,8 @@ reduce(f, x) =
 
 - Error function `error(i)` are the same as output function, except it writes to the `stderr`.
 
+- Debug function `deubg(x)` writes the representation string of the object to the `stdout` with a newline at the end. It always returns `null`.
+
 - Type checker functions: `is_number`, `is_callable`, and `is_pair`. They return number `1` or `0` when true or false. Null type has only `null` so just use `x == nul`.
 
 

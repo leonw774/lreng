@@ -10,10 +10,13 @@ typedef enum reserved_id_name {
     RESERVED_ID_NAME_ERROR,
     RESERVED_ID_NAME_IS_NUMBER,
     RESERVED_ID_NAME_IS_CALLABLE,
-    RESERVED_ID_NAME_IS_PAIR
+    RESERVED_ID_NAME_IS_PAIR,
+    RESERVED_ID_NAME_DEBUG,
+    /* this enum is for getting the number of reserved ids */
+    RESERVED_ID_NAME_END_IDENTIFIER
 } reserved_id_name_enum;
 
-#define RESERVED_ID_NUM RESERVED_ID_NAME_IS_PAIR + 1
+#define RESERVED_ID_NUM RESERVED_ID_NAME_END_IDENTIFIER
 
 extern const char* RESERVED_IDS[RESERVED_ID_NUM];
 

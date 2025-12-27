@@ -1,13 +1,13 @@
 list_append = list_elem => {
     list = <list_elem;
     elem = >list_elem;
-    list == null ? [
-        elem, null
-    ], [
-        >list == null
-            && (<list, elem, null)
-            || (<list, list_append(>list, elem))
-    ]
+    list == null
+        && (elem, null)
+        || (
+            >list == null
+                && (<list, elem, null)
+                || (<list, list_append(>list, elem))
+        )
 };
 format_int = i => {
     i < 10 && ((i + '0'), null) || (

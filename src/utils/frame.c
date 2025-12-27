@@ -197,7 +197,8 @@ frame_print(frame_t* f)
     for (int i = 0; i < f->global_pairs.size; i++) {
         name_objptr_t* p = (name_objptr_t*)at(&f->global_pairs, i);
         printed_bytes_count
-            += printf("    name=%d obj=%p\n", p->name, (void*)p->objptr);
+            += printf("    name=%d obj=%p (%s)\n", p->name, (void*)p->objptr,
+            OBJ_TYPE_STR[p->objptr->type]);
     }
 
     printed_bytes_count

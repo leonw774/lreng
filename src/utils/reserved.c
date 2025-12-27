@@ -8,6 +8,7 @@ const char* RESERVED_IDS[RESERVED_ID_NUM] = {
     "is_number",
     "is_callable",
     "is_pair",
+    "debug"
 };
 
 const object_t RESERVED_OBJS[RESERVED_ID_NUM] = {
@@ -88,6 +89,18 @@ const object_t RESERVED_OBJS[RESERVED_ID_NUM] = {
             .index = -1,
             .arg_name = -1,
             .builtin_name = RESERVED_ID_NAME_IS_PAIR,
+        },
+    },
+    (object_t) {
+        .is_error = 0,
+        .is_const = 1,
+        .type = TYPE_CALL,
+        .ref_count = 1,
+        .as.callable = {
+            .init_frame = NULL,
+            .index = -1,
+            .arg_name = -1,
+            .builtin_name = RESERVED_ID_NAME_DEBUG,
         },
     }
 };

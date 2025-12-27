@@ -2,6 +2,7 @@
 #include "dynarr.h"
 #include "errormsg.h"
 #include "frame.h"
+#include "reserved.h"
 #include "token.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -118,11 +119,18 @@ object_print(const object_t* obj, char end)
     } else if (obj->type == TYPE_CALL) {
         if (obj->as.callable.builtin_name != NOT_BUILTIN_FUNC) {
             printed_bytes_count = printf(
-                "[Func] builtin_name=%d", obj->as.callable.builtin_name
+                "[Call] (BUILTIN_FUNC %s)",
+                RESERVED_IDS[obj->as.callable.builtin_name]
             );
+        } else if (obj->as.callable.is_macro) {
+            printed_bytes_count = printf(
+                "[Call] (MACRO arg_id=%d, entry_index=%d)",
+                obj->as.callable.arg_name, obj->as.callable.index
+            );
+            printed_bytes_count += frame_print(obj->as.callable.init_frame);
         } else {
             printed_bytes_count = printf(
-                "[Func] arg_name=%d, entry_index=%d, frame=",
+                "[Call] FUNC arg_id=%d, entry_index=%d, frame=",
                 obj->as.callable.arg_name, obj->as.callable.index
             );
             printed_bytes_count += frame_print(obj->as.callable.init_frame);

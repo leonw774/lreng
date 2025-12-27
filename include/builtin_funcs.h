@@ -141,6 +141,13 @@ builtin_func_is_pair(const object_t* obj)
     );
 }
 
+static object_t*
+builtin_func_debug(const object_t* obj)
+{
+    object_print(obj, '\n');
+    return (object_t*)NULL_OBJECT_PTR;
+}
+
 /* correspond to reserved_id_name in reserved.h */
 static object_t* (*BUILDTIN_FUNC_ARRAY[RESERVED_ID_NUM])(const object_t*) = {
     NULL, /* RESERVED_ID_NAME_NULL */
@@ -150,6 +157,7 @@ static object_t* (*BUILDTIN_FUNC_ARRAY[RESERVED_ID_NUM])(const object_t*) = {
     &builtin_func_is_number, /* RESERVED_ID_NAME_IS_NUMBER */
     &builtin_func_is_callable, /* RESERVED_ID_NAME_IS_CALLABLE */
     &builtin_func_is_pair, /* RESERVED_ID_NAME_IS_PAIR */
+    &builtin_func_debug, /* RESERVED_ID_NAME_DEBUG */
 };
 
 #endif
