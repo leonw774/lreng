@@ -10,13 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-arena_t token_str_arena = (arena_t) {
-    .cap = 0,
-    .size = 0,
-    .ptr = NULL,
-};
+arena_t token_str_arena;
 
-int global_is_enable_debug_log = 0;
+int global_is_enable_debug_log;
 
 int
 main(int argc, char** argv)
@@ -27,6 +23,15 @@ main(int argc, char** argv)
     unsigned long long fsize = 0;
     char* src = NULL;
 
+    /* init global variables*/
+    token_str_arena = (arena_t) {
+        .cap = 0,
+        .size = 0,
+        .ptr = NULL,
+    };
+    global_is_enable_debug_log = 0;
+
+    /* parse arg */
     {
         int opt_c;
         while ((opt_c = getopt(argc, argv, "d")) != -1) {
