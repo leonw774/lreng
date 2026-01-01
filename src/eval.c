@@ -901,10 +901,12 @@ eval(context_t context, const int entry_index)
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf("eval\n");
-        printf("entry_index=%d caller_frame=%p ", entry_index, cur_frame);
-        printf("stack_depth=%d ", context.call_depth);
-        printf("tree_size = %d\n", tree_size);
-        fflush(stdout);
+        printf(
+            "entry_index=%d tree_size=%d stack_depth=%d cur_frame=",
+            entry_index, tree_size, context.call_depth
+        );
+        frame_print(cur_frame);
+        printf("\n");
     }
 #endif
 

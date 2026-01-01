@@ -186,8 +186,7 @@ frame_print(frame_t* f)
         return printf("[Frame NULL]");
     }
     printed_bytes_count = printf(
-        "[Frame addr=%p, ref_count=%d, ", PTR_L20BITS(f),
-        f->ref_count
+        "[Frame addr=%p, ref_count=%d, ", PTR_L20BITS(f), f->ref_count
     );
 
     printed_bytes_count += printf("globals(%d)=[", f->globals->size);
@@ -280,6 +279,8 @@ frame_call_with_closure(const frame_t* caller_frame, const object_t* func)
 
             /* push the init-time frame's entry_index to callee */
             append(&callee_frame->entry_indexs, &init_frame_index);
+            /* push the current stack size to stack pointers */
+            append(&callee_frame->stack_pointers, &callee_frame->stack.size);
 
             /* choose the source frame to copy */
             if (!is_forked && caller_frame_index == init_frame_index) {
@@ -297,8 +298,11 @@ frame_call_with_closure(const frame_t* caller_frame, const object_t* func)
             /* copy the i-th section of the source frame's stack to callee */
             start = *(int*)at(&frame_to_copy->stack_pointers, i);
             end = (i + 1 < frame_to_copy->stack_pointers.size)
-                ? *(int*)at(&frame_to_copy->stack_pointers, i)
+                ? *(int*)at(&frame_to_copy->stack_pointers, i + 1)
                 : frame_to_copy->stack.size;
+#ifdef ENABLE_DEBUG_LOG_MORE
+            printf("frame_call_with_closure: start,end = %d,%d\n", start, end);
+#endif
             for (j = start; j < end; j++) {
                 name_objptr_t* pair = at(&frame_to_copy->stack, j);
                 object_ref(pair->objptr);
