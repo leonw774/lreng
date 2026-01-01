@@ -6,6 +6,7 @@
 #include "operators.h"
 #include "reserved.h"
 #include "token_tree.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -13,10 +14,11 @@ int
 check_semantic(const token_tree_t tree)
 {
     int i, is_passed = 1;
-    unsigned char* id_usage
-        = calloc(tree.max_id_name + 1, sizeof(unsigned char));
+    uint8_t* id_usage 
+        = calloc(tree.max_id_name + 1, sizeof(uint8_t));
+    assert(id_usage != NULL);
     for (i = 0; i < RESERVED_ID_NUM; i++) {
-        id_usage[i] = (unsigned char)1;
+        id_usage[i] = (uint8_t)1;
     }
 
     frame_t* cur_frame = frame_new(NULL);
@@ -70,7 +72,7 @@ check_semantic(const token_tree_t tree)
                     is_passed = 0;
                 } else {
                     frame_set(cur_frame, left_token->name, &objnull);
-                    id_usage[left_token->name] = (unsigned char)1;
+                    id_usage[left_token->name] = (uint8_t)1;
                 }
             }
             // check bind arguemt rule
@@ -112,7 +114,7 @@ check_semantic(const token_tree_t tree)
                 fflush(stdout);
             }
 #endif
-            id_usage[cur_token->name] = (unsigned char)1;
+            id_usage[cur_token->name] = (uint8_t)1;
         }
         token_tree_iter_next(&tree_iter);
         cur_token = token_tree_iter_get(&tree_iter);

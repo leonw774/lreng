@@ -1,6 +1,7 @@
 #include "number.h"
 #include "dynarr.h"
 #include "errormsg.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -527,6 +528,7 @@ number_from_str(const char* str)
     }
     {
         char* str_no_dot = (char*)malloc(str_length + 1);
+        assert(str_no_dot != NULL);
         for (i = 0; i < str_length; i++) {
             if (is_less_one && i == 0) {
                 continue;

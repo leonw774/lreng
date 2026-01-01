@@ -69,6 +69,9 @@ to_str(dynarr_t* x)
     char* arr;
     int arr_sz = x->elem_size * x->size;
     arr = malloc(arr_sz + 1);
+    // if (arr == NULL) {
+    //     return NULL;    
+    // }
     ((char*)arr)[arr_sz] = '\0';
     memcpy(arr, x->data, arr_sz);
     return arr;
@@ -127,6 +130,9 @@ concat(dynarr_t* x, dynarr_t* y)
     if (x->size + y->size > x->cap) {
         x->cap = x->size + y->size;
         void* tmp_mem = calloc(x->elem_size, x->cap);
+        // if (tmp_mem == NULL) {
+        //     return 0;
+        // }
         memcpy(tmp_mem, x->data, x->elem_size * x->size);
         free(x->data);
         x->data = tmp_mem;

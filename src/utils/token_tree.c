@@ -4,6 +4,7 @@
 #include "frame.h"
 #include "reserved.h"
 #include "token.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -20,6 +21,7 @@ token_tree_create(dynarr_t tokens)
     };
     dynarr_t stack = dynarr_new(sizeof(int));
     int* tree_data = malloc(token_size * sizeof(int) * 3);
+    assert(tree_data != NULL);
 
     /* max_id_name */
     for (i = tokens.size - 1; i >= 0; i--) {
@@ -102,6 +104,7 @@ token_tree_create(dynarr_t tokens)
     /* eval literal */
     /* TODO: extend this to a function and also find pair literal */
     tree.literals = calloc(token_size, sizeof(object_t*));
+    assert(tree.literals != NULL);
     for (i = 0; i < token_size; i++) {
         token_t* cur_token = at(&tree.tokens, i);
         if (cur_token->type == TOK_NUM) {

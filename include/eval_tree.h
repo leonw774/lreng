@@ -1,4 +1,5 @@
 #include "objects.h"
+#include <assert.h>
 
 typedef struct eval_tree eval_tree_t;
 
@@ -13,6 +14,7 @@ static inline eval_tree_t*
 eval_tree_node_create(int token_index)
 {
     eval_tree_t* node = calloc(1, sizeof(eval_tree_t));
+    assert(node != NULL);
     node->token_index = token_index;
     return node;
 }

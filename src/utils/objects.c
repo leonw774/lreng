@@ -4,6 +4,7 @@
 #include "frame.h"
 #include "reserved.h"
 #include "token.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,6 +29,7 @@ object_t*
 object_create(object_type_enum type, object_data_union data)
 {
     object_t* objptr = malloc(sizeof(object_t));
+    assert(objptr != NULL);
     *objptr = (object_t) {
         .is_error = 0,
         .is_const = 0,
@@ -42,7 +44,7 @@ object_t*
 object_ref(object_t* obj)
 {
 #ifdef ENABLE_DEBUG_LOG_MORE
-    printf("object_ref: obj_addr=%p ref_count=%d\n", obj, obj->ref_count);
+    printf("object_ref: addr=%p ref_count=%d\n", obj, obj->ref_count);
     fflush(stdout);
 #endif
     if (!obj->is_const) {
@@ -119,17 +121,17 @@ object_print(const object_t* obj, char end)
     } else if (obj->type == TYPE_CALL) {
         if (obj->as.callable.builtin_name != NOT_BUILTIN_FUNC) {
             printed_bytes_count = printf(
-                "[Call type=BUILTIN_FUNC, name=%s]",
+                "[Callable type=BUILTIN_FUNC, name=%s]",
                 RESERVED_IDS[obj->as.callable.builtin_name]
             );
         } else if (obj->as.callable.is_macro) {
             printed_bytes_count = printf(
-                "[Call type=MACRO, arg_id=%d, entry_index=%d]",
+                "[Callable type=MACRO, arg_id=%d, entry_index=%d]",
                 obj->as.callable.arg_name, obj->as.callable.index
             );
         } else {
             printed_bytes_count = printf(
-                "[Call type=FUNC, arg_id=%d, entry_index=%d, frame=",
+                "[Callable type=FUNC, arg_id=%d, entry_index=%d, frame=",
                 obj->as.callable.arg_name, obj->as.callable.index
             );
             printed_bytes_count += frame_print(obj->as.callable.init_frame);

@@ -84,6 +84,7 @@ bi_new(bigint_t* x, u32 size)
     x->sign = 0;
     if (size != 0) {
         x->digit = (u32*)calloc(size, sizeof(u32));
+        assert(x->digit != NULL);
         memset(x->digit, 0, size * sizeof(u32));
     } else {
         x->digit = NULL;
@@ -113,6 +114,7 @@ bi_copy(bigint_t* dst, const bigint_t* src)
     }
     *dst = *src;
     dst->digit = malloc(src->size * sizeof(u32));
+    assert(dst->digit != NULL);
     memcpy(dst->digit, src->digit, src->size * sizeof(u32));
 }
 
@@ -160,11 +162,13 @@ bi_extend(bigint_t* x, u32 added_size)
     if (x->shared) {
         u32 tmp = x->digit[0];
         x->digit = (u32*)malloc(sizeof(u32));
+        assert(x->digit != NULL);
         x->digit[0] = tmp;
         x->shared = 0;
     }
     u32 new_size = x->size + added_size;
     u32* tmp_mem = calloc(new_size, sizeof(u32));
+    assert(tmp_mem != NULL);
     if (x->digit) {
         memcpy(tmp_mem, x->digit, x->size * sizeof(u32));
         free(x->digit);
@@ -185,6 +189,7 @@ bi_shl(bigint_t* x, u32 n)
     if (x->shared) {
         u32 tmp = x->digit[0];
         x->digit = (u32*)malloc(sizeof(u32));
+        assert(x->digit != NULL);
         x->digit[0] = tmp;
         x->shared = 0;
     }
@@ -214,6 +219,7 @@ bi_shr(bigint_t* x, u32 n)
     if (x->shared) {
         u32 tmp = x->digit[0];
         x->digit = (u32*)malloc(sizeof(u32));
+        assert(x->digit != NULL);
         x->digit[0] = tmp;
         x->shared = 0;
     }
@@ -484,6 +490,7 @@ bi_umul(bigint_t* res, bigint_t* a, bigint_t* b)
     z1 = bi_sub(&tmp1, &z2);
     bi_free(&tmp1);
     tmp_mem = calloc(z1.size + low_size, sizeof(u32));
+    assert(tmp_mem != NULL);
     memcpy(tmp_mem + low_size, z1.digit, z1.size * sizeof(u32));
     if (z1.shared) {
         z1.digit = tmp_mem;
@@ -497,6 +504,7 @@ bi_umul(bigint_t* res, bigint_t* a, bigint_t* b)
     /* z2 = z2' * b^(2*split_size) */
     if (z2.size != 0) {
         tmp_mem = calloc(z2.size + low_size * 2, sizeof(u32));
+        assert(tmp_mem != NULL);
         memcpy(tmp_mem + (low_size * 2), z2.digit, z2.size * sizeof(u32));
         if (z2.shared) {
             z2.digit = tmp_mem;

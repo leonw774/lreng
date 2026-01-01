@@ -1,6 +1,7 @@
 #include "frame.h"
 #include "arena.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,14 +10,18 @@
 #include "reserved.h"
 #include "token.h"
 
+#define PTR_L20BITS(p) ((void*)(((uintptr_t)p) & 0xfffff))
+
 inline frame_t*
 frame_new(const frame_t* parent)
 {
     int i;
     frame_t* f = calloc(1, sizeof(frame_t));
+    assert(f != NULL);
     if (parent == NULL) {
-        /* malloc a globals ourself */
-        f->globals = calloc(1, sizeof(frame_t));
+        /* allocate a globals ourself */
+        f->globals = calloc(1, sizeof(dynarr_t));
+        assert(f->globals != NULL);
         *(f->globals) = dynarr_new(sizeof(name_objptr_t));
         f->is_own_globals = 1;
         /* add reserved ids to global frame */
@@ -44,6 +49,7 @@ frame_copy(const frame_t* f)
 {
     int i;
     frame_t* clone_frame = calloc(1, sizeof(frame_t));
+    assert(clone_frame != NULL);
     clone_frame->globals = f->globals;
     /* copy the entry_indexs and stack pointers */
     clone_frame->entry_indexs = dynarr_copy(&f->entry_indexs);
@@ -65,7 +71,10 @@ frame_free(frame_t* f)
 #ifdef ENABLE_DEBUG_LOG_MORE
     printf("frame_free: %p\n", f);
 #endif
-    if (f->is_own_globals) {
+    if (f->is_own_globals && f->globals) {
+        for (i = 0; i < f->globals->size; i++) {
+            object_deref(((name_objptr_t*)at(f->globals, i))->objptr);
+        }
         dynarr_free(f->globals);
         free(f->globals);
     }
@@ -177,7 +186,9 @@ frame_print(frame_t* f)
         return printf("[Frame NULL]");
     }
     printed_bytes_count = printf(
-        "[Frame addr=%p, ref_count=%d, ", (void*)f, f->ref_count);
+        "[Frame addr=%p, ref_count=%d, ", PTR_L20BITS(f),
+        f->ref_count
+    );
 
     printed_bytes_count += printf("globals(%d)=[", f->globals->size);
     for (i = 0; i < f->globals->size; i++) {
@@ -186,8 +197,8 @@ frame_print(frame_t* f)
             printed_bytes_count += printf(", ");
         }
         printed_bytes_count += printf(
-            "(var_id=%d addr=%p type=%s)", pair->name, (void*)pair->objptr,
-            OBJ_TYPE_STR[pair->objptr->type]
+            "(var_id=%d addr=%p type=%s)", pair->name,
+            PTR_L20BITS(pair->objptr), OBJ_TYPE_STR[pair->objptr->type]
         );
     }
     printed_bytes_count += printf("], ");
@@ -219,12 +230,11 @@ frame_print(frame_t* f)
             printed_bytes_count += printf(", ");
         }
         printed_bytes_count += printf(
-            "(var_id=%d addr=%p type=%s)", pair->name, (void*)pair->objptr,
-            OBJ_TYPE_STR[pair->objptr->type]
+            "(var_id=%d addr=%p type=%s)", pair->name,
+            PTR_L20BITS(pair->objptr), OBJ_TYPE_STR[pair->objptr->type]
         );
     }
     printed_bytes_count += printf("]]");
-
     fflush(stdout);
     return printed_bytes_count;
 }
