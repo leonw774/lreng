@@ -19,7 +19,7 @@ check_semantic(const token_tree_t tree)
         id_usage[i] = (unsigned char)1;
     }
 
-    frame_t* cur_frame = frame_new();
+    frame_t* cur_frame = frame_new(NULL);
     object_t objnull = RESERVED_OBJS[RESERVED_ID_NAME_NULL];
 
     tree_preorder_iterator_t tree_iter = token_tree_iter_init(&tree, -1);

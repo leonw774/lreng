@@ -10,18 +10,26 @@
 #include "token.h"
 
 inline frame_t*
-frame_new()
+frame_new(const frame_t* parent)
 {
     int i;
     frame_t* f = calloc(1, sizeof(frame_t));
-    f->global_pairs = dynarr_new(sizeof(name_objptr_t));
-    /* add reserved ids to global frame */
-    for (i = 0; i < RESERVED_ID_NUM; i++) {
-        name_objptr_t pair = {
-            .name = i,
-            .objptr = (object_t*)&RESERVED_OBJS[i],
-        };
-        append(&f->global_pairs, &pair);
+    if (parent == NULL) {
+        /* malloc a globals ourself */
+        f->globals = calloc(1, sizeof(frame_t));
+        *(f->globals) = dynarr_new(sizeof(name_objptr_t));
+        f->is_own_globals = 1;
+        /* add reserved ids to global frame */
+        for (i = 0; i < RESERVED_ID_NUM; i++) {
+            name_objptr_t pair = {
+                .name = i,
+                .objptr = (object_t*)&RESERVED_OBJS[i],
+            };
+            append(f->globals, &pair);
+        }
+    } else {
+        /* copy the globals from parent */
+        f->globals = parent->globals;
     }
     f->entry_indexs = dynarr_new(sizeof(int));
     f->stack_pointers = dynarr_new(sizeof(int));
@@ -36,8 +44,7 @@ frame_copy(const frame_t* f)
 {
     int i;
     frame_t* clone_frame = calloc(1, sizeof(frame_t));
-    /* shallow copy the globals pairs */
-    clone_frame->global_pairs = f->global_pairs;
+    clone_frame->globals = f->globals;
     /* copy the entry_indexs and stack pointers */
     clone_frame->entry_indexs = dynarr_copy(&f->entry_indexs);
     clone_frame->stack_pointers = dynarr_copy(&f->stack_pointers);
@@ -50,40 +57,18 @@ frame_copy(const frame_t* f)
     return clone_frame;
 }
 
-/* copy a frame with only its global pairs */
-inline frame_t*
-frame_copy_globals(const frame_t* f)
-{
-    frame_t* new_frame = calloc(1, sizeof(frame_t));
-    /* shallow copy the globals pairs */
-    new_frame->global_pairs = f->global_pairs;
-    new_frame->entry_indexs = dynarr_new(sizeof(int));
-    new_frame->stack_pointers = dynarr_new(sizeof(int));
-    new_frame->stack = dynarr_new(sizeof(name_objptr_t));
-    new_frame->ref_count = 1;
-    new_frame->ref_count = 1;
-    return new_frame;
-}
-
-/* free globals and free stack */
+/* free the stacks and globals if owned it */
 inline void
 frame_free(frame_t* f)
 {
+    int i;
 #ifdef ENABLE_DEBUG_LOG_MORE
     printf("frame_free: %p\n", f);
 #endif
-    dynarr_free(&f->global_pairs);
-    frame_free_stack(f);
-}
-
-/* only free stack but not the globals */
-inline void
-frame_free_stack(frame_t* f)
-{
-    int i;
-#ifdef ENABLE_DEBUG_LOG_MORE
-    printf("frame_free_stack: %p\n", f);
-#endif
+    if (f->is_own_globals) {
+        dynarr_free(f->globals);
+        free(f->globals);
+    }
     dynarr_free(&f->entry_indexs);
     dynarr_free(&f->stack_pointers);
     for (i = 0; i < f->stack.size; i++) {
@@ -138,8 +123,8 @@ frame_get(const frame_t* f, const int name)
         }
     }
     /* search in global */
-    for (j = 0; j < f->global_pairs.size; j++) {
-        name_objptr_t* pair = at(&f->global_pairs, j);
+    for (j = 0; j < f->globals->size; j++) {
+        name_objptr_t* pair = at(f->globals, j);
         if (name == pair->name) {
             return pair->objptr;
         }
@@ -154,20 +139,20 @@ frame_set(frame_t* f, const int name, object_t* obj)
     printf("frame_set: %p\n", f);
 #endif
     int i, start, end;
-    dynarr_t* set_target_pairs;
+    dynarr_t* target;
     object_t* found_obj = NULL;
     if (f->entry_indexs.size == 0) {
-        set_target_pairs = &f->global_pairs;
+        target = f->globals;
         start = 0;
-        end = f->global_pairs.size;
+        end = f->globals->size;
     } else {
-        set_target_pairs = &f->stack;
+        target = &f->stack;
         start = *(int*)back(&f->stack_pointers);
         end = f->stack.size;
     }
     for (i = start; i < end; i++) {
-        if (name == ((name_objptr_t*)at(set_target_pairs, i))->name) {
-            found_obj = ((name_objptr_t*)at(set_target_pairs, i))->objptr;
+        if (name == ((name_objptr_t*)at(target, i))->name) {
+            found_obj = ((name_objptr_t*)at(target, i))->objptr;
             break;
         }
     }
@@ -179,43 +164,68 @@ frame_set(frame_t* f, const int name, object_t* obj)
         .name = name,
         .objptr = object_ref(obj),
     };
-    append(set_target_pairs, &new_pair);
-    return &((name_objptr_t*)back((const dynarr_t*)set_target_pairs))->objptr;
+    append(target, &new_pair);
+    return &((name_objptr_t*)back((const dynarr_t*)target))->objptr;
 }
 
 int
 frame_print(frame_t* f)
 {
+    int i = 0;
     int printed_bytes_count = 0;
     if (!f) {
-        return printf("[Frame NULL]\n");
+        return printf("[Frame NULL]");
     }
-    printed_bytes_count
-        = printf("[FRAME %p\n  ref_count=%d\n", (void*)f, f->ref_count);
+    printed_bytes_count = printf(
+        "[Frame addr=%p, ref_count=%d, ", (void*)f, f->ref_count);
 
-    printed_bytes_count += printf("  globals (%d):\n", f->global_pairs.size);
-    for (int i = 0; i < f->global_pairs.size; i++) {
-        name_objptr_t* p = (name_objptr_t*)at(&f->global_pairs, i);
-        printed_bytes_count
-            += printf("    name=%d obj=%p (%s)\n", p->name, (void*)p->objptr,
-            OBJ_TYPE_STR[p->objptr->type]);
+    printed_bytes_count += printf("globals(%d)=[", f->globals->size);
+    for (i = 0; i < f->globals->size; i++) {
+        name_objptr_t* pair = (name_objptr_t*)at(f->globals, i);
+        if (i != 0) {
+            printed_bytes_count += printf(", ");
+        }
+        printed_bytes_count += printf(
+            "(var_id=%d addr=%p type=%s)", pair->name, (void*)pair->objptr,
+            OBJ_TYPE_STR[pair->objptr->type]
+        );
     }
+    printed_bytes_count += printf("], ");
 
-    printed_bytes_count
-        += printf("  entry_indexs (%d):\n  ", f->entry_indexs.size);
-    for (int i = 0; i < f->entry_indexs.size; i++) {
-        int e = *(int*)at(&f->entry_indexs, i);
-        printed_bytes_count += printf("%d, ", e);
+    printed_bytes_count += printf("call_stacks(%d)=[", f->entry_indexs.size);
+    for (i = 0; i < f->entry_indexs.size; i++) {
+        int entry_index = *(int*)at(&f->entry_indexs, i);
+        if (i != 0) {
+            printed_bytes_count += printf(", ");
+        }
+        printed_bytes_count += printf("%d", entry_index);
     }
+    printed_bytes_count += printf("], ");
 
-    printed_bytes_count
-        += printf("  stack pointer (%d):\n  ", f->stack_pointers.size);
-    for (int i = 0; i < f->stack_pointers.size; i++) {
-        int p = *(int*)at(&f->stack_pointers, i);
-        printed_bytes_count += printf("%d, ", p);
+    printed_bytes_count += printf("stack_tops(%d)=[", f->stack_pointers.size);
+    for (i = 0; i < f->stack_pointers.size; i++) {
+        int sp = *(int*)at(&f->stack_pointers, i);
+        if (i != 0) {
+            printed_bytes_count += printf(", ");
+        }
+        printed_bytes_count += printf("%d", sp);
     }
+    printed_bytes_count += printf("], ");
 
-    printed_bytes_count += printf("  stack size=%d\n]\n", f->stack.size);
+    printed_bytes_count += printf("stack(%d)=[", f->stack.size);
+    for (i = 0; i < f->stack.size; i++) {
+        name_objptr_t* pair = (name_objptr_t*)at(&f->stack, i);
+        if (i != 0) {
+            printed_bytes_count += printf(", ");
+        }
+        printed_bytes_count += printf(
+            "(var_id=%d addr=%p type=%s)", pair->name, (void*)pair->objptr,
+            OBJ_TYPE_STR[pair->objptr->type]
+        );
+    }
+    printed_bytes_count += printf("]]");
+
+    fflush(stdout);
     return printed_bytes_count;
 }
 
@@ -242,7 +252,7 @@ frame_call_with_closure(const frame_t* caller_frame, const object_t* func)
     else {
         int i, caller_frame_index = -1, init_frame_index = -1, is_forked = 0;
         const frame_t* f_init_frame = func->as.callable.init_frame;
-        callee_frame = frame_copy_globals(caller_frame);
+        callee_frame = frame_new(f_init_frame);
 
         /* for every function's init-time frame */
         for (i = 0; i < f_init_frame->entry_indexs.size; i++) {

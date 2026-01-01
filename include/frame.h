@@ -10,28 +10,33 @@ typedef struct name_objptr {
 } name_objptr_t;
 
 typedef struct frame {
-    dynarr_t global_pairs; /* type: name_obj_pair_t */
+    unsigned int ref_count;
+
+    /* do we own the globals? if true, we can free it */
+    unsigned int is_own_globals;
+
+    /* the reference to the global stack that stores global name-object pairs
+       type: name_objptr_t */
+    dynarr_t* globals;
+
     /* entry index stores the functions that own each stack section
        type: int */
     dynarr_t entry_indexs;
+
     /* stack pointers store the start index of each stack section
        type: int */
     dynarr_t stack_pointers;
-    /* stack stores the name obj pairs for function stack on a dynamic array
-       type: name_obj_pair_t */
+
+    /* stack stores the name-object pairs for function stack on a dynamic array
+       type: name_objptr_t */
     dynarr_t stack;
-    unsigned int ref_count;
 } frame_t;
 
 extern frame_t* frame_new();
 
 extern frame_t* frame_copy(const frame_t* f);
 
-extern frame_t* frame_copy_globals(const frame_t* f);
-
 extern void frame_free(frame_t* f);
-
-extern void frame_free_stack(frame_t* f);
 
 extern void frame_call(frame_t* f, const int entry_index);
 

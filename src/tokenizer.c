@@ -29,7 +29,7 @@
     (isprint(c) && !isspace(c) ? "Expect single quote, get '%c'"               \
                                : "Expect single quote, get: 0x%x")
 
-extern arena_t token_str_arena; // declared in main.c
+extern arena_t token_str_arena; // declared and init in main.c
 
 static inline token_type_enum
 get_op_tok_type(char* op_str)

@@ -32,7 +32,7 @@ builtin_func_output(const object_t* obj)
         = "built-in function 'output': argument is not a number. Get %s.";
     const char* err_msg_not_byte_number
         = "built-in function 'output': argument is not integer in [0, 255], "
-          "but [Number] (%s, %s)";
+          "but ";
     const char* err_msg_failed_to_write
         = "built-in function 'output': failed to write to stdout.";
     /* check if obj is number */
@@ -57,6 +57,7 @@ builtin_func_output(const object_t* obj)
                 numer_str ? numer_str : "(null)",
                 denom_str ? denom_str : "(null)"
             );
+            object_print(obj, '.');
             free(numer_str);
             free(denom_str);
             dynarr_free(&numer_dynarr);

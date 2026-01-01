@@ -889,11 +889,11 @@ print_bi(bigint_t* x, char end)
 {
     int i, printed_bytes_count = 0;
     if (x->nan) {
-        printed_bytes_count = printf("[BiInt] NaN");
+        printed_bytes_count = printf("[BigInt NaN]");
         return printed_bytes_count;
     }
     printed_bytes_count
-        = printf("[BigInt] sign=%d, size=%d, digit=", x->sign, x->size);
+        = printf("[BigInt sign=%d, size=%d, digit=", x->sign, x->size);
     fflush(stdout);
     if (BIPTR_IS_ZERO(x)) {
         return printed_bytes_count;
@@ -902,6 +902,7 @@ print_bi(bigint_t* x, char end)
         printed_bytes_count += printf("%8x, ", x->digit[i]);
         fflush(stdout);
     }
+    printed_bytes_count += printf("]");
     if (end != '\0') {
         printed_bytes_count += printf("%c", end);
     }
@@ -979,7 +980,7 @@ print_bi_dec(const bigint_t* x, char end)
     int printed_bytes_count = 0;
     dynarr_t x_str = bi_to_dec_str(x);
     char* x_cstr = to_str(&x_str);
-    printed_bytes_count = printf("[BigInt] %s", x_cstr ? x_cstr : "(null)");
+    printed_bytes_count = printf("[BigInt %s]", x_cstr ? x_cstr : "(null)");
     if (end != '\0') {
         printed_bytes_count += printf("%c", end);
     }

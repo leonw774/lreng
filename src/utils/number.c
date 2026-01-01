@@ -373,31 +373,31 @@ number_floor(number_t* a)
 void
 print_number_struct(number_t* x)
 {
-    printf("[Number]");
+    printf("[Number");
     printf("\tnumer=");
     print_bi(&x->numer, '\n');
     printf("\tdenom=");
     print_bi(&x->denom, '\n');
+    printf("]");
 }
 
 int
 number_print_frac(const number_t* x, char end)
 {
     int printed_bytes_count = 0;
-    printed_bytes_count += printf("[Number] ");
+    printed_bytes_count += printf("[Number ");
     if (x->numer.nan) {
-        printed_bytes_count += printf("NaN");
+        printed_bytes_count += printf("NaN]");
         return printed_bytes_count;
     }
     if (x->numer.size == 0) {
-        printed_bytes_count += printf("0");
+        printed_bytes_count += printf("0]");
         return printed_bytes_count;
     }
-    putchar('(');
     printed_bytes_count += print_bi_dec(&x->numer, '\0');
     printf(", ");
     printed_bytes_count += print_bi_dec(&x->denom, '\0');
-    putchar(')');
+    putchar(']');
     if (end != '\0') {
         printed_bytes_count += printf("%c", end);
     }
@@ -416,10 +416,10 @@ number_print_dec(const number_t* x, int precision, char end)
                  ten = number_from_i32(10), ten_to_e = EMPTY_NUMBER;
 
     if (x->numer.nan) {
-        return printf("[Number] NaN");
+        return printf("[Number NaN]");
     }
     if (x->numer.size == 0) {
-        return printf("[Number] 0");
+        return printf("[Number 0]");
     }
 
     /* find the lowest m such that b^m >= abs(n/d) */
@@ -494,7 +494,7 @@ number_print_dec(const number_t* x, int precision, char end)
     for (i = 0; i < res_str.size; i++) {
         res_cstr[i] += '0';
     }
-    printed_bytes_count = printf("[Number] %s", res_cstr);
+    printed_bytes_count = printf("[Number (DEC) %s]", res_cstr);
 
     free(res_cstr);
     if (end != '\0') {

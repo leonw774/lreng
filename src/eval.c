@@ -110,8 +110,8 @@ exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
     if (!callable.is_macro) {
         /* free the objects own by this function call */
         frame_return(callee_frame);
-        /* free the rest of stack */
-        frame_free_stack(callee_frame);
+        /* free the stacks */
+        frame_free(callee_frame);
         free(callee_frame);
     }
     return result;
@@ -889,7 +889,6 @@ eval(context_t context, const int entry_index)
 
 #ifdef ENABLE_DEBUG_LOG
     const int tree_size = token_tree->sizes[entry_index];
-    const int obj_table_offset = entry_index - tree_size + 1;
 #endif
 
     int is_error = 0;
@@ -903,9 +902,9 @@ eval(context_t context, const int entry_index)
     if (global_is_enable_debug_log) {
         printf("eval\n");
         printf("entry_index=%d caller_frame=%p ", entry_index, cur_frame);
-        printf("stack depth=%d ", context.call_depth);
-        printf("obj_table_offset=%d ", obj_table_offset);
+        printf("stack_depth=%d ", context.call_depth);
         printf("tree_size = %d\n", tree_size);
+        fflush(stdout);
     }
 #endif
 
@@ -926,10 +925,7 @@ eval(context_t context, const int entry_index)
         if (global_is_enable_debug_log) {
             printf("> (node %d) ", cur_index);
             token_print(&cur_token);
-            printf(
-                " (local=%d) left=%d right=%d\n", cur_index - obj_table_offset,
-                left_index, right_index
-            );
+            printf(" left=%d right=%d\n", left_index, right_index);
             fflush(stdout);
         }
 #endif
@@ -984,8 +980,9 @@ eval(context_t context, const int entry_index)
             );
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
-                printf(is_macro ? " make function:" : " make macro:");
+                printf(is_macro ? "  Make macro:" : "  Make func:");
                 object_print(cur_eval_node->object, '\n');
+                fflush(stdout);
             }
 #endif
         } else if (cur_token.name == OP_ARG) {
@@ -1019,6 +1016,7 @@ eval(context_t context, const int entry_index)
             cur_eval_node->object->as.callable.arg_name
                 = tokens[left_index].name;
         } else if (cur_token.name == OP_ASSIGN) {
+            const token_t left_token = tokens[left_index];
             /* assignment */
             if (right_obj == NULL) {
                 cur_eval_node->right = eval_tree_node_create(right_index);
@@ -1026,23 +1024,20 @@ eval(context_t context, const int entry_index)
                 continue;
             }
             /* set frame */
-            {
-                const token_t left_token = tokens[left_index];
-                if (frame_set(cur_frame, left_token.name, right_obj) == NULL) {
-                    const char* err_msg
-                        = "Repeated initialization of identifier '%s'";
-                    sprintf(ERR_MSG_BUF, err_msg, left_token.str);
-                    print_runtime_error(left_token.pos, ERR_MSG_BUF);
-                    is_error = 1;
-                    break;
-                }
-#ifdef ENABLE_DEBUG_LOG
-                if (global_is_enable_debug_log) {
-                    printf("initialized identifier '%s' to ", left_token.str);
-                    object_print(right_obj, '\n');
-                }
-#endif
+            if (frame_set(cur_frame, left_token.name, right_obj) == NULL) {
+                const char* err_msg = "Repeated initialization of "
+                                      "identifier '%s' (var_id=%d)";
+                sprintf(ERR_MSG_BUF, err_msg, left_token.str, left_token.name);
+                print_runtime_error(left_token.pos, ERR_MSG_BUF);
+                is_error = 1;
+                break;
             }
+#ifdef ENABLE_DEBUG_LOG
+            if (global_is_enable_debug_log) {
+                printf("initialized identifier '%s' to ", left_token.str);
+                object_print(right_obj, '\n');
+            }
+#endif
             /* move right object to current and free the right sub-tree */
             cur_eval_node->object = right_obj;
             cur_eval_node->right->object = NULL;

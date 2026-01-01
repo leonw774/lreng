@@ -82,7 +82,7 @@ object_deref(object_t* obj)
         }
         if (obj->as.callable.init_frame != NULL) {
             if (obj->as.callable.init_frame->ref_count == 1) {
-                frame_free_stack(obj->as.callable.init_frame);
+                frame_free(obj->as.callable.init_frame);
                 free(obj->as.callable.init_frame);
             } else {
                 obj->as.callable.init_frame->ref_count--;
@@ -103,7 +103,7 @@ object_print(const object_t* obj, char end)
     } else if (obj->type == TYPE_NUM) {
         printed_bytes_count = number_print_frac(&obj->as.number, '\0');
     } else if (obj->type == TYPE_PAIR) {
-        printed_bytes_count = printf("[Pair] (");
+        printed_bytes_count = printf("[Pair ");
         if (obj->as.pair.left == NULL) {
             printed_bytes_count += printf("(empty)");
         } else {
@@ -115,25 +115,25 @@ object_print(const object_t* obj, char end)
         } else {
             printed_bytes_count += object_print(obj->as.pair.right, '\0');
         }
-        printed_bytes_count += printf(")");
+        printed_bytes_count += printf("]");
     } else if (obj->type == TYPE_CALL) {
         if (obj->as.callable.builtin_name != NOT_BUILTIN_FUNC) {
             printed_bytes_count = printf(
-                "[Call] (BUILTIN_FUNC %s)",
+                "[Call type=BUILTIN_FUNC, name=%s]",
                 RESERVED_IDS[obj->as.callable.builtin_name]
             );
         } else if (obj->as.callable.is_macro) {
             printed_bytes_count = printf(
-                "[Call] (MACRO arg_id=%d, entry_index=%d)",
+                "[Call type=MACRO, arg_id=%d, entry_index=%d]",
                 obj->as.callable.arg_name, obj->as.callable.index
             );
-            printed_bytes_count += frame_print(obj->as.callable.init_frame);
         } else {
             printed_bytes_count = printf(
-                "[Call] FUNC arg_id=%d, entry_index=%d, frame=",
+                "[Call type=FUNC, arg_id=%d, entry_index=%d, frame=",
                 obj->as.callable.arg_name, obj->as.callable.index
             );
             printed_bytes_count += frame_print(obj->as.callable.init_frame);
+            printed_bytes_count += printf("]");
         }
     } else {
         printf("object_print: bad object type: %d\n", obj->type);

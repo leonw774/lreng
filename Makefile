@@ -1,7 +1,5 @@
 CFLAGS = -I include/ -Wall -Wextra
 DEFAULT_FLAGS = -O3
-PROFILE_FLAGS = -pg -O3 -D IS_PROFILE -D PROFILE_REPEAT_NUM=100 \
-	-fno-pie -no-pie
 DEBUG_FLAGS = -g -D ENABLE_DEBUG_LOG \
 	#-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
 DEBUG_MORE_FLAGS = -D ENABLE_DEBUG_LOG_MORE \
@@ -22,9 +20,6 @@ MAIN_TARGET = lreng
 
 release: CFLAGS += $(DEFAULT_FLAGS)
 release: $(MAIN_TARGET)
-
-profile: CFLAGS += $(PROFILE_FLAGS)
-profile: $(MAIN_TARGET)
 
 debug: CFLAGS += $(DEBUG_FLAGS)
 debug: $(MAIN_TARGET) $(TEST_TARGET)
