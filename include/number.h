@@ -39,6 +39,7 @@ extern void number_free(number_t* x);
 extern int number_eq(number_t* a, number_t* b);
 extern int number_lt(number_t* a, number_t* b);
 
+extern number_t number_neg(number_t* a);
 extern number_t number_add(number_t* a, number_t* b);
 extern number_t number_sub(number_t* a, number_t* b);
 extern number_t number_mul(number_t* a, number_t* b);
