@@ -137,17 +137,28 @@ number_lt(number_t* a, number_t* b)
     if ((a->numer.sign != b->numer.sign)) {
         return a->numer.sign;
     }
-
+    if (a->numer.size == 0 && b->numer.size == 0) {
+        return 0;
+    }
+    if (a->numer.size == 0) {
+        return b->numer.sign == 0;
+    }
+    if (b->numer.size == 0) {
+        return a->numer.sign == 1;
+    }
     if (bi_eq(&a->denom, &b->denom)) {
         return bi_lt(&a->numer, &b->numer);
     }
     if (bi_eq(&a->numer, &b->numer)) {
         return bi_lt(&b->denom, &a->denom);
     }
-    bigint_t l = bi_mul(&a->numer, &b->denom), r = bi_mul(&b->numer, &a->denom);
-    int res = bi_lt(&l, &r);
-    bi_free(&l);
-    bi_free(&r);
+    /* generl case */
+    {
+        bigint_t l = bi_mul(&a->numer, &b->denom), r = bi_mul(&b->numer, &a->denom);
+        int res = bi_lt(&l, &r);
+        bi_free(&l);
+        bi_free(&r);
+    }
     return res;
 }
 
