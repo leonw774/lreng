@@ -32,7 +32,7 @@ typedef struct frame {
     dynarr_t stack;
 } frame_t;
 
-extern frame_t* frame_new();
+extern frame_t* frame_new(const frame_t* parent);
 
 extern frame_t* frame_copy(const frame_t* f);
 
