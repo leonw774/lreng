@@ -165,6 +165,18 @@ number_lt(number_t* a, number_t* b)
 }
 
 inline number_t
+number_neg(number_t* a)
+{
+    number_t res = EMPTY_NUMBER;
+    number_copy(&res, a);
+    if (a->numer.nan || a->numer.size == 0) {
+        return res;
+    }
+    res.numer.sign = !res.numer.sign;
+    return res;
+}
+
+inline number_t
 number_add(number_t* a, number_t* b)
 {
     number_t res = EMPTY_NUMBER;
