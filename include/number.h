@@ -4,18 +4,18 @@
 #define NUMBER_H
 
 /* number are normalized as such:
-   no flag is set
+   not zero and not nan
     - numer:
-      - sign: 0 or 1
+      - sign: any
       - zero: 0
       - nan: 0
     - denom: positive
 
    is zero:
-    - numer, denom: 0
+    - numer = 0, denom = 1
 
    is nan:
-    - numer, demon: nan
+    - numer = nan, demon = nan
 */
 typedef struct number {
     bigint_t numer;
@@ -25,7 +25,7 @@ typedef struct number {
 #define number_struct_size sizeof(number_t)
 
 #define EMPTY_NUMBER ((number_t) { .numer = ZERO_BIGINT, .denom = ZERO_BIGINT })
-#define ZERO_NUMBER EMPTY_NUMBER
+#define ZERO_NUMBER ((number_t) { .numer = ZERO_BIGINT, .denom = BYTR_BIGINT(1) })
 #define ONE_NUMBER                                                             \
     ((number_t) {                                                              \
         .numer = BYTE_BIGINT(1),                                               \
