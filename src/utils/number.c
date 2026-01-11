@@ -129,6 +129,7 @@ number_eq(number_t* a, number_t* b)
 inline int
 number_lt(number_t* a, number_t* b)
 {
+    int res;
     /* if one of them is nan: always false */
     if (a->numer.nan || b->numer.nan) {
         return 0;
@@ -154,8 +155,9 @@ number_lt(number_t* a, number_t* b)
     }
     /* generl case */
     {
-        bigint_t l = bi_mul(&a->numer, &b->denom), r = bi_mul(&b->numer, &a->denom);
-        int res = bi_lt(&l, &r);
+        bigint_t l = bi_mul(&a->numer, &b->denom);
+        bigint_t r = bi_mul(&b->numer, &a->denom);
+        res = bi_lt(&l, &r);
         bi_free(&l);
         bi_free(&r);
     }
