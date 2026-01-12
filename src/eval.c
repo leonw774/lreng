@@ -633,14 +633,7 @@ exec_op(
         if (is_bad_type(op_token, TYPE_NUM, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         }
-        {
-            number_t neg_number = EMPTY_NUMBER;
-            number_copy(&neg_number, &left_obj->as.number);
-            neg_number.numer.sign = !neg_number.numer.sign;
-            tmp_obj
-                = object_create(left_obj->type, (object_data_union)neg_number);
-        }
-        return tmp_obj;
+        return object_create(left_obj->type, (object_data_union)number_neg(&left_obj->as.nummber));
     case OP_NOT:
         if (is_bad_type(op_token, TYPE_ANY, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
