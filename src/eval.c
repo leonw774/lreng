@@ -633,7 +633,7 @@ exec_op(
         if (is_bad_type(op_token, TYPE_NUM, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         }
-        return object_create(left_obj->type, (object_data_union)number_neg(&left_obj->as.nummber));
+        return object_create(left_obj->type, (object_data_union)number_neg(&left_obj->as.number));
     case OP_NOT:
         if (is_bad_type(op_token, TYPE_ANY, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
