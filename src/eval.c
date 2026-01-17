@@ -605,7 +605,6 @@ exec_op(
     context_t context, token_t op_token, object_t* left_obj, object_t* right_obj
 )
 {
-    object_t* tmp_obj;
     switch (op_token.name) {
     case OP_FCALL:
         if (is_bad_type(op_token, TYPE_CALL, TYPE_ANY, left_obj, right_obj)) {
