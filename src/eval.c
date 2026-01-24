@@ -953,28 +953,17 @@ exec_op(
 object_t*
 eval(context_t context, const int entry_index)
 {
+    object_t* result = NULL;
     frame_t* cur_frame = context.cur_frame;
     const token_tree_t* token_tree = context.tree;
     const token_t* tokens = token_tree->tokens.data;
-    if (context.call_depth > 1000) {
-        print_runtime_error(
-            tokens[entry_index].pos, "Call stack too deep (> 1000)"
-        );
-        exit(RUNTIME_ERR_CODE);
-    }
-
-#ifdef ENABLE_DEBUG_LOG
-    const int tree_size = token_tree->sizes[entry_index];
-#endif
-
-    object_t* result = NULL;
-
-    /* type: eval_tree_node* */
-    dynarr_t eval_node_stack = dynarr_new(sizeof(eval_tree_t*));
-    eval_tree_t* root_eval_node = eval_tree_node_create(entry_index);
+    /* eval_node_stack's type: eval_tree_node* */
+    dynarr_t eval_node_stack;
+    eval_tree_t* root_eval_node = NULL;
 
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
+        const int tree_size = token_tree->sizes[entry_index];
         printf("eval\n");
         printf(
             "entry_index=%d tree_size=%d stack_depth=%d cur_frame=",
@@ -984,6 +973,15 @@ eval(context_t context, const int entry_index)
         printf("\n");
     }
 #endif
+
+    if (context.call_depth > 1000) {
+        print_runtime_error(
+            tokens[entry_index].pos, "Call stack too deep (> 1000)"
+        );
+        return ERR_OBJECT_PTR;
+    }
+    eval_node_stack = dynarr_new(sizeof(eval_tree_t*));
+    root_eval_node = eval_tree_node_create(entry_index);
 
     /* begin evaluation */
     append(&eval_node_stack, &root_eval_node);
@@ -1016,7 +1014,7 @@ eval(context_t context, const int entry_index)
                 const char* err_msg = "Identifier '%s' used uninitialized";
                 sprintf(ERR_MSG_BUF, err_msg, cur_token.str);
                 print_runtime_error(cur_token.pos, ERR_MSG_BUF);
-                break;
+                o = (object_t*)ERR_OBJECT_PTR;
             }
             /* copy object from frame */
             cur_eval_node->object = object_ref(o);
@@ -1055,7 +1053,7 @@ eval(context_t context, const int entry_index)
                 || cur_token.name == OP_MMAKE || cur_token.name == OP_ARG
                 || cur_token.name == OP_ASSIGN;
 
-            /* if left and right both need eval */
+            /* if left and right both need eval push them and continue */
             if (!is_bypass_eval_left && left_obj == NULL
                 && !is_bypass_eval_right && right_obj == NULL) {
                 cur_eval_node->right = eval_tree_node_create(right_index);
@@ -1142,10 +1140,18 @@ eval(context_t context, const int entry_index)
     }
 #endif
     if (result != ERR_OBJECT_PTR) {
-        result = object_ref(root_eval_node->object);
+        if (root_eval_node->object == NULL) {
+            print_runtime_error(
+                tokens[entry_index].pos,
+                "Unexpected error: root_eval_node is NULL"
+            );
+            result = (object_t*)ERR_OBJECT_PTR;
+        } else {
+            result = object_ref(root_eval_node->object);
+        }
     }
 
-    /* free things */
+    /* free the stack */
     dynarr_free(&eval_node_stack);
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
