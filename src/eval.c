@@ -602,10 +602,35 @@ exec_reduce(
 
 static inline object_t*
 exec_op(
-    context_t context, token_t op_token, object_t* left_obj, object_t* right_obj
+    const context_t context, const eval_tree_t* cur_eval_node,
+    const token_t op_token, object_t* left_obj, object_t* right_obj
 )
 {
     switch (op_token.name) {
+    case OP_FMAKE:
+        return object_create(
+            TYPE_CALL,
+            (object_data_union)(callable_t) {
+                .is_macro = 0,
+                .builtin_name = NOT_BUILTIN_FUNC,
+                .arg_name = -1,
+                .index = context.tree->lefts[cur_eval_node->token_index],
+                /* function will own a copy of the frame it created under */
+                .init_frame = frame_copy(context.cur_frame),
+            }
+        );
+    case OP_MMAKE:
+        return object_create(
+            TYPE_CALL,
+            (object_data_union)(callable_t) {
+                .is_macro = 1,
+                .builtin_name = NOT_BUILTIN_FUNC,
+                .arg_name = -1,
+                .index = context.tree->lefts[cur_eval_node->token_index],
+                /* function will own a copy of the frame it created under */
+                .init_frame = NULL,
+            }
+        );
     case OP_FCALL:
         if (is_bad_type(op_token, TYPE_CALL, TYPE_ANY, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
@@ -632,7 +657,9 @@ exec_op(
         if (is_bad_type(op_token, TYPE_NUM, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         }
-        return object_create(left_obj->type, (object_data_union)number_neg(&left_obj->as.number));
+        return object_create(
+            left_obj->type, (object_data_union)number_neg(&left_obj->as.number)
+        );
     case OP_NOT:
         if (is_bad_type(op_token, TYPE_ANY, NO_OPRAND, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
@@ -834,6 +861,58 @@ exec_op(
             return (object_t*)ERR_OBJECT_PTR;
         }
         return exec_call(context, op_token.pos, left_obj, right_obj);
+    case OP_ARG:
+        if (is_bad_type(op_token, NO_OPRAND, TYPE_CALL, left_obj, right_obj)) {
+            return (object_t*)ERR_OBJECT_PTR;
+        }
+        if (right_obj->as.callable.is_macro) {
+            const char* err_msg
+                = "Right side of argument binder should be function";
+            print_runtime_error(op_token.pos, err_msg);
+            return (object_t*)ERR_OBJECT_PTR;
+        }
+        if (right_obj->as.callable.arg_name != -1) {
+            const char* err_msg
+                = "Bind argument to a function that already has one";
+            print_runtime_error(op_token.pos, err_msg);
+            return (object_t*)ERR_OBJECT_PTR;
+        }
+        {
+            token_t* left_token = at(
+                &context.tree->tokens,
+                context.tree->lefts[cur_eval_node->token_index]
+            );
+            right_obj->as.callable.arg_name = left_token->name;
+        }
+        return object_ref(right_obj);
+    case OP_CONDAND:
+    case OP_CONDOR:
+        /* if the right_obj is NULL, returns left_obj, otherwise right_obj */
+        if (right_obj == NULL) {
+            if (is_bad_type(
+                    op_token, TYPE_ANY, NO_OPRAND, left_obj, right_obj
+                )) {
+                return (object_t*)ERR_OBJECT_PTR;
+            }
+        }
+        return right_obj == NULL ? object_ref(left_obj) : object_ref(right_obj);
+    case OP_ASSIGN: {
+        token_t* left_token = at(
+            &context.tree->tokens,
+            context.tree->lefts[cur_eval_node->token_index]
+        );
+        if (is_bad_type(op_token, NO_OPRAND, TYPE_ANY, left_obj, right_obj)) {
+            return (object_t*)ERR_OBJECT_PTR;
+        }
+        if (frame_set(context.cur_frame, left_token->name, right_obj) == NULL) {
+            const char* err_msg = "Repeated initialization of "
+                                  "identifier '%s' (var_id=%d)";
+            sprintf(ERR_MSG_BUF, err_msg, left_token->str, left_token->name);
+            print_runtime_error(left_token->pos, ERR_MSG_BUF);
+            return (object_t*)ERR_OBJECT_PTR;
+        }
+        return object_ref(right_obj);
+    }
     case OP_CONDPCALL:
         if (is_bad_type(op_token, TYPE_ANY, TYPE_PAIR, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
@@ -859,6 +938,11 @@ exec_op(
                 (object_t*)&RESERVED_OBJS[RESERVED_ID_NAME_NULL]
             );
         }
+    case OP_EXPRSEP:
+        if (is_bad_type(op_token, TYPE_ANY, TYPE_ANY, left_obj, right_obj)) {
+            return (object_t*)ERR_OBJECT_PTR;
+        }
+        return object_ref(right_obj);
     default:
         sprintf(ERR_MSG_BUF, "exec_op: bad op name: %d", op_token.name);
         print_runtime_error(op_token.pos, ERR_MSG_BUF);
@@ -883,7 +967,6 @@ eval(context_t context, const int entry_index)
     const int tree_size = token_tree->sizes[entry_index];
 #endif
 
-    int is_error = 0;
     object_t* result = NULL;
 
     /* type: eval_tree_node* */
@@ -933,7 +1016,6 @@ eval(context_t context, const int entry_index)
                 const char* err_msg = "Identifier '%s' used uninitialized";
                 sprintf(ERR_MSG_BUF, err_msg, cur_token.str);
                 print_runtime_error(cur_token.pos, ERR_MSG_BUF);
-                is_error = 1;
                 break;
             }
             /* copy object from frame */
@@ -952,184 +1034,89 @@ eval(context_t context, const int entry_index)
                so this line will almost never run, but just keep it in case
             */
             cur_eval_node->object = object_ref(token_tree->literals[cur_index]);
-        } else if (cur_token.type != TOK_OP) {
-            /* not id or num or op: error */
-            sprintf(ERR_MSG_BUF, "eval: bad token type: %d\n", cur_token.type);
-            print_runtime_error(tokens[cur_index].pos, ERR_MSG_BUF);
-            exit(RUNTIME_ERR_CODE);
-        } else if (cur_token.name == OP_FMAKE || cur_token.name == OP_MMAKE) {
-            /* function and macro maker */
-            int is_macro = cur_token.name == OP_MMAKE;
-            /* function will owns a deep copy of the frame it created under */
-            frame_t* init_frame = is_macro ? NULL : frame_copy(cur_frame);
-            cur_eval_node->object = object_create(
-                TYPE_CALL,
-                (object_data_union)(callable_t) {
-                    .is_macro = is_macro,
-                    .builtin_name = NOT_BUILTIN_FUNC,
-                    .arg_name = -1,
-                    .index = left_index,
-                    .init_frame = init_frame,
-                }
-            );
-#ifdef ENABLE_DEBUG_LOG
-            if (global_is_enable_debug_log) {
-                printf(is_macro ? "  Make macro:" : "  Make func:");
-                object_print(cur_eval_node->object, '\n');
-                fflush(stdout);
-            }
-#endif
-        } else if (cur_token.name == OP_ARG) {
-            /* argument binder */
-            if (right_obj == NULL) {
+        } else if (cur_token.type == TOK_OP) {
+            /* bypass right evaluation if:
+               - op is unary operator, or
+               - op is cond-or and left is not evaled, or
+               - op is cond-or and left is true, or
+               - op is cond-and and left is not evaled, or
+               - op is cond-and and left is false
+            */
+            int is_condor_and_left_true = (cur_token.name == OP_CONDOR)
+                && ((left_obj == NULL) || object_to_bool(left_obj));
+            int is_condand_and_left_false = (cur_token.name == OP_CONDAND)
+                && ((left_obj == NULL) || !object_to_bool(left_obj));
+            int is_bypass_eval_right = is_unary_op(cur_token.name)
+                || is_condor_and_left_true || is_condand_and_left_false;
+            /* bypass left evaluation if:
+               - op is OP_FMAKE or OP_MMAKE or OP_ARG or OP_ASSIGN
+            */
+            int is_bypass_eval_left = cur_token.name == OP_FMAKE
+                || cur_token.name == OP_MMAKE || cur_token.name == OP_ARG
+                || cur_token.name == OP_ASSIGN;
+
+            /* if left and right both need eval */
+            if (!is_bypass_eval_left && left_obj == NULL
+                && !is_bypass_eval_right && right_obj == NULL) {
                 cur_eval_node->right = eval_tree_node_create(right_index);
                 append(&eval_node_stack, &cur_eval_node->right);
-                continue;
-            }
-            if (right_obj->type != TYPE_CALL
-                || right_obj->as.callable.is_macro) {
-                const char* err_msg
-                    = "Right side of argument binder should be function";
-                print_runtime_error(cur_token.pos, err_msg);
-                is_error = 1;
-                break;
-            }
-            if (right_obj->as.callable.arg_name != -1) {
-                const char* err_msg
-                    = "Bind argument to a function that already has one";
-                print_runtime_error(cur_token.pos, err_msg);
-                is_error = 1;
-                break;
-            }
-            /* move right object to current and free right sub-tree */
-            cur_eval_node->object = right_obj;
-            cur_eval_node->right->object = NULL;
-            eval_tree_node_free(cur_eval_node->right);
-            cur_eval_node->right = NULL;
-            /* set arg_name */
-            cur_eval_node->object->as.callable.arg_name
-                = tokens[left_index].name;
-        } else if (cur_token.name == OP_ASSIGN) {
-            const token_t left_token = tokens[left_index];
-            /* assignment */
-            if (right_obj == NULL) {
-                cur_eval_node->right = eval_tree_node_create(right_index);
-                append(&eval_node_stack, &cur_eval_node->right);
-                continue;
-            }
-            /* set frame */
-            if (frame_set(cur_frame, left_token.name, right_obj) == NULL) {
-                const char* err_msg = "Repeated initialization of "
-                                      "identifier '%s' (var_id=%d)";
-                sprintf(ERR_MSG_BUF, err_msg, left_token.str, left_token.name);
-                print_runtime_error(left_token.pos, ERR_MSG_BUF);
-                is_error = 1;
-                break;
-            }
-#ifdef ENABLE_DEBUG_LOG
-            if (global_is_enable_debug_log) {
-                printf("initialized identifier '%s' to ", left_token.str);
-                object_print(right_obj, '\n');
-            }
-#endif
-            /* move right object to current and free the right sub-tree */
-            cur_eval_node->object = right_obj;
-            cur_eval_node->right->object = NULL;
-            eval_tree_node_free(cur_eval_node->right);
-            cur_eval_node->right = NULL;
-        } else if (cur_token.name == OP_CONDAND
-                   || cur_token.name == OP_CONDOR) {
-            /* condition-and or condition-or */
-            /* eval left first and eval right conditionally */
-            if (left_obj == NULL) {
                 cur_eval_node->left = eval_tree_node_create(left_index);
                 append(&eval_node_stack, &cur_eval_node->left);
                 continue;
-            }
-            /* is_left_true | is_condor | is_eval_right
-               F            | F         | F
-               F            | T         | T
-               T            | F         | T
-               T            | T         | F
-            */
-            if (object_to_bool(left_obj) != (cur_token.name == OP_CONDOR)) {
-                if (right_obj == NULL) {
+            } else {
+                /* if only one need eval */
+                if (!is_bypass_eval_left && left_obj == NULL) {
+                    cur_eval_node->left = eval_tree_node_create(left_index);
+                    append(&eval_node_stack, &cur_eval_node->left);
+                    continue;
+                }
+                if (!is_bypass_eval_right && right_obj == NULL) {
                     cur_eval_node->right = eval_tree_node_create(right_index);
                     append(&eval_node_stack, &cur_eval_node->right);
                     continue;
                 }
-                /* move right object to current */
-                cur_eval_node->object = right_obj;
-                cur_eval_node->right->object = NULL;
-                /* free the both sub-trees */
-                eval_tree_node_free(cur_eval_node->left);
-                cur_eval_node->left = NULL;
-                eval_tree_node_free(cur_eval_node->right);
-                cur_eval_node->right = NULL;
-            } else {
-                /* move left object to current and free the left sub-tree */
-                cur_eval_node->object = left_obj;
-                cur_eval_node->left->object = NULL;
-                eval_tree_node_free(cur_eval_node->left);
-                cur_eval_node->left = NULL;
             }
-        } else if (cur_token.name == OP_EXPRSEP) {
-            /* expresion seperator */
-            if (left_obj == NULL && right_obj == NULL) {
-                cur_eval_node->right = eval_tree_node_create(right_index);
-                append(&eval_node_stack, &cur_eval_node->right);
-                cur_eval_node->left = eval_tree_node_create(left_index);
-                append(&eval_node_stack, &cur_eval_node->left);
-                continue;
-            }
-            /* move right object to current */
-            cur_eval_node->object = right_obj;
-            cur_eval_node->right->object = NULL;
-            /* free the both sub-tree */
-            eval_tree_node_free(cur_eval_node->right);
-            cur_eval_node->right = NULL;
-            eval_tree_node_free(cur_eval_node->left);
-            cur_eval_node->left = NULL;
-        } else {
-            /* other operator */
-            if (is_unary_op(cur_token.name) && left_obj == NULL) {
-                cur_eval_node->left = eval_tree_node_create(left_index);
-                append(&eval_node_stack, &cur_eval_node->left);
-                continue;
-            } else if (left_obj == NULL && right_obj == NULL) {
-                cur_eval_node->right = eval_tree_node_create(right_index);
-                append(&eval_node_stack, &cur_eval_node->right);
-                cur_eval_node->left = eval_tree_node_create(left_index);
-                append(&eval_node_stack, &cur_eval_node->left);
-                continue;
-            }
-            result = exec_op(context, cur_token, left_obj, right_obj);
-            if (result->is_error) {
-                const char* err_msg = "operator \"%s\" returns with error";
-                sprintf(ERR_MSG_BUF, err_msg, OP_STRS[cur_token.name]);
-                print_runtime_error(cur_token.pos, ERR_MSG_BUF);
-            }
+            cur_eval_node->object = exec_op(
+                context, cur_eval_node, cur_token, left_obj, right_obj
+            );
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
                 printf(
                     "^ (node %d) exec_op %s returned\n", cur_index,
                     OP_STRS[cur_token.name]
                 );
+                if (cur_token.name == OP_FMAKE) {
+                    printf("  Made func:");
+                    object_print(cur_eval_node->object, '\n');
+                }
+                if (cur_token.name == OP_MMAKE) {
+                    printf("  Made macro:");
+                    object_print(cur_eval_node->object, '\n');
+                }
+                fflush(stdout);
             }
 #endif
-            /* end eval if error */
-            if (result->is_error) {
-                is_error = 1;
-                break;
+            if (cur_eval_node->object->is_error) {
+                const char* err_msg = "operator \"%s\" returns with error";
+                sprintf(ERR_MSG_BUF, err_msg, OP_STRS[cur_token.name]);
+                print_runtime_error(cur_token.pos, ERR_MSG_BUF);
             }
-            /* don't need to copy cause it is created or refed in exec_op */
-            cur_eval_node->object = result;
-            result = NULL;
+            /* free the both sub-tree */
+            if (!is_bypass_eval_left) {
+                eval_tree_node_free(cur_eval_node->left);
+                cur_eval_node->left = NULL;
+            }
+            if (!is_bypass_eval_right) {
+                eval_tree_node_free(cur_eval_node->right);
+                cur_eval_node->right = NULL;
+            }
+        } else {
+            /* not id or num or op: error */
+            sprintf(ERR_MSG_BUF, "eval: bad token type: %d\n", cur_token.type);
+            print_runtime_error(tokens[cur_index].pos, ERR_MSG_BUF);
+            exit(RUNTIME_ERR_CODE);
         }
-        /* end if-else */
-        if (is_error) {
-            break; /* break the while loop */
-        }
+
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
             printf("< (node %d) eval result: ", cur_index);
@@ -1137,18 +1124,24 @@ eval(context_t context, const int entry_index)
             fflush(stdout);
         }
 #endif
+
+        /* early end eval if error */
+        if (cur_eval_node->object->is_error) {
+            result = (object_t*)ERR_OBJECT_PTR;
+            break;
+        }
         pop(&eval_node_stack);
     } /* end while loop */
 
     /* prepare return object */
-    if (is_error) {
 #ifdef ENABLE_DEBUG_LOG
+    if (result == ERR_OBJECT_PTR) {
         if (global_is_enable_debug_log) {
             printf("eval return with error\n");
         }
+    }
 #endif
-        result = (object_t*)ERR_OBJECT_PTR;
-    } else {
+    if (result != ERR_OBJECT_PTR) {
         result = object_ref(root_eval_node->object);
     }
 
