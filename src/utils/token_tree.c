@@ -20,7 +20,7 @@ token_tree_create(dynarr_token_t postfix_tokens)
         .root_index = -1,
         .max_id_name = -1,
     };
-    dynarr_int_t index_stack = dynarr_int_new(sizeof(int));
+    dynarr_int_t index_stack = dynarr_int_new();
     int* tree_data = malloc(token_size * sizeof(int) * 3);
     assert(tree_data != NULL);
 
@@ -85,8 +85,8 @@ token_tree_create(dynarr_token_t postfix_tokens)
 #ifdef ENABLE_DEBUG_LOG
         int n;
         printf("REMAINED IN STACK:\n");
-        for (n = 0; n < stack.size; n++) {
-            int index = *dynarr_int_at(&stack, n);
+        for (n = 0; n < index_stack.size; n++) {
+            int index = *dynarr_int_at(&index_stack, n);
             token_print(dynarr_token_at(&tree.tokens, index));
             puts("");
         }

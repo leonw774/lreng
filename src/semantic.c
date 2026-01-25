@@ -53,9 +53,9 @@ check_semantic(const token_tree_t tree)
                         cur_token->pos.line, cur_token->pos.col
                     );
                     token_print(left_token);
-                    printf(' ');
+                    printf(" ");
                     token_print(cur_token);
-                    printf('\n');
+                    printf("\n");
                 }
 #endif
                 if (left_token->type != TOK_ID) {
@@ -85,9 +85,9 @@ check_semantic(const token_tree_t tree)
                         cur_token->pos.line, cur_token->pos.col
                     );
                     token_print(left_token);
-                    printf(' ');
+                    printf(" ");
                     token_print(cur_token);
-                    printf('\n');
+                    printf("\n");
                 }
 #endif
                 if (left_token->type != TOK_ID) {
@@ -110,7 +110,7 @@ check_semantic(const token_tree_t tree)
                     cur_token->pos.line, cur_token->pos.col
                 );
                 token_print(cur_token);
-                printf('\n');
+                printf("\n");
                 fflush(stdout);
             }
 #endif

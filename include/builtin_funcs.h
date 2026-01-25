@@ -66,7 +66,7 @@ builtin_func_output(const object_t* obj)
         }
     }
     if (fputc(obj->as.number.numer.digit[0], stdout) == EOF) {
-        sprintf(ERR_MSG_BUF, err_msg_failed_to_write);
+        sprintf(ERR_MSG_BUF, "%s", err_msg_failed_to_write);
         return (object_t*)ERR_OBJECT_PTR;
     }
     return (object_t*)NULL_OBJECT_PTR;
@@ -112,7 +112,7 @@ builtin_func_error(const object_t* obj)
         }
     }
     if (fputc(obj->as.number.numer.digit[0], stderr) == EOF) {
-        sprintf(ERR_MSG_BUF, err_msg_failed_to_write);
+        sprintf(ERR_MSG_BUF, "%s", err_msg_failed_to_write);
         return (object_t*)ERR_OBJECT_PTR;
     }
     return (object_t*)NULL_OBJECT_PTR;
