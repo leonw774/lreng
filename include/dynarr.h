@@ -62,7 +62,7 @@ dynarr_copy(const dynarr_t* x)
 
 /* copy the array as a C-string */
 static inline char*
-to_str(dynarr_t* x)
+dynarr_to_str(dynarr_t* x)
 {
     if (x->data == NULL)
         return NULL;
@@ -78,7 +78,7 @@ to_str(dynarr_t* x)
 }
 
 static inline void
-append(dynarr_t* x, const void* const elem)
+dynarr_append(dynarr_t* x, const void* const elem)
 {
     // if (x->data == NULL) return;
     if (x->size == x->cap) {
@@ -92,19 +92,19 @@ append(dynarr_t* x, const void* const elem)
 #endif
 
 static inline void
-pop(dynarr_t* x)
+dynarr_pop(dynarr_t* x)
 {
     x->size--;
 }
 
 static inline void*
-at(const dynarr_t* x, const unsigned int index)
+dynarr_at(const dynarr_t* x, const unsigned int index)
 {
     return x->data + index * x->elem_size;
 }
 
 static inline void*
-back(const dynarr_t* x)
+dynarr_back(const dynarr_t* x)
 {
     // if (x->data == NULL) {
     //     return NULL;
@@ -119,7 +119,7 @@ back(const dynarr_t* x)
    x and y's elem size must be the same
    return 1 if concat seccess, otherwise 0 */
 static inline int
-concat(dynarr_t* x, dynarr_t* y)
+dynarr_concat(dynarr_t* x, dynarr_t* y)
 {
     if (x->data == NULL || y->data == NULL) {
         return 0;

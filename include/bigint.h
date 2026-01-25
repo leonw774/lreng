@@ -1,8 +1,11 @@
-#include "dynarr.h"
 #include <stdint.h>
 
 #ifndef BIGINT_H
 #define BIGINT_H
+
+#define TYPE char
+#include "dynarr.tmpl.h"
+#undef TYPE
 
 #define BASE_SHIFT 31
 #define DIGIT_BASE ((u32)1 << BASE_SHIFT)
@@ -45,7 +48,7 @@ extern bigint_t bi_div(bigint_t* a, bigint_t* b);
 extern bigint_t bi_mod(bigint_t* a, bigint_t* b);
 
 extern int print_bi(bigint_t* x, char end);
-extern dynarr_t bi_to_dec_str(const bigint_t* x);
+extern dynarr_char_t bi_to_dec_str(const bigint_t* x);
 extern int print_bi_dec(const bigint_t* x, char end);
 extern bigint_t bi_from_str(const char* str);
 extern bigint_t bi_from_tens_power(i32 exp);

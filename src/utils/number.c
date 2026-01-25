@@ -1,5 +1,4 @@
 #include "number.h"
-#include "dynarr.h"
 #include "errormsg.h"
 #include <assert.h>
 #include <stdio.h>
@@ -435,7 +434,7 @@ number_print_dec(const number_t* x, int precision, char end)
 {
     int printed_bytes_count = 0;
     int i, n_exp, d_exp, m;
-    dynarr_t res_str;
+    dynarr_char_t res_str;
     char* res_cstr = NULL;
     char dot = '.' - '0';
     number_t _x, t = EMPTY_NUMBER, q = EMPTY_NUMBER, r = EMPTY_NUMBER,
@@ -450,17 +449,17 @@ number_print_dec(const number_t* x, int precision, char end)
 
     /* find the lowest m such that b^m >= abs(n/d) */
     {
-        dynarr_t n_str = bi_to_dec_str(&x->numer);
-        dynarr_t d_str = bi_to_dec_str(&x->denom);
-        char* n_cstr = to_str(&n_str);
-        char* d_cstr = to_str(&d_str);
+        dynarr_char_t n_str = bi_to_dec_str(&x->numer);
+        dynarr_char_t d_str = bi_to_dec_str(&x->denom);
+        char* n_cstr = dynarr_char_to_str(&n_str);
+        char* d_cstr = dynarr_char_to_str(&d_str);
         n_exp = strlen(n_cstr);
         d_exp = strlen(d_cstr);
         m = n_exp - d_exp + (strcmp(n_cstr, d_cstr) >= 0);
         free(n_cstr);
         free(d_cstr);
-        dynarr_free(&n_str);
-        dynarr_free(&d_str);
+        dynarr_char_free(&n_str);
+        dynarr_char_free(&d_str);
     }
     /* round the number to 10^(m - precision):
        for each exponent i := 1 ~ precision,
@@ -480,7 +479,7 @@ number_print_dec(const number_t* x, int precision, char end)
             ten_to_e.denom = BYTE_BIGINT(1);
         }
     }
-    res_str = dynarr_new(1);
+    res_str = dynarr_char_new();
     number_copy(&_x, x);
     while (1) {
         /* q = (x - x % 10^e) / 10^e */
@@ -494,10 +493,10 @@ number_print_dec(const number_t* x, int precision, char end)
             printf("number_print_dec: q's numer >= 10\n");
             exit(OTHER_ERR_CODE);
         }
-        append(&res_str, &(q.numer.digit[0]));
+        dynarr_char_append(&res_str, (char*)&(q.numer.digit[0]));
         i++;
         if (m - i == -1) {
-            append(&res_str, &dot);
+            dynarr_char_append(&res_str, &dot);
         }
         if (i > precision) {
             break;
@@ -516,7 +515,7 @@ number_print_dec(const number_t* x, int precision, char end)
         number_copy(&ten_to_e, &t);
     }
     number_free(&t);
-    res_cstr = to_str(&res_str);
+    res_cstr = dynarr_char_to_str(&res_str);
     for (i = 0; i < res_str.size; i++) {
         res_cstr[i] += '0';
     }

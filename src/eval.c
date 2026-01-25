@@ -1,5 +1,4 @@
 #include "builtin_funcs.h"
-#include "dynarr.h"
 #include "errormsg.h"
 #include "eval_tree.h"
 #include "frame.h"
@@ -8,6 +7,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define TYPE eval_tree_t*
+#define TYPE_NAME eval_tree_ptr
+#include "dynarr.tmpl.h"
+#undef TYPE_NAME
+#undef TYPE
+
+#define TYPE object_t*
+#define TYPE_NAME object_ptr
+#include "dynarr.tmpl.h"
+#undef TYPE_NAME
+#undef TYPE
+
+#define TYPE object_t**
+#define TYPE_NAME object_ptr_ptr
+#include "dynarr.tmpl.h"
+#undef TYPE_NAME
+#undef TYPE
 
 #define NO_OPRAND -1
 
@@ -84,7 +101,7 @@ exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
         if (arg_name != -1 && frame_set(callee_frame, arg_name, arg) == NULL) {
             int arg_token_index = context.tree->lefts[callable.index];
             const char* arg_str
-                = ((token_t*)at(&context.tree->tokens, arg_token_index))->str;
+                = dynarr_token_at(&context.tree->tokens, arg_token_index)->str;
             const char* err_msg
                 = "Failed initialization of function argument '%s'";
             sprintf(ERR_MSG_BUF, err_msg, arg_str);
@@ -176,16 +193,16 @@ exec_map(context_t context, linecol_t pos, const object_t* call, object_t* pair)
     object_t* result = object_create(
         TYPE_PAIR, (object_data_union) { .pair = (pair_t) { NULL, NULL } }
     );
-    dynarr_t arg_pair_stack, res_pair_stack;
-    arg_pair_stack = dynarr_new(sizeof(object_t*));
-    res_pair_stack = dynarr_new(sizeof(object_t*));
-    append(&arg_pair_stack, &pair);
-    append(&res_pair_stack, &result);
+    dynarr_object_ptr_t arg_pair_stack = dynarr_object_ptr_new();
+    dynarr_object_ptr_t res_pair_stack = dynarr_object_ptr_new();
+    dynarr_object_ptr_append(&arg_pair_stack, &pair);
+    dynarr_object_ptr_append(&res_pair_stack, &result);
     while (arg_pair_stack.size > 0) {
-        object_t* arg_pair = *(object_t**)back(&arg_pair_stack);
-        object_t* res_pair = *(object_t**)back(&res_pair_stack);
+        object_t* arg_pair = *dynarr_object_ptr_back(&arg_pair_stack);
         object_t* arg_left = arg_pair->as.pair.left;
         object_t* arg_right = arg_pair->as.pair.right;
+
+        object_t* res_pair = *dynarr_object_ptr_back(&res_pair_stack);
         object_t** res_left = &res_pair->as.pair.left;
         object_t** res_right = &res_pair->as.pair.right;
         int process_result_enum;
@@ -214,8 +231,8 @@ exec_map(context_t context, linecol_t pos, const object_t* call, object_t* pair)
             is_error = 1;
             break;
         } else if (process_result_enum == NEW_PAIR) {
-            append(&arg_pair_stack, &arg_left);
-            append(&res_pair_stack, res_left);
+            dynarr_object_ptr_append(&arg_pair_stack, &arg_left);
+            dynarr_object_ptr_append(&res_pair_stack, res_left);
             continue;
         }
         /* right */
@@ -231,20 +248,20 @@ exec_map(context_t context, linecol_t pos, const object_t* call, object_t* pair)
             is_error = 1;
             break;
         } else if (process_result_enum == NEW_PAIR) {
-            append(&arg_pair_stack, &arg_right);
-            append(&res_pair_stack, res_right);
+            dynarr_object_ptr_append(&arg_pair_stack, &arg_right);
+            dynarr_object_ptr_append(&res_pair_stack, res_right);
             continue;
         }
 
-        pop(&arg_pair_stack);
-        pop(&res_pair_stack);
+        dynarr_object_ptr_pop(&arg_pair_stack);
+        dynarr_object_ptr_pop(&res_pair_stack);
     }
     if (is_error) {
         object_deref(result);
         result = (object_t*)ERR_OBJECT_PTR;
     }
-    dynarr_free(&arg_pair_stack);
-    dynarr_free(&res_pair_stack);
+    dynarr_object_ptr_free(&arg_pair_stack);
+    dynarr_object_ptr_free(&res_pair_stack);
     return result;
 }
 
@@ -354,17 +371,17 @@ exec_filter(
     object_t* result = object_create(
         TYPE_PAIR, (object_data_union) { .pair = (pair_t) { NULL, NULL } }
     );
-    dynarr_t arg_pair_stack = dynarr_new(sizeof(object_t*));
-    dynarr_t res_pair_stack = dynarr_new(sizeof(object_t*));
-    append(&arg_pair_stack, &pair);
-    append(&res_pair_stack, &result);
+    dynarr_object_ptr_t arg_pair_stack = dynarr_object_ptr_new();
+    dynarr_object_ptr_t res_pair_stack = dynarr_object_ptr_new();
+    dynarr_object_ptr_append(&arg_pair_stack, &pair);
+    dynarr_object_ptr_append(&res_pair_stack, &result);
 
     while (arg_pair_stack.size > 0) {
-        object_t* arg_pair = *(object_t**)back(&arg_pair_stack);
+        object_t* arg_pair = *dynarr_object_ptr_back(&arg_pair_stack);
         object_t* arg_left = arg_pair->as.pair.left;
         object_t* arg_right = arg_pair->as.pair.right;
 
-        object_t* res_pair = *(object_t**)back(&res_pair_stack);
+        object_t* res_pair = *dynarr_object_ptr_back(&res_pair_stack);
         object_t** res_left = &res_pair->as.pair.left;
         object_t** res_right = &res_pair->as.pair.right;
 
@@ -395,8 +412,8 @@ exec_filter(
             is_error = 1;
             break;
         } else if (process_result_enum == NEW_PAIR) {
-            append(&arg_pair_stack, &arg_left);
-            append(&res_pair_stack, res_left);
+            dynarr_object_ptr_append(&arg_pair_stack, &arg_left);
+            dynarr_object_ptr_append(&res_pair_stack, res_left);
             continue;
         }
         /* right */
@@ -412,8 +429,8 @@ exec_filter(
             is_error = 1;
             break;
         } else if (process_result_enum == NEW_PAIR) {
-            append(&arg_pair_stack, &arg_right);
-            append(&res_pair_stack, res_right);
+            dynarr_object_ptr_append(&arg_pair_stack, &arg_right);
+            dynarr_object_ptr_append(&res_pair_stack, res_right);
             continue;
         }
         /* merge */
@@ -428,11 +445,11 @@ exec_filter(
         }
 #endif
 
-        pop(&arg_pair_stack);
-        pop(&res_pair_stack);
+        dynarr_object_ptr_pop(&arg_pair_stack);
+        dynarr_object_ptr_pop(&res_pair_stack);
     }
-    dynarr_free(&arg_pair_stack);
-    dynarr_free(&res_pair_stack);
+    dynarr_object_ptr_free(&arg_pair_stack);
+    dynarr_object_ptr_free(&res_pair_stack);
 
     if (is_error) {
 #ifdef ENABLE_DEBUG_LOG
@@ -503,19 +520,18 @@ exec_reduce(
     );
     object_t** input_pair_ptr = &pair;
     object_t** result_ptr = &result;
-    dynarr_t arg_pair_stack, res_pair_stack;
-    arg_pair_stack = dynarr_new(sizeof(object_t**));
-    res_pair_stack = dynarr_new(sizeof(object_t**));
-    append(&arg_pair_stack, &input_pair_ptr);
-    append(&res_pair_stack, &result_ptr);
+    dynarr_object_ptr_ptr_t arg_pair_stack = dynarr_object_ptr_ptr_new();
+    dynarr_object_ptr_ptr_t res_pair_stack = dynarr_object_ptr_ptr_new();
+    dynarr_object_ptr_ptr_append(&arg_pair_stack, &input_pair_ptr);
+    dynarr_object_ptr_ptr_append(&res_pair_stack, &result_ptr);
     while (arg_pair_stack.size > 0) {
-        object_t** arg_pair_ptr = *(object_t***)back(&arg_pair_stack);
+        object_t** arg_pair_ptr = *dynarr_object_ptr_ptr_back(&arg_pair_stack);
         object_t** arg_left_ptr = &((*arg_pair_ptr)->as.pair.left);
         object_t** arg_right_ptr = &((*arg_pair_ptr)->as.pair.right);
         object_t* arg_left = *arg_left_ptr;
         object_t* arg_right = *arg_right_ptr;
 
-        object_t** res_pair_ptr = *(object_t***)back(&res_pair_stack);
+        object_t** res_pair_ptr = *dynarr_object_ptr_ptr_back(&res_pair_stack);
         object_t** res_left_ptr = &((*res_pair_ptr)->as.pair.left);
         object_t** res_right_ptr = &((*res_pair_ptr)->as.pair.right);
 
@@ -544,8 +560,8 @@ exec_reduce(
             is_error = 1;
             break;
         } else if (process_result_enum == NEW_PAIR) {
-            append(&arg_pair_stack, &arg_left_ptr);
-            append(&res_pair_stack, &res_left_ptr);
+            dynarr_object_ptr_ptr_append(&arg_pair_stack, &arg_left_ptr);
+            dynarr_object_ptr_ptr_append(&res_pair_stack, &res_left_ptr);
             continue;
         }
         /* right */
@@ -560,8 +576,8 @@ exec_reduce(
             is_error = 1;
             break;
         } else if (process_result_enum == NEW_PAIR) {
-            append(&arg_pair_stack, &arg_right_ptr);
-            append(&res_pair_stack, &res_right_ptr);
+            dynarr_object_ptr_ptr_append(&arg_pair_stack, &arg_right_ptr);
+            dynarr_object_ptr_ptr_append(&res_pair_stack, &res_right_ptr);
             continue;
         }
         /* reduce */
@@ -588,15 +604,15 @@ exec_reduce(
         */
         *res_pair_ptr = reduce_result;
 
-        pop(&arg_pair_stack);
-        pop(&res_pair_stack);
+        dynarr_object_ptr_ptr_pop(&arg_pair_stack);
+        dynarr_object_ptr_ptr_pop(&res_pair_stack);
     }
     if (is_error) {
         object_deref(result);
         result = (object_t*)ERR_OBJECT_PTR;
     }
-    dynarr_free(&arg_pair_stack);
-    dynarr_free(&res_pair_stack);
+    dynarr_object_ptr_ptr_free(&arg_pair_stack);
+    dynarr_object_ptr_ptr_free(&res_pair_stack);
     return result;
 }
 
@@ -878,7 +894,7 @@ exec_op(
             return (object_t*)ERR_OBJECT_PTR;
         }
         {
-            token_t* left_token = at(
+            token_t* left_token = dynarr_token_at(
                 &context.tree->tokens,
                 context.tree->lefts[cur_eval_node->token_index]
             );
@@ -897,7 +913,7 @@ exec_op(
         }
         return right_obj == NULL ? object_ref(left_obj) : object_ref(right_obj);
     case OP_ASSIGN: {
-        token_t* left_token = at(
+        token_t* left_token = dynarr_token_at(
             &context.tree->tokens,
             context.tree->lefts[cur_eval_node->token_index]
         );
@@ -957,8 +973,7 @@ eval(context_t context, const int entry_index)
     frame_t* cur_frame = context.cur_frame;
     const token_tree_t* token_tree = context.tree;
     const token_t* tokens = token_tree->tokens.data;
-    /* eval_node_stack's type: eval_tree_node* */
-    dynarr_t eval_node_stack;
+    dynarr_eval_tree_ptr_t eval_node_stack;
     eval_tree_t* root_eval_node = NULL;
 
 #ifdef ENABLE_DEBUG_LOG
@@ -978,24 +993,20 @@ eval(context_t context, const int entry_index)
         print_runtime_error(
             tokens[entry_index].pos, "Call stack too deep (> 1000)"
         );
-        return ERR_OBJECT_PTR;
+        return (object_t*)ERR_OBJECT_PTR;
     }
-    eval_node_stack = dynarr_new(sizeof(eval_tree_t*));
-    root_eval_node = eval_tree_node_create(entry_index);
 
     /* begin evaluation */
-    append(&eval_node_stack, &root_eval_node);
+    eval_node_stack = dynarr_eval_tree_ptr_new();
+    root_eval_node = eval_tree_node_create(entry_index);
+    dynarr_eval_tree_ptr_append(&eval_node_stack, &root_eval_node);
     while (eval_node_stack.size > 0) {
-        eval_tree_t* cur_eval_node = *(eval_tree_t**)back(&eval_node_stack);
-        int cur_index = cur_eval_node->token_index,
-            left_index = token_tree->lefts[cur_index],
-            right_index = token_tree->rights[cur_index];
-        const token_t cur_token = tokens[cur_eval_node->token_index];
-
-        object_t* left_obj
-            = (cur_eval_node->left) ? cur_eval_node->left->object : NULL;
-        object_t* right_obj
-            = (cur_eval_node->right) ? cur_eval_node->right->object : NULL;
+        eval_tree_t* cur_eval_node
+            = *dynarr_eval_tree_ptr_back(&eval_node_stack);
+        const int cur_index = cur_eval_node->token_index,
+                  left_index = token_tree->lefts[cur_index],
+                  right_index = token_tree->rights[cur_index];
+        const token_t cur_token = tokens[cur_index];
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
             printf("> (node %d) ", cur_index);
@@ -1033,6 +1044,10 @@ eval(context_t context, const int entry_index)
             */
             cur_eval_node->object = object_ref(token_tree->literals[cur_index]);
         } else if (cur_token.type == TOK_OP) {
+            object_t* left_obj
+                = (cur_eval_node->left) ? cur_eval_node->left->object : NULL;
+            object_t* right_obj
+                = (cur_eval_node->right) ? cur_eval_node->right->object : NULL;
             /* bypass right evaluation if:
                - op is unary operator, or
                - op is cond-or and left is not evaled, or
@@ -1057,20 +1072,28 @@ eval(context_t context, const int entry_index)
             if (!is_bypass_eval_left && left_obj == NULL
                 && !is_bypass_eval_right && right_obj == NULL) {
                 cur_eval_node->right = eval_tree_node_create(right_index);
-                append(&eval_node_stack, &cur_eval_node->right);
+                dynarr_eval_tree_ptr_append(
+                    &eval_node_stack, &cur_eval_node->right
+                );
                 cur_eval_node->left = eval_tree_node_create(left_index);
-                append(&eval_node_stack, &cur_eval_node->left);
+                dynarr_eval_tree_ptr_append(
+                    &eval_node_stack, &cur_eval_node->left
+                );
                 continue;
             } else {
                 /* if only one need eval */
                 if (!is_bypass_eval_left && left_obj == NULL) {
                     cur_eval_node->left = eval_tree_node_create(left_index);
-                    append(&eval_node_stack, &cur_eval_node->left);
+                    dynarr_eval_tree_ptr_append(
+                        &eval_node_stack, &cur_eval_node->left
+                    );
                     continue;
                 }
                 if (!is_bypass_eval_right && right_obj == NULL) {
                     cur_eval_node->right = eval_tree_node_create(right_index);
-                    append(&eval_node_stack, &cur_eval_node->right);
+                    dynarr_eval_tree_ptr_append(
+                        &eval_node_stack, &cur_eval_node->right
+                    );
                     continue;
                 }
             }
@@ -1128,7 +1151,7 @@ eval(context_t context, const int entry_index)
             result = (object_t*)ERR_OBJECT_PTR;
             break;
         }
-        pop(&eval_node_stack);
+        dynarr_eval_tree_ptr_pop(&eval_node_stack);
     } /* end while loop */
 
     /* prepare return object */
@@ -1152,7 +1175,7 @@ eval(context_t context, const int entry_index)
     }
 
     /* free the stack */
-    dynarr_free(&eval_node_stack);
+    dynarr_eval_tree_ptr_free(&eval_node_stack);
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf("free eval tree\n");

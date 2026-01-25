@@ -1,4 +1,3 @@
-#include "dynarr.h"
 #include "errormsg.h"
 #include "frame.h"
 #include "main.h"
@@ -14,8 +13,7 @@ int
 check_semantic(const token_tree_t tree)
 {
     int i, is_passed = 1;
-    uint8_t* id_usage 
-        = calloc(tree.max_id_name + 1, sizeof(uint8_t));
+    uint8_t* id_usage = calloc(tree.max_id_name + 1, sizeof(uint8_t));
     assert(id_usage != NULL);
     for (i = 0; i < RESERVED_ID_NUM; i++) {
         id_usage[i] = (uint8_t)1;
@@ -27,26 +25,27 @@ check_semantic(const token_tree_t tree)
     tree_preorder_iterator_t tree_iter = token_tree_iter_init(&tree, -1);
     token_t* cur_token = token_tree_iter_get(&tree_iter);
     int cur_depth = -1, cur_index = -1, cur_func_depth = -1;
-    dynarr_t func_depth_stack = dynarr_new(sizeof(int));
+    dynarr_int_t func_depth_stack = dynarr_int_new();
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf("check semantic\n");
     }
 #endif
-    append(&func_depth_stack, &cur_depth);
+    dynarr_int_append(&func_depth_stack, &cur_depth);
     while (cur_token != NULL) {
-        cur_index = *((int*)back(&tree_iter.index_stack));
-        cur_depth = *((int*)back(&tree_iter.depth_stack));
-        cur_func_depth = *((int*)back(&func_depth_stack));
+        cur_index = *dynarr_int_back(&tree_iter.index_stack);
+        cur_depth = *dynarr_int_back(&tree_iter.depth_stack);
+        cur_func_depth = *dynarr_int_back(&func_depth_stack);
         if (cur_token->type == TOK_OP) {
+            /* if we left a function */
             if (cur_depth <= cur_func_depth) {
-                /* we left a function */
-                pop(&func_depth_stack);
+                dynarr_int_pop(&func_depth_stack);
                 frame_return(cur_frame);
             }
             /* check assign rule */
             if (cur_token->name == OP_ASSIGN) {
-                token_t* left_token = at(&tree.tokens, tree.lefts[cur_index]);
+                token_t* left_token
+                    = dynarr_token_at(&tree.tokens, tree.lefts[cur_index]);
 #ifdef ENABLE_DEBUG_LOG
                 if (global_is_enable_debug_log) {
                     printf(
@@ -54,9 +53,9 @@ check_semantic(const token_tree_t tree)
                         cur_token->pos.line, cur_token->pos.col
                     );
                     token_print(left_token);
-                    putchar(' ');
+                    printf(' ');
                     token_print(cur_token);
-                    putchar('\n');
+                    printf('\n');
                 }
 #endif
                 if (left_token->type != TOK_ID) {
@@ -77,7 +76,8 @@ check_semantic(const token_tree_t tree)
             }
             // check bind arguemt rule
             else if (cur_token->name == OP_ARG) {
-                token_t* left_token = at(&tree.tokens, tree.lefts[cur_index]);
+                token_t* left_token
+                    = dynarr_token_at(&tree.tokens, tree.lefts[cur_index]);
 #ifdef ENABLE_DEBUG_LOG
                 if (global_is_enable_debug_log) {
                     printf(
@@ -85,9 +85,9 @@ check_semantic(const token_tree_t tree)
                         cur_token->pos.line, cur_token->pos.col
                     );
                     token_print(left_token);
-                    putchar(' ');
+                    printf(' ');
                     token_print(cur_token);
-                    putchar('\n');
+                    printf('\n');
                 }
 #endif
                 if (left_token->type != TOK_ID) {
@@ -100,7 +100,7 @@ check_semantic(const token_tree_t tree)
             /* walk into a function */
             else if (cur_token->name == OP_FMAKE) {
                 frame_call(cur_frame, cur_index);
-                append(&func_depth_stack, &cur_depth);
+                dynarr_int_append(&func_depth_stack, &cur_depth);
             }
         } else if (cur_token->type == TOK_ID) {
 #ifdef ENABLE_DEBUG_LOG
@@ -110,7 +110,7 @@ check_semantic(const token_tree_t tree)
                     cur_token->pos.line, cur_token->pos.col
                 );
                 token_print(cur_token);
-                putchar('\n');
+                printf('\n');
                 fflush(stdout);
             }
 #endif
@@ -121,7 +121,7 @@ check_semantic(const token_tree_t tree)
     }
 
     token_tree_iter_free(&tree_iter);
-    dynarr_free(&func_depth_stack);
+    dynarr_int_free(&func_depth_stack);
     frame_free(cur_frame);
     free(cur_frame);
     free(id_usage);

@@ -1,5 +1,4 @@
 #include "objects.h"
-#include "dynarr.h"
 #include "errormsg.h"
 #include "frame.h"
 #include "reserved.h"

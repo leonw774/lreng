@@ -1,6 +1,5 @@
-#include "arena.h"
 #include "bigint.h"
-#include "dynarr.h"
+#include "arena.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -676,7 +675,7 @@ bi_udivmod(bigint_t* _u, bigint_t* _v, bigint_t* q, bigint_t* r)
         /* printf("utop2 %lld vnm1 %lld\n", utop2, vnm1); */
         qj = (u32)(utop2 / vnm1);
         rj = (u32)(utop2 % vnm1);
-        while (qj == DIGIT_BASE 
+        while (qj == DIGIT_BASE
                || (u64)qj * vnm2 > ((u64)rj << BASE_SHIFT) + ujnm2) {
             qj--;
             rj += vnm1;
@@ -919,61 +918,62 @@ print_bi(bigint_t* x, char end)
 }
 
 /* returned dynarr of char does not contains terminating character NULL */
-dynarr_t
+dynarr_char_t
 bi_to_dec_str(const bigint_t* x)
 {
-    dynarr_t string;
+    dynarr_char_t string;
     char buf[24];
     char nan[4] = "NaN";
     int i, figure_num = 0;
-    string = dynarr_new(1);
+    string = dynarr_char_new();
     if (x->nan) {
         for (i = 0; i < 3; i++) {
-            append(&string, &nan[i]);
+            dynarr_char_append(&string, &nan[i]);
         }
         return string;
     }
     if (x->sign) {
-        append(&string, "-");
+        dynarr_char_append(&string, "-");
     }
     if (BIPTR_IS_ZERO(x)) {
-        append(&string, "ZERO");
+        dynarr_char_append(&string, "ZERO");
     } else {
         if (x->size == 1) {
             figure_num = sprintf(buf, "%d", x->digit[0]);
             for (i = 0; i < figure_num; i++) {
-                append(&string, &buf[i]);
+                dynarr_char_append(&string, &buf[i]);
             }
             return string;
         } else if (x->size == 2) {
             figure_num = sprintf(
-                buf,
-                "%llu",
+                buf, "%llu",
                 (((unsigned long long)x->digit[1]) << BASE_SHIFT) | x->digit[0]
             );
             for (i = 0; i < figure_num; i++) {
-                append(&string, &buf[i]);
+                dynarr_char_append(&string, &buf[i]);
             }
             return string;
         } else {
             bigint_t y = ZERO_BIGINT, q = ZERO_BIGINT, r = ZERO_BIGINT;
             bigint_t ten = BYTE_BIGINT(10);
-            dynarr_t reversed_digits = dynarr_new(1);
+            dynarr_char_t reversed_digits = dynarr_char_new();
             char d;
             bi_copy(&y, x);
             while (y.size != 0) {
                 bi_udivmod(&y, &ten, &q, &r);
                 d = (r.digit ? r.digit[0] : 0) + '0';
-                append(&reversed_digits, &d);
+                dynarr_char_append(&reversed_digits, &d);
                 bi_free(&y);
                 bi_free(&r);
                 bi_copy(&y, &q);
                 bi_free(&q);
             }
             for (i = reversed_digits.size - 1; i >= 0; i--) {
-                append(&string, at(&reversed_digits, i));
+                dynarr_char_append(
+                    &string, dynarr_char_at(&reversed_digits, i)
+                );
             }
-            dynarr_free(&reversed_digits);
+            dynarr_char_free(&reversed_digits);
             bi_free(&y);
             /* bi_free(&ten); */
             bi_free(&q);
@@ -987,14 +987,14 @@ inline int
 print_bi_dec(const bigint_t* x, char end)
 {
     int printed_bytes_count = 0;
-    dynarr_t x_str = bi_to_dec_str(x);
-    char* x_cstr = to_str(&x_str);
+    dynarr_char_t x_str = bi_to_dec_str(x);
+    char* x_cstr = dynarr_char_to_str(&x_str);
     printed_bytes_count = printf("[BigInt %s]", x_cstr ? x_cstr : "(null)");
     if (end != '\0') {
         printed_bytes_count += printf("%c", end);
     }
     free(x_cstr);
-    dynarr_free(&x_str);
+    dynarr_char_free(&x_str);
     return printed_bytes_count;
 }
 

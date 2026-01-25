@@ -8,24 +8,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/* prepare the tree struct for fast lookup and pre-eval of the postfix tokens */
 token_tree_t
-token_tree_create(dynarr_t tokens)
+token_tree_create(dynarr_token_t postfix_tokens)
 {
-    int i, token_size = tokens.size;
+    int i = 0, token_size = postfix_tokens.size;
     token_tree_t tree = {
-        .tokens = tokens,
+        .tokens = postfix_tokens,
         .lefts = NULL,
         .rights = NULL,
         .root_index = -1,
         .max_id_name = -1,
     };
-    dynarr_t stack = dynarr_new(sizeof(int));
+    dynarr_int_t index_stack = dynarr_int_new(sizeof(int));
     int* tree_data = malloc(token_size * sizeof(int) * 3);
     assert(tree_data != NULL);
 
-    /* max_id_name */
-    for (i = tokens.size - 1; i >= 0; i--) {
-        token_t* t = at(&tokens, i);
+    /* find max_id_name */
+    for (i = postfix_tokens.size - 1; i >= 0; i--) {
+        token_t* t = dynarr_token_at(&postfix_tokens, i);
         if (t->type == TOK_ID && tree.max_id_name < t->name) {
             tree.max_id_name = t->name;
         }
@@ -39,36 +40,36 @@ token_tree_create(dynarr_t tokens)
     memset(tree.rights, -1, token_size * sizeof(int));
     memset(tree.sizes, 0, token_size * sizeof(int));
     for (i = 0; i < token_size; i++) {
-        token_t* cur_token = at(&tree.tokens, i);
+        token_t* cur_token = dynarr_token_at(&tree.tokens, i);
 #ifdef ENABLE_DEBUG_LOG_MORE
         token_print(cur_token);
 #endif
         if (cur_token->type == TOK_OP) {
             int l_index, r_index = -1;
             if (!is_unary_op(cur_token->name)) {
-                r_index = *(int*)back(&stack);
-                pop(&stack);
+                r_index = *dynarr_int_back(&index_stack);
+                dynarr_int_pop(&index_stack);
                 tree.rights[i] = r_index;
             }
-            if (stack.size == 0) {
+            if (index_stack.size == 0) {
                 throw_syntax_error(
                     cur_token->pos, "Operator has too few operands"
                 );
             }
-            l_index = *(int*)back(&stack);
-            pop(&stack);
+            l_index = *dynarr_int_back(&index_stack);
+            dynarr_int_pop(&index_stack);
             tree.lefts[i] = l_index;
-            append(&stack, &i);
+            dynarr_int_append(&index_stack, &i);
 #ifdef ENABLE_DEBUG_LOG_MORE
             printf(" L=");
-            token_print((token_t*)at(&tree.tokens, l_index));
+            token_print(dynarr_token_at(&tree.tokens, l_index));
             printf(" R=");
             if (r_index != -1) {
-                token_print((token_t*)at(&tree.tokens, r_index));
+                token_print(dynarr_token_at(&tree.tokens, r_index));
             }
 #endif
         } else {
-            append(&stack, &i);
+            dynarr_int_append(&index_stack, &i);
         }
 
         tree.sizes[i]
@@ -80,33 +81,33 @@ token_tree_create(dynarr_t tokens)
     }
 
     /* check result */
-    if (stack.size != 1) {
+    if (index_stack.size != 1) {
 #ifdef ENABLE_DEBUG_LOG
         int n;
         printf("REMAINED IN STACK:\n");
         for (n = 0; n < stack.size; n++) {
-            int index = *(int*)at(&stack, n);
-            token_print((token_t*)at(&tree.tokens, index));
+            int index = *dynarr_int_at(&stack, n);
+            token_print(dynarr_token_at(&tree.tokens, index));
             puts("");
         }
 #endif
         sprintf(
             ERR_MSG_BUF,
             "Bad syntax somewhere: %d tokens left in stack when parsing tree",
-            stack.size
+            index_stack.size
         );
         throw_syntax_error((linecol_t) { 0, 0 }, ERR_MSG_BUF);
     }
 
     /* root_index */
-    tree.root_index = *(int*)at(&stack, 0);
+    tree.root_index = *dynarr_int_at(&index_stack, 0);
 
     /* eval literal */
     /* TODO: extend this to a function and also find pair literal */
     tree.literals = calloc(token_size, sizeof(object_t*));
     assert(tree.literals != NULL);
     for (i = 0; i < token_size; i++) {
-        token_t* cur_token = at(&tree.tokens, i);
+        token_t* cur_token = dynarr_token_at(&tree.tokens, i);
         if (cur_token->type == TOK_NUM) {
             tree.literals[i] = object_create(
                 TYPE_NUM,
@@ -141,7 +142,7 @@ token_tree_create(dynarr_t tokens)
     }
 
     /* free things */
-    dynarr_free(&stack);
+    dynarr_int_free(&index_stack);
     return tree;
 }
 
@@ -153,7 +154,7 @@ token_tree_free(token_tree_t* tree)
        parents first
     */
     for (i = tree->tokens.size - 1; i >= 0; i--) {
-        token_t* token = at(&tree->tokens, i);
+        token_t* token = dynarr_token_at(&tree->tokens, i);
         if (token->type == TOK_ID && token->name < RESERVED_ID_NUM) {
             continue;
         }
@@ -167,7 +168,7 @@ token_tree_free(token_tree_t* tree)
             object_deref(tree->literals[i]);
         }
     }
-    dynarr_free(&tree->tokens);
+    dynarr_token_free(&tree->tokens);
     free(tree->lefts);
     /* lefts, rights, and sizes share same heap chunk and left is the head
        so only need to free left
@@ -183,14 +184,14 @@ token_tree_iter_init(const token_tree_t* tree, int entry_index)
     static int one = 1;
     tree_preorder_iterator_t iter = {
         .tree = tree,
-        .index_stack = dynarr_new(sizeof(int)),
-        .depth_stack = dynarr_new(sizeof(int)),
+        .index_stack = dynarr_int_new(),
+        .depth_stack = dynarr_int_new(),
     };
-    append(
+    dynarr_int_append(
         &iter.index_stack,
-        (entry_index == -1) ? &tree->root_index : &entry_index
+        (entry_index == -1) ? (int*)&tree->root_index : &entry_index
     );
-    append(&iter.depth_stack, &one);
+    dynarr_int_append(&iter.depth_stack, &one);
     return iter;
 }
 
@@ -200,7 +201,9 @@ token_tree_iter_get(tree_preorder_iterator_t* iter)
     if (iter->index_stack.size == 0) {
         return NULL;
     }
-    return at(&iter->tree->tokens, *(int*)back(&iter->index_stack));
+    return dynarr_token_at(
+        &iter->tree->tokens, *dynarr_int_back(&iter->index_stack)
+    );
 }
 
 inline void
@@ -210,19 +213,23 @@ token_tree_iter_next(tree_preorder_iterator_t* iter)
         return;
     }
     /* get */
-    int cur_index = *(int*)back(&iter->index_stack),
-        next_depth = *(int*)back(&iter->depth_stack) + 1;
-    pop(&iter->index_stack);
-    pop(&iter->depth_stack);
+    int cur_index = *dynarr_int_back(&iter->index_stack),
+        next_depth = *dynarr_int_back(&iter->depth_stack) + 1;
+    dynarr_int_pop(&iter->index_stack);
+    dynarr_int_pop(&iter->depth_stack);
     /* update */
     if (cur_index != -1) {
         if (iter->tree->rights[cur_index] != -1) {
-            append(&iter->index_stack, &iter->tree->rights[cur_index]);
-            append(&iter->depth_stack, &next_depth);
+            dynarr_int_append(
+                &iter->index_stack, &iter->tree->rights[cur_index]
+            );
+            dynarr_int_append(&iter->depth_stack, &next_depth);
         }
         if (iter->tree->lefts[cur_index] != -1) {
-            append(&iter->index_stack, &iter->tree->lefts[cur_index]);
-            append(&iter->depth_stack, &next_depth);
+            dynarr_int_append(
+                &iter->index_stack, &iter->tree->lefts[cur_index]
+            );
+            dynarr_int_append(&iter->depth_stack, &next_depth);
         }
     }
 }
@@ -230,8 +237,8 @@ token_tree_iter_next(tree_preorder_iterator_t* iter)
 inline void
 token_tree_iter_free(tree_preorder_iterator_t* tree_iter)
 {
-    dynarr_free(&tree_iter->index_stack);
-    dynarr_free(&tree_iter->depth_stack);
+    dynarr_int_free(&tree_iter->index_stack);
+    dynarr_int_free(&tree_iter->depth_stack);
 }
 
 void
@@ -240,26 +247,26 @@ token_tree_print(const token_tree_t* tree)
     tree_preorder_iterator_t iter = token_tree_iter_init(tree, -1);
     while (iter.index_stack.size != 0) {
         /* get */
-        int cur_index = *(int*)back(&iter.index_stack),
-            next_depth = (*(int*)back(&iter.depth_stack)) + 1;
-        pop(&iter.index_stack);
-        pop(&iter.depth_stack);
+        int cur_index = *dynarr_int_back(&iter.index_stack),
+            next_depth = *dynarr_int_back(&iter.depth_stack) + 1;
+        dynarr_int_pop(&iter.index_stack);
+        dynarr_int_pop(&iter.depth_stack);
 
         if (cur_index != -1) {
             /* print */
             printf("%*c", next_depth - 1, ' ');
-            token_print((token_t*)at(&tree->tokens, cur_index));
+            token_print(dynarr_token_at(&tree->tokens, cur_index));
             printf(" (%d)\n", cur_index);
             fflush(stdout);
 
             /* update */
             if (tree->rights[cur_index] != -1) {
-                append(&iter.index_stack, &tree->rights[cur_index]);
-                append(&iter.depth_stack, &next_depth);
+                dynarr_int_append(&iter.index_stack, &tree->rights[cur_index]);
+                dynarr_int_append(&iter.depth_stack, &next_depth);
             }
             if (tree->lefts[cur_index] != -1) {
-                append(&iter.index_stack, &tree->lefts[cur_index]);
-                append(&iter.depth_stack, &next_depth);
+                dynarr_int_append(&iter.index_stack, &tree->lefts[cur_index]);
+                dynarr_int_append(&iter.depth_stack, &next_depth);
             }
         }
     }

@@ -48,10 +48,10 @@ builtin_func_output(const object_t* obj)
         int is_less_than_256 = obj->as.number.numer.size == 1
             && obj->as.number.numer.digit[0] < 256;
         if (!is_pos || !is_int || !is_less_than_256) {
-            dynarr_t numer_dynarr = bi_to_dec_str(&obj->as.number.numer),
-                     denom_dynarr = bi_to_dec_str(&obj->as.number.denom);
-            char *numer_str = to_str(&numer_dynarr),
-                 *denom_str = to_str(&denom_dynarr);
+            dynarr_char_t numer_dynarr = bi_to_dec_str(&obj->as.number.numer),
+                          denom_dynarr = bi_to_dec_str(&obj->as.number.denom);
+            char *numer_str = dynarr_char_to_str(&numer_dynarr),
+                 *denom_str = dynarr_char_to_str(&denom_dynarr);
             sprintf(
                 ERR_MSG_BUF, err_msg_not_byte_number,
                 numer_str ? numer_str : "(null)",
@@ -60,8 +60,8 @@ builtin_func_output(const object_t* obj)
             object_print(obj, '.');
             free(numer_str);
             free(denom_str);
-            dynarr_free(&numer_dynarr);
-            dynarr_free(&denom_dynarr);
+            dynarr_char_free(&numer_dynarr);
+            dynarr_char_free(&denom_dynarr);
             return (object_t*)ERR_OBJECT_PTR;
         }
     }
@@ -95,10 +95,10 @@ builtin_func_error(const object_t* obj)
         int is_less_than_256 = obj->as.number.numer.size == 1
             && obj->as.number.numer.digit[0] < 256;
         if (!is_pos || !is_int || !is_less_than_256) {
-            dynarr_t numer_dynarr = bi_to_dec_str(&obj->as.number.numer),
-                     denom_dynarr = bi_to_dec_str(&obj->as.number.denom);
-            char *numer_str = to_str(&numer_dynarr),
-                 *denom_str = to_str(&denom_dynarr);
+            dynarr_char_t numer_dynarr = bi_to_dec_str(&obj->as.number.numer),
+                          denom_dynarr = bi_to_dec_str(&obj->as.number.denom);
+            char *numer_str = dynarr_char_to_str(&numer_dynarr),
+                 *denom_str = dynarr_char_to_str(&denom_dynarr);
             sprintf(
                 ERR_MSG_BUF, err_msg_not_byte_number,
                 numer_str ? numer_str : "(null)",
@@ -106,8 +106,8 @@ builtin_func_error(const object_t* obj)
             );
             free(numer_str);
             free(denom_str);
-            dynarr_free(&numer_dynarr);
-            dynarr_free(&denom_dynarr);
+            dynarr_char_free(&numer_dynarr);
+            dynarr_char_free(&denom_dynarr);
             return (object_t*)ERR_OBJECT_PTR;
         }
     }

@@ -1,13 +1,19 @@
-#include "dynarr.h"
 #include "objects.h"
 
 #ifndef FRAME_H
 #define FRAME_H
 
 typedef struct name_objptr {
-    int name;
-    object_t* objptr;
+   int name;
+   object_t* objptr;
 } name_objptr_t;
+
+#define TYPE name_objptr_t
+#define TYPE_NAME name_objptr
+#include "dynarr.tmpl.h"
+#undef TYPE_NAME
+#undef TYPE
+
 
 typedef struct frame {
     unsigned int ref_count;
@@ -15,21 +21,17 @@ typedef struct frame {
     /* do we own the globals? if true, we can free it */
     unsigned int is_own_globals;
 
-    /* the reference to the global stack that stores global name-object pairs
-       type: name_objptr_t */
-    dynarr_t* globals;
+    /* the reference to the global stack that stores shared name-object pairs */
+    dynarr_name_objptr_t* globals;
 
-    /* entry index stores the functions that own each stack section
-       type: int */
-    dynarr_t entry_indexs;
+    /* stores the functions that own each stack section */
+    dynarr_int_t entry_indexs;
 
-    /* stack pointers store the start index of each stack section
-       type: int */
-    dynarr_t stack_pointers;
+    /* store the start index of each stack section */
+    dynarr_int_t stack_pointers;
 
-    /* stack stores the name-object pairs for function stack on a dynamic array
-       type: name_objptr_t */
-    dynarr_t stack;
+    /* stores the name-object pairs for function stack on a dynamic array */
+    dynarr_name_objptr_t stack;
 } frame_t;
 
 extern frame_t* frame_new(const frame_t* parent);

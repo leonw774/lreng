@@ -10,7 +10,8 @@
 #define OTHER_ERR_CODE 5
 
 extern char ERR_MSG_BUF[];
-extern void throw_syntax_error(linecol_t pos, const char* msg);
+extern void throw_syntax_error(linecol_t pos, const char* msg)
+    __attribute__((noreturn));
 extern void print_semantic_error(linecol_t pos, const char* msg);
 extern void print_runtime_error(linecol_t pos, const char* msg);
 
