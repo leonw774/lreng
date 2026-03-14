@@ -27,7 +27,7 @@ All variables are immutable.
 ### Types
 
 There are 4 types:
-- Null: The unit type. Has key word `null`.
+- Null: The unit type. Has key word `null` or `()`.
 - Number: Numbers in lreng are all rational numbers 
   - You can represent numbers in decimal with point: `3.14159`
   - You can represent integers in binary and hexadecimal: `0b110011`, `0xc0de`
@@ -141,11 +141,9 @@ Another different between macro and function is that function has it own stack a
 
 ### Callers
 
-The callers are `()` and `$`. The syntax is `foo(expr)` and `foo $ expr`. They assigns the evaluated result of the expression to the argument variable of the callable (if any) and evaluates the callable. If the callable `foo` is macro, it simply ignores the argument.
+The callers operation is done by putting caller (function/macro) before the callee: `foo expr` calls `foo` with argument `expr`. If the callable `foo` is macro, it simply ignores the argument.
 
-The `$` is right-associative, just like in Haskell, designed to apply multiple callables on a value without too much parenthese. The expressions: `f3 $ f2 $ f1 $ val` and `f3(f2(f1(val)))` are equivalent.
-
-The syntax `foo()` is valid and will be parsed as `foo(null)`.
+You can also use `$`. The syntax is `foo $ expr`.  The `$` is right-associative, just like in Haskell, designed to apply multiple callables on a value without too much parenthese. The expressions: `f3 $ f2 $ f1 $ val` and `f3(f2(f1(val)))` are equivalent.
 
 ### Conditional caller
 
@@ -203,7 +201,7 @@ reduce(f, x) =
 
 ## Built-in functions
 
-- Input function `input()` gets a byte from the `stdin` as a number or null. It returns a number in the range `0` to `255` (inclusive) if there is data to read in stdin, otherwise it blocks the program and wait for the input to come. If it received `EOF`, it returns `null`. You can execute the example program with the command `echo '!@' | ./lreng scripts/read_stdin.txt`. It would output
+- Input function `input` gets a byte from the `stdin` as a number or null. It returns a number in the range `0` to `255` (inclusive) if there is data to read in stdin, otherwise it blocks the program and wait for the input to come. If it received `EOF`, it returns `null`. You can execute the example program with the command `echo '!@' | ./lreng scripts/read_stdin.txt`. It would output
 
     ```
     a=!
@@ -211,11 +209,11 @@ reduce(f, x) =
     a+b=a
     ```
 
-- Output function `output(i)` writes a number `i` as one byte to the `stdout`. The acceptable value are integers in range `0` to `255` (inclusive). Any other value will cause runtime error. It always returns `null`.
+- Output function `output` writes a number argument as one byte to the `stdout`. The acceptable value are integers in range `0` to `255` (inclusive). Any other value will cause runtime error. It always returns `null`.
 
-- Error function `error(i)` are the same as output function, except it writes to the `stderr`.
+- Error function `error` are the same as output function, except it writes to the `stderr`.
 
-- Debug function `debug(x)` writes the representation string of the object to the `stdout` with a newline at the end. It always returns `null`.
+- Debug function `debug` writes the representation string of the agurment to the `stdout` with a newline at the end. It always returns `null`.
 
 - Type checker functions: `is_number`, `is_callable`, and `is_pair`. They return number `1` or `0` when true or false. Null type has only `null` so just use `x == nul`.
 
@@ -236,8 +234,8 @@ foo = a => {
     a + b + c
   }
 };
-bar = foo(1);
-bar2 = foo(2);
+bar = foo 1;
+bar2 = foo 2;
 
 # you can initialize the same name identifier as a function's argument as long as it is not initialized in the same scope
 #a = 3;
@@ -252,8 +250,8 @@ bar2 = foo(2);
 # there would be use-uninit error if the initialization of 'c' is removed
 c = 3;
 
-output $ bar(2) + '0'; # 6
+output $ bar 2 + '0'; # 6
 output $ '\n';
-output $ bar2(2) + '0'; # 7
+output $ bar2 2 + '0'; # 7
 output $ '\n'
 ```

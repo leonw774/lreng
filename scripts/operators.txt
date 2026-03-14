@@ -7,7 +7,7 @@ foo = x => {
 };
 y = foo $ 9;
 z1 = <y ? [ <>y ], [ >>y ];
-output('0' + z1);
+output ('0' + z1);
 z2 = <y && <>y || >>y;
-output('0' + z2);
-output('\n')
+output ('0' + z2);
+output '\n'

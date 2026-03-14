@@ -3,24 +3,56 @@
 
 typedef enum op_name {
     /* ******** brackets ******** */
-    OP_LCURLY, OP_RCURLY, OP_FMAKE,
-    OP_LSQUARE, OP_RSQUARE, OP_MMAKE,
-    OP_LPAREN, OP_RPAREN, OP_FCALL,
+    OP_LCURLY,
+    OP_RCURLY,
+    OP_FMAKE,
+    OP_LSQUARE,
+    OP_RSQUARE,
+    OP_MMAKE,
+    OP_LPAREN,
+    OP_RPAREN,
+    /* ******** function call ******** */
+    OP_FCALL,
     /* ******** map filter reduce ******** */
-    OP_MAP, OP_FILTER, OP_REDUCE,
+    OP_MAP,
+    OP_FILTER,
+    OP_REDUCE,
     /* ******** unary ******** */
-    OP_POS, OP_NEG, OP_NOT, OP_CEIL, OP_FLOOR,
-    OP_GETL, OP_GETR, OP_CONDCALL, OP_SWAP,
+    OP_POS,
+    OP_NEG,
+    OP_NOT,
+    OP_CEIL,
+    OP_FLOOR,
+    OP_GETL,
+    OP_GETR,
+    OP_CONDCALL,
+    OP_SWAP,
     /* ******** arithmetic ******** */
-    OP_EXP, OP_MUL, OP_DIV, OP_MOD, OP_ADD, OP_SUB,
+    OP_EXP,
+    OP_MUL,
+    OP_DIV,
+    OP_MOD,
+    OP_ADD,
+    OP_SUB,
     /* ******** comparison ******** */
-    OP_LT, OP_LE, OP_GT, OP_GE, OP_EQ, OP_NE,
+    OP_LT,
+    OP_LE,
+    OP_GT,
+    OP_GE,
+    OP_EQ,
+    OP_NE,
     /* ******** logical operators ******** */
-    OP_AND, OP_OR,
+    OP_AND,
+    OP_OR,
     /* ******** pair and callables ******** */
-    OP_PAIR, OP_FCALLR, OP_ARG,
+    OP_PAIR,
+    OP_FCALLR,
+    OP_ARG,
     /* ******** conditional and assignment ******** */
-    OP_CONDAND, OP_CONDOR, OP_ASSIGN, OP_CONDPCALL,
+    OP_CONDAND,
+    OP_CONDOR,
+    OP_ASSIGN,
+    OP_CONDPCALL,
     /* ******** expression separator ******** */
     OP_EXPRSEP,
 } op_name_enum;
@@ -44,12 +76,13 @@ static const int BINARY_RIGHT_ASSOCIATIVE_OPS[] = {
 
 static const char* const OP_STRS[OPERATOR_COUNT] = {
     /* ******** brackets ******** */
-    "{", "}", "make_func", "[", "]", "make_macro", "(", ")", "call",
+    "{", "}", "make_func", "[", "]", "make_macro", "(", ")",
+    /* ******** function call ******** */
+    "call",
     /* ******** map filter reduce ******** */
     "$>", "$|", "$/",
     /* ******** unary ******** */
-    "+", "-", "!", "^", "\\",
-    "<", ">", "`", "~",
+    "+", "-", "!", "^", "\\", "<", ">", "`", "~",
     /* ******** arithmetic ******** */
     "^", "*", "/", "%", "+", "-",
     /* ******** comparison ******** */
@@ -69,7 +102,9 @@ static const char* const OP_STRS[OPERATOR_COUNT] = {
 static const int OP_TIER_LIST[][MAX_OPS_IN_TIER] = {
     /* ******** brackets ******** */
     { OP_LCURLY, OP_RCURLY, OP_FMAKE, OP_LSQUARE, OP_RSQUARE, OP_MMAKE, -1 },
-    { OP_LPAREN, OP_RPAREN, OP_FCALL, -1 },
+    { OP_LPAREN, OP_RPAREN, -1 },
+    /* ******** function call ******** */
+    { OP_FCALL, -1 },
     /* ******** map filter reduce ******** */
     { OP_MAP, OP_FILTER, OP_REDUCE, -1 },
     /* ******** unary ******** */

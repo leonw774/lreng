@@ -61,39 +61,21 @@ get_op_tok_type(char* op_str)
 op_name_enum
 get_op_enum(token_t* last_token, char* op_str)
 {
-    if (op_str[1] == '\0') {
-        /* NEG */
-        if (last_token == NULL || last_token->type == TOK_OP
-            || last_token->type == TOK_LB) {
-            if (op_str[0] == '+') {
-                return OP_POS;
-            } else if (op_str[0] == '-') {
-                return OP_NEG;
-            }
-        }
-        /* FCALL */
-        if (last_token != NULL
-            && (last_token->type == TOK_ID || last_token->type == TOK_RB)) {
-            if (op_str[0] == '(') {
-                return OP_FCALL;
-            }
-        }
-    }
+    int is_expect_prefixer = last_token == NULL || last_token->type == TOK_OP
+        || last_token->type == TOK_LB;
     int op;
     for (op = 0; op < OPERATOR_COUNT; op++) {
         /* ignore special */
-        if (op == OP_FMAKE || op == OP_MMAKE || op == OP_FCALL || op == OP_POS
-            || op == OP_NEG) {
+        if (op == OP_FMAKE || op == OP_MMAKE || op == OP_FCALL) {
             continue;
         }
         if (strcmp(OP_STRS[op], op_str) == 0) {
-            /* handle special */
-            if (op == OP_RCURLY || op == OP_RSQUARE || op == OP_RPAREN) {
+            /* bracket don't check for expectation */
+            if (op == OP_LCURLY || op == OP_RCURLY || op == OP_RSQUARE
+                || op == OP_LSQUARE || op == OP_RPAREN || op == OP_LPAREN) {
                 return op;
             }
-            /* if we expect prefixer */
-            int is_expect_prefixer = last_token == NULL
-                || last_token->type == TOK_OP || last_token->type == TOK_LB;
+            /* check expectations */
             int is_prefixable = is_prefixable_op(op);
             if (is_expect_prefixer == is_prefixable) {
                 return op;
@@ -151,20 +133,24 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos)
             throw_syntax_error(pos, ERR_MSG_BUF);
         }
         free(tok_str);
-        /* if is a empty function call, add null */
-        token_t* last_token = dynarr_token_back(&cur_cargo->tokens);
-        if (last_token != NULL && last_token->name == OP_FCALL
-            && type == TOK_RB) {
-            token_t null_tok = {
-                .str = RESERVED_IDS[RESERVED_ID_NAME_NULL],
-                .name = RESERVED_ID_NAME_NULL,
-                .type = TOK_ID,
-                .pos = pos,
-            };
-            dynarr_token_append(&cur_cargo->tokens, &null_tok);
+        /* left and right parenthese with nothing inside a shorthand for null */
+        {
+            token_t* last_token = dynarr_token_back(&cur_cargo->tokens);
+            if (last_token != NULL && last_token->type == TOK_LB
+                && last_token->name == OP_LPAREN && op == OP_RPAREN) {
+                token_t null_tok = {
+                    .str = RESERVED_IDS[RESERVED_ID_NAME_NULL],
+                    .name = RESERVED_ID_NAME_NULL,
+                    .type = TOK_ID,
+                    .pos = pos,
+                };
+                dynarr_token_append(&cur_cargo->tokens, &null_tok);
+            }
         }
-        token_t new_token = { NULL, op, type, pos };
-        dynarr_token_append(&cur_cargo->tokens, &new_token);
+        {
+            token_t new_token = { NULL, op, type, pos };
+            dynarr_token_append(&cur_cargo->tokens, &new_token);
+        }
     } else {
         int i, is_in_reserved_ids = 0;
         if (cur_cargo->tmp_str.size > MAX_TOKEN_STR_LEN) {
@@ -195,13 +181,15 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos)
             printf("harvest: empty cargo.str\n");
             return;
         }
-        token_t new_token = {
-            .str = tok_str,
-            .name = -1,
-            .type = type,
-            .pos = pos,
-        };
-        dynarr_token_append(&cur_cargo->tokens, &new_token);
+        {
+            token_t new_token = {
+                tok_str,
+                -1,
+                type,
+                pos,
+            };
+            dynarr_token_append(&cur_cargo->tokens, &new_token);
+        }
     }
     dynarr_char_reset(&cur_cargo->tmp_str);
 }

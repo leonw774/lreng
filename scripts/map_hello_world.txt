@@ -1,5 +1,4 @@
-hello_world = 'H', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '\n', null;
 print = string => {
     (p => { p != null && output(p) }) $> string
 };
-print(hello_world)
+print ('H', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '\n', null)

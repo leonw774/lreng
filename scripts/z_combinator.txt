@@ -1,15 +1,15 @@
 z_combinator = f => {
-    (x => { f( y => { x(x)(y) } ) }) $ (x => { f( y => { x(x)(y) } ) })
+    (x => { f( y => { x(x)(y) } ) }) (x => { f( y => { x(x)(y) } ) })
 };
 fib_step = fib => {
     n => {
-        (n == 0 || n == 1) && 1 || (fib(n - 1) + fib(n - 2))
+        (n == 0 || n == 1) && 1 || (fib (n - 1) + fib (n - 2))
     }
 };
-fib_recursive = z_combinator(fib_step);
-debug(fib_recursive(1));
-debug(fib_recursive(2));
-debug(fib_recursive(3));
-debug(fib_recursive(4));
-debug(fib_recursive(5));
-debug(fib_recursive(6))
+fib_recursive = z_combinator fib_step;
+debug(fib_recursive 1);
+debug(fib_recursive 2);
+debug(fib_recursive 3);
+debug(fib_recursive 4);
+debug(fib_recursive 5);
+debug(fib_recursive 6)

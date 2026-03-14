@@ -10,7 +10,7 @@ squared = n3 => {
 use_output_newline = {
     { output $ '\n' }
 };
-print_num $ half $ squared $ 2;
+print_num (half (squared 2));
 use_output_newline()();
-print_num $ half $ squared $ 4;
+print_num $ half $ squared $ 2 + 2;
 ``use_output_newline

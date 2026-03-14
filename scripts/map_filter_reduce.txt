@@ -6,44 +6,44 @@ list_append = list_elem => {
         || (
             >list == null
                 && (<list, elem, null)
-                || (<list, list_append(>list, elem))
+                || (<list, list_append (>list, elem))
         )
 };
 format_int = i => {
     i < 10 && ((i + '0'), null) || (
-        list_append(
-            format_int(\(i / 10)),
+        list_append (
+            format_int (\(i / 10)),
             ((i % 10) + '0')
         )
     )
 };
 print = string => {
-    (c => { c != null && output $ c }) $> string
+    (c => { c != null && output c }) $> string
 };
 print_tree = tree => {
-    is_pair(tree) ? [
+    is_pair tree ? [
         (x => {
             x == null ? [
-                print('n', 'u', 'l', 'l', null)
+                print ('n', 'u', 'l', 'l', null)
             ], [
                 print $ format_int $ x
             ];
-            output(' ')
+            output ' '
         }) $> tree
     ], [
         tree == null && print('n', 'u', 'l', 'l', null);
-        is_callable(tree) && print('c', 'a', 'l', 'l', null);
-        is_number(tree) && print $ format_int $ \tree
+        is_callable tree && print('c', 'a', 'l', 'l', null);
+        is_number tree && print $ format_int $ \tree
     ];
-    output('\n')
+    output '\n'
 };
 tree = (1, 2), (3, 4), (5, 6);
 f = x => { x * 2 };
 g1 = x => { x > 1 };
 g2 = x => { x > 2 & x < 5 };
 h = p => { <p + >p };
-print_tree(f $> tree);
-print_tree(g1 $| tree);
-print_tree(g2 $| tree);
-print_tree(h $/ tree);
-output('\n')
+print_tree (f $> tree);
+print_tree (g1 $| tree);
+print_tree (g2 $| tree);
+print_tree (h $/ tree);
+output '\n'

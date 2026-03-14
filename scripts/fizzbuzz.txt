@@ -6,31 +6,31 @@ list_append = list_elem => {
         || (
             >list == null
                 && (<list, elem, null)
-                || (<list, list_append(>list, elem))
+                || (<list, list_append (>list, elem))
         )
 };
 format_int = i => {
     i < 10 && ((i + '0'), null) || (
-        list_append(
-            format_int(\(i / 10)),
+        list_append (
+            format_int (\(i / 10)),
             ((i % 10) + '0')
         )
     )
 };
 print = string => {
-    string != null && (output(<string); print(>string))
+    string != null && (output (<string); print (>string))
 };
 fizz_str = 'F', 'I', 'Z', 'Z', null;
 buzz_str = 'B', 'U', 'Z', 'Z', null;
 fizzbuzz_str = 'F', 'I', 'Z', 'Z', 'B', 'U', 'Z', 'Z', null;
 fizzbuzz = n => {
-    n != 1 && fizzbuzz(n-1);
-    print(
+    n != 1 && fizzbuzz (n-1);
+    print (
         ((n % 15 == 0) && fizzbuzz_str)
         || ((n % 5 == 0) && buzz_str)
         || ((n % 3 == 0) && fizz_str)
-        || format_int(n)
+        || format_int n
     );
-    output('\n')
+    output '\n'
 };
-fizzbuzz(30)
+fizzbuzz 30

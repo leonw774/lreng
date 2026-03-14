@@ -4,5 +4,5 @@ func = p => {
     x
 };
 result = func $/ list;
-output(result);
-output('\n')
+output result;
+output '\n'

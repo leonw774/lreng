@@ -3,7 +3,7 @@ add = x => {
         x + y
     }
 };
-output $ add(1)('0');
-output $ add(2)('0');
-output $ add(3)('0');
+output $ add 1 '0';
+output $ add 2 '0';
+output $ add 3 '0';
 output $ '\n'

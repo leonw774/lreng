@@ -7,8 +7,8 @@ foo = a => {
     a + b + c
   }
 };
-bar = foo(1);
-bar2 = foo(2);
+bar = foo 1;
+bar2 = foo 2;
 
 # you can initialize the same name identifier as a function's argument as long as it is not initialized in the same scope
 #a = 3;
@@ -23,7 +23,7 @@ bar2 = foo(2);
 # there would be use-uninit error if the initialization of 'c' is removed
 c = 3;
 
-output $ bar(2) + '0'; # 6
+output $ bar 2 + '0'; # 6
 output $ '\n';
-output $ bar2(2) + '0'; # 7
+output $ bar2 2 + '0'; # 7
 output $ '\n'
