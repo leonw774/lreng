@@ -27,8 +27,8 @@ debug: $(MAIN_TARGET) $(TEST_TARGET)
 debug_more: CFLAGS += $(DEBUG_FLAGS) ${DEBUG_MORE_FLAGS}
 debug_more: $(MAIN_TARGET) $(TEST_TARGET)
 
-memcheck: CFLAGS += $(DEBUG_FLAGS) $(MEMCHECK_FLAGS)
-memcheck: $(MAIN_TARGET) $(TEST_TARGET)
+# memcheck: CFLAGS += $(DEBUG_FLAGS) $(MEMCHECK_FLAGS)
+# memcheck: $(MAIN_TARGET) $(TEST_TARGET)
 
 clean:
 	rm $(MAIN_TARGET) $(TEST_TARGET) || true

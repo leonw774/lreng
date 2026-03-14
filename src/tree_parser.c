@@ -39,6 +39,7 @@ shunting_yard(const dynarr_token_t tokens)
         /* infixer include infix (binary ops) and postfix (closing bracket) */
     };
     int expectation = TYPE_NAMEER;
+    int i;
     dynarr_token_t output = dynarr_token_new();
     dynarr_token_t op_stack = dynarr_token_new();
 
@@ -48,7 +49,7 @@ shunting_yard(const dynarr_token_t tokens)
         printf("shunting_yard\n");
     }
 #endif
-    int i;
+
     for (i = 0; i < tokens.size; i++) {
         token_t* cur_token = dynarr_token_at(&tokens, i);
 #ifdef ENABLE_DEBUG_LOG

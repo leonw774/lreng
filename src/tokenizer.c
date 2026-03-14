@@ -229,6 +229,7 @@ state_ret ch_open_state(linecol_iterator_t* pos_iter, cargo cur_cargo);
 state_ret ch_esc_state(linecol_iterator_t* pos_iter, cargo cur_cargo);
 state_ret ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo);
 
+/* cool things */
 state_ret id_state(linecol_iterator_t* pos_iter, cargo cur_cargo);
 state_ret op_state(linecol_iterator_t* pos_iter, cargo cur_cargo);
 
@@ -588,7 +589,7 @@ op_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
     }
 }
 
-/* define the state machine: return a dynarr_t of tokens */
+/* define the state machine: return a dynarr of tokens */
 dynarr_token_t
 tokenize(const char* src, const unsigned long src_len)
 {
@@ -596,6 +597,7 @@ tokenize(const char* src, const unsigned long src_len)
     linecol_iterator_t pos_iter = { src, src_len, 0, pos };
     cargo cur_cargo;
     state_ret (*state_func)(linecol_iterator_t*, cargo) = ws_state;
+    state_ret res;
     int i;
     cur_cargo.tokens = dynarr_token_new();
     cur_cargo.tmp_str = dynarr_char_new();
@@ -603,7 +605,7 @@ tokenize(const char* src, const unsigned long src_len)
 #ifdef ENABLE_DEBUG_LOG
     int prev_tokens_count = 0;
     if (global_is_enable_debug_log) {
-        puts("tokenize");
+        printf("tokenize");
     }
 #endif
     while (1) {
@@ -622,7 +624,7 @@ tokenize(const char* src, const unsigned long src_len)
         if (state_func == NULL) {
             break;
         }
-        state_ret res = state_func(&pos_iter, cur_cargo);
+        res = state_func(&pos_iter, cur_cargo);
         cur_cargo = res.cargo;
         state_func = res.state_func;
 #ifdef ENABLE_DEBUG_LOG
@@ -637,7 +639,7 @@ tokenize(const char* src, const unsigned long src_len)
                 token_print(dynarr_token_at(&cur_cargo.tokens, size - 1));
                 prev_tokens_count = size;
             }
-            puts("");
+            printf("\n");
         }
 #endif
     }
@@ -649,7 +651,7 @@ tokenize(const char* src, const unsigned long src_len)
             token_print(dynarr_token_at(&cur_cargo.tokens, k));
             printf(" ");
         }
-        puts("");
+        printf("\n");
     }
 #endif
     /* give identifier names:
@@ -665,18 +667,20 @@ tokenize(const char* src, const unsigned long src_len)
         if (cur_token->type != TOK_ID) {
             continue;
         }
-        const char* cur_token_str = cur_token->str;
-        int given_name = name_str_map.size;
-        for (j = 0; j < name_str_map.size; j++) {
-            const char* str = *dynarr_char_ptr_at(&name_str_map, j);
-            if (cur_token_str && strcmp(str, cur_token_str) == 0) {
-                given_name = j;
-                break;
+        {
+            const char* cur_token_str = cur_token->str;
+            int given_name = name_str_map.size;
+            for (j = 0; j < name_str_map.size; j++) {
+                const char* str = *dynarr_char_ptr_at(&name_str_map, j);
+                if (cur_token_str && strcmp(str, cur_token_str) == 0) {
+                    given_name = j;
+                    break;
+                }
             }
-        }
-        (dynarr_token_at(&cur_cargo.tokens, i))->name = given_name;
-        if (given_name == name_str_map.size) {
-            dynarr_char_ptr_append(&name_str_map, &cur_token_str);
+            (dynarr_token_at(&cur_cargo.tokens, i))->name = given_name;
+            if (given_name == name_str_map.size) {
+                dynarr_char_ptr_append(&name_str_map, &cur_token_str);
+            }
         }
     }
     dynarr_char_ptr_free(&name_str_map);
