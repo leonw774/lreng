@@ -647,7 +647,7 @@ exec_op(
                 .init_frame = NULL,
             }
         );
-    case OP_FCALL:
+    case OP_CALL:
         if (is_bad_type(op_token, TYPE_CALL, TYPE_ANY, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         };
@@ -872,7 +872,7 @@ exec_op(
                 .right = object_ref(right_obj),
             }
         );
-    case OP_FCALLR:
+    case OP_CALLR:
         if (is_bad_type(op_token, TYPE_CALL, TYPE_ANY, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         }

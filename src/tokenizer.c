@@ -24,15 +24,32 @@
 #define IS_HEX(c)                                                              \
     ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
 
-#define INVALID_CHAR_MSG(c)                                                    \
-    (isprint(c) && !isspace(c) ? "Invalid character: '%c'"                     \
-                               : "Invalid character: 0x%x")
-#define INVALID_ESCCHAR_MSG(c)                                                 \
-    (isprint(c) && !isspace(c) ? "Invalid escape character: '%c'"              \
-                               : "Invalid escape character: 0x%x")
-#define INVALID_CHAR_LIT_MSG(c)                                                \
-    (isprint(c) && !isspace(c) ? "Expect single quote, get '%c'"               \
-                               : "Expect single quote, get: 0x%x")
+char*
+invalid_char_msg(int c)
+{
+    return (
+        (isprint(c) && !isspace(c)) ? "Invalid character: '%c'"
+                                    : "Invalid character: 0x%x"
+    );
+}
+
+char*
+invalid_escchar_msg(int c)
+{
+    return (
+        (isprint(c) && !isspace(c)) ? "Invalid escape character: '%c'"
+                                    : "Invalid escape character: 0x%x"
+    );
+}
+
+char*
+invalid_litchar_msg(int c)
+{
+    return (
+        isprint(c) && !isspace(c) ? "Expect single quote, get '%c'"
+                                  : "Expect single quote, get: 0x%x"
+    );
+}
 
 extern arena_t token_str_arena; // declared and init in main.c
 
@@ -66,7 +83,7 @@ get_op_enum(token_t* last_token, char* op_str)
     int op;
     for (op = 0; op < OPERATOR_COUNT; op++) {
         /* ignore special */
-        if (op == OP_FMAKE || op == OP_MMAKE || op == OP_FCALL) {
+        if (op == OP_FMAKE || op == OP_MMAKE || op == OP_CALL) {
             continue;
         }
         if (strcmp(OP_STRS[op], op_str) == 0) {
@@ -126,29 +143,28 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos)
 {
     char* tok_str = dynarr_char_to_str(&cur_cargo->tmp_str);
     if (type == TOK_OP || type == TOK_LB || type == TOK_RB) {
-        op_name_enum op
-            = get_op_enum(dynarr_token_back(&cur_cargo->tokens), tok_str);
-        if ((int)op == -1) {
+        token_t* last_token = dynarr_token_back(&cur_cargo->tokens);
+        op_name_enum op_name = get_op_enum(last_token, tok_str);
+        if ((int)op_name == -1) {
             sprintf(ERR_MSG_BUF, "token '%s' is not a valid operator", tok_str);
             throw_syntax_error(pos, ERR_MSG_BUF);
         }
         free(tok_str);
-        /* left and right parenthese with nothing inside a shorthand for null */
-        {
-            token_t* last_token = dynarr_token_back(&cur_cargo->tokens);
-            if (last_token != NULL && last_token->type == TOK_LB
-                && last_token->name == OP_LPAREN && op == OP_RPAREN) {
-                token_t null_tok = {
-                    .str = RESERVED_IDS[RESERVED_ID_NAME_NULL],
-                    .name = RESERVED_ID_NAME_NULL,
-                    .type = TOK_ID,
-                    .pos = pos,
-                };
-                dynarr_token_append(&cur_cargo->tokens, &null_tok);
-            }
-        }
-        {
-            token_t new_token = { NULL, op, type, pos };
+        /* left and right parenthese with nothing inside a shorthand for null */ 
+        if (last_token != NULL && last_token->type == TOK_LB
+            && last_token->name == OP_LPAREN && op_name == OP_RPAREN) {
+            token_t null_tok = {
+                .str = RESERVED_IDS[RESERVED_ID_NAME_NULL],
+                .name = RESERVED_ID_NAME_NULL,
+                .type = TOK_ID,
+                .pos = pos,
+            };
+            /* pop out the l-paren */
+            dynarr_token_pop(&cur_cargo->tokens);
+            /* replace it with `null` */
+            dynarr_token_append(&cur_cargo->tokens, &null_tok);
+        } else {
+            token_t new_token = { NULL, op_name, type, pos };
             dynarr_token_append(&cur_cargo->tokens, &new_token);
         }
     } else {
@@ -276,7 +292,7 @@ ws_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         dynarr_char_append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG(c), c);
+        sprintf(ERR_MSG_BUF, invalid_char_msg(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }
@@ -323,7 +339,7 @@ zero_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         dynarr_char_append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG(c), c);
+        sprintf(ERR_MSG_BUF, invalid_char_msg(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }
@@ -354,7 +370,7 @@ num_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         dynarr_char_append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG(c), c);
+        sprintf(ERR_MSG_BUF, invalid_char_msg(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }
@@ -382,7 +398,7 @@ hex_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         dynarr_char_append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG(c), c);
+        sprintf(ERR_MSG_BUF, invalid_char_msg(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }
@@ -410,7 +426,7 @@ bin_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         dynarr_char_append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG(c), c);
+        sprintf(ERR_MSG_BUF, invalid_char_msg(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }
@@ -428,7 +444,7 @@ ch_open_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         dynarr_char_append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &ch_lit_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG(c), c);
+        sprintf(ERR_MSG_BUF, invalid_char_msg(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }
@@ -454,7 +470,7 @@ ch_esc_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
     } else if (c == 'v') {
         c = '\v';
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_ESCCHAR_MSG(c), c);
+        sprintf(ERR_MSG_BUF, invalid_escchar_msg(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
     }
     dynarr_char_append(&cur_cargo.tmp_str, &c);
@@ -494,7 +510,7 @@ ch_lit_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         dynarr_char_append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_LIT_MSG(c), c);
+        sprintf(ERR_MSG_BUF, invalid_litchar_msg(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }
@@ -522,7 +538,7 @@ id_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         dynarr_char_append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG(c), c);
+        sprintf(ERR_MSG_BUF, invalid_char_msg(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }
@@ -571,7 +587,7 @@ op_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
         dynarr_char_append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &op_state, cur_cargo };
     } else {
-        sprintf(ERR_MSG_BUF, INVALID_CHAR_MSG(c), c);
+        sprintf(ERR_MSG_BUF, invalid_char_msg(c), c);
         throw_syntax_error(pos, ERR_MSG_BUF);
         return (state_ret) { NULL, cur_cargo };
     }
