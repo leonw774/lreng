@@ -143,7 +143,7 @@ Another different between macro and function is that function has it own stack a
 
 The callers operation is done by putting caller (function/macro) before the callee: `foo expr` calls `foo` with argument `expr`. If the callable `foo` is macro, it simply ignores the argument.
 
-You can also use `$`. The syntax is `foo $ expr`.  The `$` is right-associative, just like in Haskell, designed to apply multiple callables on a value without too much parenthese. The expressions: `f3 $ f2 $ f1 $ val` and `f3(f2(f1(val)))` are equivalent.
+You can also use `$`. The syntax is `foo $ expr`.  The `$` is right-associative, just like in Haskell, designed to apply multiple callables on a value without too much parenthese. The expressions: `f3 $ f2 $ f1 $ val` and `f3 (f2 (f1 val)))` are equivalent.
 
 ### Conditional caller
 
@@ -151,7 +151,7 @@ The unary operator `` `foo `` is an useful short hand for `is_callable(foo) && f
 
 ### Conditional pair caller
 
-The `?` operator is designed to do proper conditional expression evaluation. The syntax is `cond ? callable_pair`. If `cond` is true, the `<callable_pair` is called, otherwise, the `<callable_pair` is called. The passed argument is always null.
+The `?` operator is designed to do proper conditional expression evaluation. The syntax is `cond ? callable_pair`. If `cond` is true, the `<callable_pair` is called, otherwise, the `>callable_pair` is called. The passed argument is always null.
 
 ### Map, filter, and reduce
 
@@ -209,7 +209,7 @@ reduce(f, x) =
     a+b=a
     ```
 
-- Output function `output` writes a number argument as one byte to the `stdout`. The acceptable value are integers in range `0` to `255` (inclusive). Any other value will cause runtime error. It always returns `null`.
+- Output function `output` writes the number argument as one byte to the `stdout`. The acceptable value are integers in range `0` to `255` (inclusive). Any other value will cause runtime error. It always returns `null`.
 
 - Error function `error` are the same as output function, except it writes to the `stderr`.
 
