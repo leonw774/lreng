@@ -10,15 +10,18 @@
 
 /**
  * The grammar in BNF
- * <expression> ::=
- *      // the nud rules
- *          | <identifier>
- *          | <literal>
- *          | <unary_operator> <expression>
- *          | <left_bracket> <expression> <right_bracket>
- *      // the led rules
- *          | <expression> <binary_operator> <expression>
- *          | <expression> <expression>
+ * // nud: the leftmost token is leaf
+ * <nud> ::=
+ *      | <identifier>
+ *      | <literal>
+ *      | <unary_operator>
+ *      | <left_bracket> <expression> <right_bracket>
+ * // lud: the middle token is leaf
+ * <led> ::= <expression> <binary_operator> <expression>
+ * // juxtaposition: no leaf
+ * <juxta> ::= <expression> <expression>
+ * // the final expression grammar
+ * <expression> ::= <nud> | <led> | <juxta>
  */
 
 #include "errormsg.h"
@@ -32,15 +35,11 @@ typedef struct pratt_parser_context {
     int pos;
 } pratt_parser_context_t;
 
-token_t*
-pp_context_consume(pratt_parser_context_t* context)
+int
+pp_context_advance(pratt_parser_context_t* context)
 {
-    token_t* lhs = dynarr_token_at(&context->tokens, context->pos);
     context->pos++;
-    if (lhs == NULL) {
-        throw_syntax_error(lhs->pos, "unexpected end of tokens");
-    }
-    return lhs;
+    return context->pos;
 }
 
 token_t*
@@ -53,7 +52,7 @@ pp_context_peek(pratt_parser_context_t* context)
 }
 
 void
-pp_context_push(pratt_parser_context_t* context, token_t* token)
+pp_context_push(pratt_parser_context_t* context, const token_t* token)
 {
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
@@ -62,19 +61,29 @@ pp_context_push(pratt_parser_context_t* context, token_t* token)
         printf("\n");
     }
 #endif
-    dynarr_token_append(&context->output, token);
+    dynarr_token_append(&context->output, (token_t*)token);
 }
 
 int
-get_binding_power(token_t* token)
+get_binding_power(const token_t* token)
 {
     if (token != NULL) {
-        return token->type == TOK_OP
+        return (token->type == TOK_OP)
             // binding power of op is reverse of precedence and smallest is 1
-            ? TIER_COUNT - get_op_precedence(token->name) + 1
+            ? TIER_COUNT - get_op_precedence(token->name)
             : 0;
     }
     return -1;
+}
+
+int
+is_expression_starter(const token_t* token)
+{
+    /* the same allowing condition in nud */
+    return token != NULL
+        && ((token->type == TOK_OP && is_unary_op(token->name))
+            || token->type == TOK_ID || token->type == TOK_NUM
+            || token->type == TOK_LB);
 }
 
 void parse_expr(pratt_parser_context_t* context, int cur_binding_power);
@@ -82,16 +91,18 @@ void parse_expr(pratt_parser_context_t* context, int cur_binding_power);
 void
 nud(pratt_parser_context_t* context)
 {
+    token_t* token = pp_context_peek(context);
+    int bp = get_binding_power(token);
+    pp_context_advance(context);
+
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
-        printf("nud: token_peek=");
-        token_print(pp_context_peek(context));
-        printf("\n");
+        printf(" nud: pos=%d cur_token=", context->pos);
+        token_print(token);
+        printf(", bp=%d\n", bp);
     }
 #endif
 
-    token_t* token = pp_context_consume(context);
-    int bp = get_binding_power(token);
     if (token->type == TOK_ID) {
         /* is identifier */
         pp_context_push(context, token);
@@ -103,7 +114,7 @@ nud(pratt_parser_context_t* context)
         if (!is_unary_op(token->name)) {
             sprintf(
                 ERR_MSG_BUF,
-                "Expect unary operator but get binary operator: %s",
+                "Expect unary operator but get binary operator: '%s'",
                 OP_STRS[token->name]
             );
             throw_syntax_error(token->pos, ERR_MSG_BUF);
@@ -113,13 +124,33 @@ nud(pratt_parser_context_t* context)
     } else if (token->type == TOK_LB) {
         /* is left bracket */
         parse_expr(context, bp);
-        token_t* next = pp_context_consume(context);
-        if (next->type != TOK_RB) {
+        token_t* closing = pp_context_peek(context);
+        if (closing->type != TOK_RB) {
             throw_syntax_error(
-                token->pos,
-                "Unmatched open bracket: Cannot find closing bracket"
+                closing->pos,
+                "Unmatched open bracket: Cannot find matching closing bracket"
             );
         }
+        if (token->name == OP_LPAREN && closing->name == OP_RPAREN) {
+            /* do nothing */
+        } else if (token->name == OP_LSQUARE && closing->name == OP_RSQUARE) {
+            /* macro maker */
+            token_t mmake = { NULL, OP_MMAKE, TOK_OP, token->pos };
+            pp_context_push(context, &mmake);
+        } else if (token->name == OP_LCURLY && closing->name == OP_RCURLY) {
+            /* function maker */
+            token_t fmake = { NULL, OP_FMAKE, TOK_OP, token->pos };
+            pp_context_push(context, &fmake);
+        } else {
+            sprintf(
+                ERR_MSG_BUF,
+                "Unmatched open bracket: Cannot find matching closing bracket "
+                "for '%s'",
+                OP_STRS[token->name]
+            );
+            throw_syntax_error(closing->pos, ERR_MSG_BUF);
+        }
+        pp_context_advance(context);
     } else {
         sprintf(
             ERR_MSG_BUF, "Unexpected token type at beginning of expression: %s",
@@ -132,36 +163,22 @@ nud(pratt_parser_context_t* context)
 void
 led(pratt_parser_context_t* context, token_t* next)
 {
+    int bp = get_binding_power(next);
+
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
-        printf("led: next=");
+        printf(" led: pos=%d, next=", context->pos);
         token_print(next);
-        printf("\n");
+        printf(", bp=%d\n", bp);
     }
 #endif
 
-    int bp = get_binding_power(next);
-    if (next->type == TOK_OP) {
+    if (next->type == TOK_OP && !is_unary_op(next->name)) {
         /* is binary operator */
-        pp_context_consume(context);
-        if (is_unary_op(next->name)) {
-            sprintf(
-                ERR_MSG_BUF,
-                "Expect binary operator but get unary operator: %s",
-                OP_STRS[next->name]
-            );
-            throw_syntax_error(next->pos, ERR_MSG_BUF);
-        }
         if (is_right_associative_op(next->name)) {
             bp--;
         }
         parse_expr(context, bp);
-        pp_context_push(context, next);
-    } else if (next->type != TOK_RB) {
-        /* any token type except right bracket can be start of expression */
-        /* insert function call in between two expressions */
-        token_t call_token = { NULL, OP_CALL, TOK_OP, next->pos };
-        parse_expr(context, get_binding_power(&call_token));
         pp_context_push(context, next);
     }
 }
@@ -173,9 +190,9 @@ parse_expr(pratt_parser_context_t* context, const int cur_binding_power)
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         int i;
-        printf("parse_expr: token_peek=");
+        printf("parse_expr start: pos=%d, token_peek=", context->pos);
         token_print(pp_context_peek(context));
-        printf(", bp=%d\n", cur_binding_power);
+        printf(", cur_bp=%d\n", cur_binding_power);
         printf("outputs: ");
         for (i = 0; i < context->output.size; i++) {
             token_print(dynarr_token_at(&context->output, i));
@@ -186,11 +203,65 @@ parse_expr(pratt_parser_context_t* context, const int cur_binding_power)
 #endif
 
     nud(context);
-    token_t* next = pp_context_peek(context);
-    while (get_binding_power(next) > cur_binding_power) {
-        led(context, next);
-        next = pp_context_peek(context);
+
+    {
+        token_t* next = pp_context_peek(context);
+        int next_binding_power = get_binding_power(next);
+        token_t call_token = {
+            /* the possible implicit OP_CALL token */
+            NULL,
+            OP_CALL,
+            TOK_OP,
+            (linecol_t) { .col = 0, .line = 0 },
+        };
+
+        while (1) {
+#ifdef ENABLE_DEBUG_LOG
+            if (global_is_enable_debug_log) {
+                printf("parse_expr loop: pos=%d, next=", context->pos);
+                token_print(next);
+                printf(", next_bp=%d\n", next_binding_power);
+            }
+#endif
+            /**
+             * for the case of juxtaposition, we need to check if the next token
+             * is a expresion starting token. if true, set the next token to the
+             * implicit OP_CALL
+             */
+            int is_implicit_call = is_expression_starter(next);
+            if (is_implicit_call) {
+#ifdef ENABLE_DEBUG_LOG
+                if (global_is_enable_debug_log) {
+                    printf("  implicit call\n");
+                }
+#endif
+                call_token.pos = next->pos;
+                next = &call_token;
+                next_binding_power = get_binding_power(&call_token);
+            }
+
+            /* do led only if next token has greater binding power */
+            if (next_binding_power <= cur_binding_power) {
+                break;
+            }
+
+            if (!is_implicit_call) {
+                pp_context_advance(context);
+            }
+
+            led(context, next);
+
+            /* update next token */
+            next = pp_context_peek(context);
+            next_binding_power = get_binding_power(next);
+        }
     }
+
+#ifdef ENABLE_DEBUG_LOG
+    if (global_is_enable_debug_log) {
+        printf("parse_expr end\n");
+    }
+#endif
 }
 
 /* Shunting Yard */
