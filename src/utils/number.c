@@ -78,8 +78,8 @@ number_normalize(number_t* x)
     /* euclidian algorithm */
     bi_copy(&a, &x->numer);
     bi_copy(&b, &x->denom);
-    /* printf("a "); print_bi(&a, '\n');
-    printf("b "); print_bi(&b, '\n'); */
+    /* printf("a "); bi_print(&a, '\n');
+    printf("b "); bi_print(&b, '\n'); */
     while (b.size != 0) {
         bi_free(&t2);
         t2 = bi_mod(&a, &b); /* t2 = a mod b */
@@ -87,8 +87,8 @@ number_normalize(number_t* x)
         bi_copy(&a, &b); /* a = t1 */
         bi_free(&b);
         bi_copy(&b, &t2); /* b = t2 */
-        /* printf("a "); print_bi(&a, '\n');
-        printf("b "); print_bi(&b, '\n'); */
+        /* printf("a "); bi_print(&a, '\n');
+        printf("b "); bi_print(&b, '\n'); */
     }
 
     /* a is gcd of numer & denom */
@@ -400,9 +400,9 @@ print_number_struct(number_t* x)
 {
     printf("[Number");
     printf("\tnumer=");
-    print_bi(&x->numer, '\n');
+    bi_print(&x->numer, '\n');
     printf("\tdenom=");
-    print_bi(&x->denom, '\n');
+    bi_print(&x->denom, '\n');
     printf("]");
 }
 

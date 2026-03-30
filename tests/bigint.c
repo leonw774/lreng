@@ -182,9 +182,9 @@ main()
     );
 
     printf("very_big_1:\n");
-    print_bi(&very_big_1, '\n');
+    bi_print(&very_big_1, '\n');
     printf("very_big_2:\n");
-    print_bi(&very_big_2, '\n');
+    bi_print(&very_big_2, '\n');
 
     result = bi_mul(&very_big_1, &very_big_2);
     printf("very_big_1 * very_big_2");

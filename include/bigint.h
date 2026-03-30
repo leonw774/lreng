@@ -38,16 +38,16 @@ extern void bi_new(bigint_t* x, u32 size);
 extern void bi_copy(bigint_t* dst, const bigint_t* src);
 extern void bi_free(bigint_t* x);
 
-extern int bi_eq(bigint_t* a, bigint_t* b);
-extern int bi_lt(bigint_t* a, bigint_t* b);
+extern int bi_eq(const bigint_t* a, const bigint_t* b);
+extern int bi_lt(const bigint_t* a, const bigint_t* b);
 
-extern bigint_t bi_add(bigint_t* a, bigint_t* b);
-extern bigint_t bi_sub(bigint_t* a, bigint_t* b);
-extern bigint_t bi_mul(bigint_t* a, bigint_t* b);
-extern bigint_t bi_div(bigint_t* a, bigint_t* b);
-extern bigint_t bi_mod(bigint_t* a, bigint_t* b);
+extern bigint_t bi_add(const bigint_t* a, const bigint_t* b);
+extern bigint_t bi_sub(const bigint_t* a, const bigint_t* b);
+extern bigint_t bi_mul(const bigint_t* a, const bigint_t* b);
+extern bigint_t bi_div(const bigint_t* a, const bigint_t* b);
+extern bigint_t bi_mod(const bigint_t* a, const  bigint_t* b);
 
-extern int print_bi(bigint_t* x, char end);
+extern int bi_print(bigint_t* x, char end);
 extern dynarr_char_t bi_to_dec_str(const bigint_t* x);
 extern int print_bi_dec(const bigint_t* x, char end);
 extern bigint_t bi_from_str(const char* str);
