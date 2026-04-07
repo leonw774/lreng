@@ -1,5 +1,5 @@
 #include "number.h"
-#include "errormsg.h"
+#include "utils/errormsg.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>

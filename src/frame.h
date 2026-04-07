@@ -4,16 +4,15 @@
 #define FRAME_H
 
 typedef struct name_objptr {
-   int name;
-   object_t* objptr;
+    int name;
+    object_t* objptr;
 } name_objptr_t;
 
 #define TYPE name_objptr_t
 #define TYPE_NAME name_objptr
-#include "dynarr.tmpl.h"
+#include "utils/dynarr.tmpl.h"
 #undef TYPE_NAME
 #undef TYPE
-
 
 typedef struct frame {
     unsigned int ref_count;

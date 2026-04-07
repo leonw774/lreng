@@ -1,5 +1,6 @@
-#include "token.h"
-#include "reserved.h"
+#include "./token.h"
+#include "./reserved.h"
+#include "./utils/errormsg.h"
 #include <stdio.h>
 #include <stdlib.h>
 

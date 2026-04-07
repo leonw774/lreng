@@ -1,5 +1,5 @@
 #include "frame.h"
-#include "arena.h"
+#include "utils/arena.h"
 
 #include <assert.h>
 #include <stdio.h>

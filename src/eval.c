@@ -1,28 +1,28 @@
 #include "builtin_funcs.h"
-#include "errormsg.h"
 #include "eval_tree.h"
 #include "frame.h"
 #include "main.h"
 #include "token_tree.h"
+#include "utils/errormsg.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define TYPE eval_tree_t*
 #define TYPE_NAME eval_tree_ptr
-#include "dynarr.tmpl.h"
+#include "./utils/dynarr.tmpl.h"
 #undef TYPE_NAME
 #undef TYPE
 
 #define TYPE object_t*
 #define TYPE_NAME object_ptr
-#include "dynarr.tmpl.h"
+#include "./utils/dynarr.tmpl.h"
 #undef TYPE_NAME
 #undef TYPE
 
 #define TYPE object_t**
 #define TYPE_NAME object_ptr_ptr
-#include "dynarr.tmpl.h"
+#include "./utils/dynarr.tmpl.h"
 #undef TYPE_NAME
 #undef TYPE
 

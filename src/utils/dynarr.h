@@ -70,7 +70,7 @@ dynarr_to_str(dynarr_t* x)
     int arr_sz = x->elem_size * x->size;
     arr = malloc(arr_sz + 1);
     // if (arr == NULL) {
-    //     return NULL;    
+    //     return NULL;
     // }
     ((char*)arr)[arr_sz] = '\0';
     memcpy(arr, x->data, arr_sz);

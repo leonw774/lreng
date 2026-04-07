@@ -1,5 +1,5 @@
 #include "bigint.h"
-#include "arena.h"
+#include "utils/arena.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>

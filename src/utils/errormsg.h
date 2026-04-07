@@ -1,7 +1,10 @@
-#include "token.h"
-
 #ifndef ERRORMSG_H
 #define ERRORMSG_H
+
+typedef struct linecol {
+    unsigned int line;
+    unsigned int col;
+} linecol_t;
 
 #define OS_ERR_CODE 1
 #define SYNTAX_ERR_CODE 2

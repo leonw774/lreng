@@ -4,7 +4,7 @@
 #define BIGINT_H
 
 #define TYPE char
-#include "dynarr.tmpl.h"
+#include "utils/dynarr.tmpl.h"
 #undef TYPE
 
 #define BASE_SHIFT 31
@@ -45,7 +45,7 @@ extern bigint_t bi_add(const bigint_t* a, const bigint_t* b);
 extern bigint_t bi_sub(const bigint_t* a, const bigint_t* b);
 extern bigint_t bi_mul(const bigint_t* a, const bigint_t* b);
 extern bigint_t bi_div(const bigint_t* a, const bigint_t* b);
-extern bigint_t bi_mod(const bigint_t* a, const  bigint_t* b);
+extern bigint_t bi_mod(const bigint_t* a, const bigint_t* b);
 
 extern int bi_print(bigint_t* x, char end);
 extern dynarr_char_t bi_to_dec_str(const bigint_t* x);

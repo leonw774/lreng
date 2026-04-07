@@ -1,31 +1,31 @@
-#include "errormsg.h"
 #include "main.h"
 #include "reserved.h"
 #include "token_tree.h"
+#include "utils/errormsg.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "token_tree.h"
+#include "utils/errormsg.h"
 
 /* Pratt Parsing */
 
 /**
  * The grammar in BNF
- * // nud: the leftmost token is leaf
+ * // nud: the leftmost token is single token
  * <nud> ::=
  *      | <identifier>
  *      | <literal>
  *      | <unary_operator>
  *      | <left_bracket> <expression> <right_bracket>
- * // lud: the middle token is leaf
+ * // lud: the middle node is single token
  * <led> ::= <expression> <binary_operator> <expression>
  * // juxtaposition: no leaf
  * <juxta> ::= <expression> <expression>
  * // the final expression grammar
  * <expression> ::= <nud> | <led> | <juxta>
  */
-
-#include "errormsg.h"
-#include "token_tree.h"
 
 /* Pratt parse context */
 

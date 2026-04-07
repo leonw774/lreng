@@ -1,9 +1,9 @@
 #include "main.h"
-#include "arena.h"
-#include "errormsg.h"
 #include "objects.h"
 #include "reserved.h"
 #include "token_tree.h"
+#include "utils/arena.h"
+#include "utils/errormsg.h"
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>

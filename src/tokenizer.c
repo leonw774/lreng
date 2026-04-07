@@ -1,9 +1,9 @@
-#include "arena.h"
-#include "errormsg.h"
 #include "main.h"
 #include "operators.h"
 #include "reserved.h"
 #include "token.h"
+#include "utils/arena.h"
+#include "utils/errormsg.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,7 +11,7 @@
 
 #define TYPE const char*
 #define TYPE_NAME char_ptr
-#include "dynarr.tmpl.h"
+#include "utils/dynarr.tmpl.h"
 #undef TYPE_NAME
 #undef TYPE
 
@@ -150,7 +150,7 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos)
             throw_syntax_error(pos, ERR_MSG_BUF);
         }
         free(tok_str);
-        /* left and right parenthese with nothing inside a shorthand for null */ 
+        /* left and right parenthese with nothing inside a shorthand for null */
         if (last_token != NULL && last_token->type == TOK_LB
             && last_token->name == OP_LPAREN && op_name == OP_RPAREN) {
             token_t null_tok = {

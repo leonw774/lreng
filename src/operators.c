@@ -7,7 +7,7 @@ int
 is_op_char(char c)
 {
     /* offset by 32 just to save a little space */
-    static unsigned char IS_OP_CHAR[256 - 32] = {0};
+    static unsigned char IS_OP_CHAR[256 - 32] = { 0 };
     static int is_initialized = 0;
     int i, j;
     if (!is_initialized) {

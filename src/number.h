@@ -25,7 +25,8 @@ typedef struct number {
 #define number_struct_size sizeof(number_t)
 
 #define EMPTY_NUMBER ((number_t) { .numer = ZERO_BIGINT, .denom = ZERO_BIGINT })
-#define ZERO_NUMBER ((number_t) { .numer = ZERO_BIGINT, .denom = BYTE_BIGINT(1) })
+#define ZERO_NUMBER                                                            \
+    ((number_t) { .numer = ZERO_BIGINT, .denom = BYTE_BIGINT(1) })
 #define ONE_NUMBER                                                             \
     ((number_t) {                                                              \
         .numer = BYTE_BIGINT(1),                                               \

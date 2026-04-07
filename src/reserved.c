@@ -8,7 +8,7 @@ const char* RESERVED_IDS[RESERVED_ID_NUM] = {
     "is_number",
     "is_callable",
     "is_pair",
-    "debug"
+    "debug",
 };
 
 const object_t RESERVED_OBJS[RESERVED_ID_NUM] = {

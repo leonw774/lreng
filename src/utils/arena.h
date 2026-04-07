@@ -46,7 +46,6 @@ arena_calloc(arena_t* arena, unsigned long size, unsigned long count)
     return res_ptr;
 };
 
-
 static inline void
 arena_free(arena_t* arena)
 {

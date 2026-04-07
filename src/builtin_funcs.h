@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "errormsg.h"
 #include "objects.h"
 #include "reserved.h"
+#include "utils/errormsg.h"
 
 #ifndef BUILTIN_FUNCS_H
 #define BUILTIN_FUNCS_H

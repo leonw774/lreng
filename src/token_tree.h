@@ -5,12 +5,12 @@
 
 #define TYPE token_t
 #define TYPE_NAME token
-#include "dynarr.tmpl.h"
+#include "utils/dynarr.tmpl.h"
 #undef TYPE_NAME
 #undef TYPE
 
 #define TYPE int
-#include "dynarr.tmpl.h"
+#include "utils/dynarr.tmpl.h"
 #undef TYPE
 
 typedef struct object object_t;

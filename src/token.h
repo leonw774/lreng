@@ -1,12 +1,8 @@
 #include "operators.h"
+#include "utils/errormsg.h"
 
 #ifndef TOKEN_H
 #define TOKEN_H
-
-typedef struct linecol {
-    unsigned int line;
-    unsigned int col;
-} linecol_t;
 
 typedef enum token_type {
     TOK_ID, /*identifier */

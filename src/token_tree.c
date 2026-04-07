@@ -1,9 +1,9 @@
 #include "token_tree.h"
-#include "arena.h"
-#include "errormsg.h"
 #include "frame.h"
 #include "reserved.h"
 #include "token.h"
+#include "utils/arena.h"
+#include "utils/errormsg.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -120,8 +120,10 @@ token_tree_create(dynarr_token_t postfix_tokens)
                 throw_syntax_error(
                     cur_token->pos, "Pair operator has too few operands"
                 );
-            } else if (tree.literals[tree.lefts[i]] != NULL
-                       && tree.literals[tree.rights[i]] != NULL) {
+            } else if (
+                tree.literals[tree.lefts[i]] != NULL
+                && tree.literals[tree.rights[i]] != NULL
+            ) {
                 tree.literals[i] = object_create(
                     TYPE_PAIR,
                     (object_data_union) {
