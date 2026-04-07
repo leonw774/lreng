@@ -43,7 +43,7 @@ check_semantic(const token_tree_t tree)
                 frame_return(cur_frame);
             }
             /* check assign rule */
-            if (cur_token->name == OP_ASSIGN) {
+            if (cur_token->code == OP_ASSIGN) {
                 token_t* left_token
                     = dynarr_token_at(&tree.tokens, tree.lefts[cur_index]);
 #ifdef ENABLE_DEBUG_LOG
@@ -60,22 +60,22 @@ check_semantic(const token_tree_t tree)
 #endif
                 if (left_token->type != TOK_ID) {
                     const char* err_msg = "Left side of %s is not identifier.";
-                    sprintf(ERR_MSG_BUF, err_msg, OP_STRS[cur_token->name]);
+                    sprintf(ERR_MSG_BUF, err_msg, OP_STRS[cur_token->code]);
                     print_semantic_error(left_token->pos, ERR_MSG_BUF);
                     is_passed = 0;
-                } else if (frame_get(cur_frame, left_token->name)) {
+                } else if (frame_get(cur_frame, left_token->code)) {
                     const char* err_msg
                         = "Repeated initialization of identifier '%s'";
                     sprintf(ERR_MSG_BUF, err_msg, left_token->str);
                     print_semantic_error(left_token->pos, ERR_MSG_BUF);
                     is_passed = 0;
                 } else {
-                    frame_set(cur_frame, left_token->name, &objnull);
-                    id_usage[left_token->name] = (uint8_t)1;
+                    frame_set(cur_frame, left_token->code, &objnull);
+                    id_usage[left_token->code] = (uint8_t)1;
                 }
             }
             // check bind arguemt rule
-            else if (cur_token->name == OP_ARG) {
+            else if (cur_token->code == OP_ARG) {
                 token_t* left_token
                     = dynarr_token_at(&tree.tokens, tree.lefts[cur_index]);
 #ifdef ENABLE_DEBUG_LOG
@@ -92,13 +92,13 @@ check_semantic(const token_tree_t tree)
 #endif
                 if (left_token->type != TOK_ID) {
                     const char* err_msg = "Left side of %s is not identifier.";
-                    sprintf(ERR_MSG_BUF, err_msg, OP_STRS[cur_token->name]);
+                    sprintf(ERR_MSG_BUF, err_msg, OP_STRS[cur_token->code]);
                     print_semantic_error(left_token->pos, ERR_MSG_BUF);
                     is_passed = 0;
                 }
             }
             /* walk into a function */
-            else if (cur_token->name == OP_FMAKE) {
+            else if (cur_token->code == OP_FMAKE) {
                 frame_call(cur_frame, cur_index);
                 dynarr_int_append(&func_depth_stack, &cur_depth);
             }
@@ -114,7 +114,7 @@ check_semantic(const token_tree_t tree)
                 fflush(stdout);
             }
 #endif
-            id_usage[cur_token->name] = (uint8_t)1;
+            id_usage[cur_token->code] = (uint8_t)1;
         }
         token_tree_iter_next(&tree_iter);
         cur_token = token_tree_iter_get(&tree_iter);

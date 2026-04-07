@@ -74,7 +74,7 @@ get_op_tok_type(char* op_str)
     return TOK_OP;
 }
 
-/* return the operator name (enum) of an operator str. return -1 if failed */
+/* return the operator code (enum) of an operator str. return -1 if failed */
 op_name_enum
 get_op_enum(token_t* last_token, char* op_str)
 {
@@ -152,10 +152,10 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos)
         free(tok_str);
         /* left and right parenthese with nothing inside a shorthand for null */
         if (last_token != NULL && last_token->type == TOK_LB
-            && last_token->name == OP_LPAREN && op_name == OP_RPAREN) {
+            && last_token->code == OP_LPAREN && op_name == OP_RPAREN) {
             token_t null_tok = {
                 .str = RESERVED_IDS[RESERVED_ID_NAME_NULL],
-                .name = RESERVED_ID_NAME_NULL,
+                .code = RESERVED_ID_NAME_NULL,
                 .type = TOK_ID,
                 .pos = pos,
             };
@@ -659,7 +659,7 @@ tokenize(const char* src, const unsigned long src_len)
     }
 #endif
     /* give identifier names:
-       init name str map with keywords */
+       init code-str map with keywords */
     /* TODO: rewrite this with prefix-tree */
     dynarr_char_ptr_t name_str_map = dynarr_char_ptr_new();
     for (i = 0; i < RESERVED_ID_NUM; i++) {
@@ -681,7 +681,7 @@ tokenize(const char* src, const unsigned long src_len)
                     break;
                 }
             }
-            (dynarr_token_at(&cur_cargo.tokens, i))->name = given_name;
+            (dynarr_token_at(&cur_cargo.tokens, i))->code = given_name;
             if (given_name == name_str_map.size) {
                 dynarr_char_ptr_append(&name_str_map, &cur_token_str);
             }

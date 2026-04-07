@@ -27,16 +27,16 @@ const char* OBJ_TYPE_STR[OBJECT_TYPE_NUM + 1] = {
 object_t*
 object_create(object_type_enum type, object_data_union data)
 {
-    object_t* objptr = malloc(sizeof(object_t));
-    assert(objptr != NULL);
-    *objptr = (object_t) {
+    object_t* object = malloc(sizeof(object_t));
+    assert(object != NULL);
+    *object = (object_t) {
         .is_error = 0,
         .is_const = 0,
         .type = type,
         .ref_count = 1,
         .as = data,
     };
-    return objptr;
+    return object;
 }
 
 object_t*
@@ -120,7 +120,7 @@ object_print(const object_t* obj, char end)
     } else if (obj->type == TYPE_CALL) {
         if (obj->as.callable.builtin_name != NOT_BUILTIN_FUNC) {
             printed_bytes_count = printf(
-                "[Callable type=BUILTIN_FUNC, name=%s]",
+                "[Callable type=BUILTIN_FUNC, code=%s]",
                 RESERVED_IDS[obj->as.callable.builtin_name]
             );
         } else if (obj->as.callable.is_macro) {

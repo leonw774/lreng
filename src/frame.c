@@ -22,15 +22,15 @@ frame_new(const frame_t* parent)
         /* allocate a globals ourself */
         f->globals = calloc(1, sizeof(dynarr_int_t));
         assert(f->globals != NULL);
-        *(f->globals) = dynarr_name_objptr_new();
+        *(f->globals) = dynarr_frame_entry_new();
         f->is_own_globals = 1;
         /* add reserved ids to global frame */
         for (i = 0; i < RESERVED_ID_NUM; i++) {
-            name_objptr_t pair = {
-                .name = i,
-                .objptr = (object_t*)&RESERVED_OBJS[i],
+            frame_entry_t pair = {
+                .code = i,
+                .object = (object_t*)&RESERVED_OBJS[i],
             };
-            dynarr_name_objptr_append(f->globals, &pair);
+            dynarr_frame_entry_append(f->globals, &pair);
         }
     } else {
         /* copy the globals from parent */
@@ -38,7 +38,7 @@ frame_new(const frame_t* parent)
     }
     f->entry_indexs = dynarr_int_new();
     f->stack_pointers = dynarr_int_new();
-    f->stack = dynarr_name_objptr_new();
+    f->stack = dynarr_frame_entry_new();
     f->ref_count = 1;
     return f;
 }
@@ -55,9 +55,9 @@ frame_copy(const frame_t* f)
     clone_frame->entry_indexs = dynarr_int_copy(&f->entry_indexs);
     clone_frame->stack_pointers = dynarr_int_copy(&f->stack_pointers);
     /* deep copy stack */
-    clone_frame->stack = dynarr_name_objptr_copy(&f->stack);
+    clone_frame->stack = dynarr_frame_entry_copy(&f->stack);
     for (i = 0; i < f->stack.size; i++) {
-        object_ref(dynarr_name_objptr_at(&clone_frame->stack, i)->objptr);
+        object_ref(dynarr_frame_entry_at(&clone_frame->stack, i)->object);
     }
     clone_frame->ref_count = 1;
     return clone_frame;
@@ -73,17 +73,17 @@ frame_free(frame_t* f)
 #endif
     if (f->is_own_globals && f->globals) {
         for (i = 0; i < f->globals->size; i++) {
-            object_deref(dynarr_name_objptr_at(f->globals, i)->objptr);
+            object_deref(dynarr_frame_entry_at(f->globals, i)->object);
         }
-        dynarr_name_objptr_free(f->globals);
+        dynarr_frame_entry_free(f->globals);
         free(f->globals);
     }
     dynarr_int_free(&f->entry_indexs);
     dynarr_int_free(&f->stack_pointers);
     for (i = 0; i < f->stack.size; i++) {
-        object_deref(dynarr_name_objptr_at(&f->stack, i)->objptr);
+        object_deref(dynarr_frame_entry_at(&f->stack, i)->object);
     }
-    dynarr_name_objptr_free(&f->stack);
+    dynarr_frame_entry_free(&f->stack);
 }
 
 /* push new stack_start_index */
@@ -110,15 +110,15 @@ frame_return(frame_t* f)
     }
     stack_start_index = *dynarr_int_back(&f->stack_pointers);
     for (i = f->stack.size; i > stack_start_index; i--) {
-        object_deref(dynarr_name_objptr_back(&f->stack)->objptr);
-        dynarr_name_objptr_pop(&f->stack);
+        object_deref(dynarr_frame_entry_back(&f->stack)->object);
+        dynarr_frame_entry_pop(&f->stack);
     }
     dynarr_int_pop(&f->entry_indexs);
     dynarr_int_pop(&f->stack_pointers);
 }
 
 inline object_t*
-frame_get(const frame_t* f, const int name)
+frame_get(const frame_t* f, const int code)
 {
 #ifdef ENABLE_DEBUG_LOG_MORE
     printf("frame_get: %p\n", f);
@@ -126,29 +126,29 @@ frame_get(const frame_t* f, const int name)
     /* search stack from top to bottom */
     int i, j;
     for (i = f->stack.size - 1; i >= 0; i--) {
-        name_objptr_t* pair = dynarr_name_objptr_at(&f->stack, i);
-        if (name == pair->name) {
-            return pair->objptr;
+        frame_entry_t* pair = dynarr_frame_entry_at(&f->stack, i);
+        if (code == pair->code) {
+            return pair->object;
         }
     }
     /* search in global */
     for (j = 0; j < f->globals->size; j++) {
-        name_objptr_t* pair = dynarr_name_objptr_at(f->globals, j);
-        if (name == pair->name) {
-            return pair->objptr;
+        frame_entry_t* pair = dynarr_frame_entry_at(f->globals, j);
+        if (code == pair->code) {
+            return pair->object;
         }
     }
     return NULL;
 }
 
 inline object_t**
-frame_set(frame_t* f, const int name, object_t* obj)
+frame_set(frame_t* f, const int code, object_t* obj)
 {
 #ifdef ENABLE_DEBUG_LOG_MORE
     printf("frame_set: %p\n", f);
 #endif
     int i, start, end;
-    dynarr_name_objptr_t* target;
+    dynarr_frame_entry_t* target;
     object_t* found_obj = NULL;
     if (f->entry_indexs.size == 0) {
         target = f->globals;
@@ -160,8 +160,8 @@ frame_set(frame_t* f, const int name, object_t* obj)
         end = f->stack.size;
     }
     for (i = start; i < end; i++) {
-        if (name == (dynarr_name_objptr_at(target, i))->name) {
-            found_obj = (dynarr_name_objptr_at(target, i))->objptr;
+        if (code == (dynarr_frame_entry_at(target, i))->code) {
+            found_obj = (dynarr_frame_entry_at(target, i))->object;
             break;
         }
     }
@@ -169,12 +169,12 @@ frame_set(frame_t* f, const int name, object_t* obj)
     if (found_obj) {
         return NULL;
     }
-    name_objptr_t new_pair = {
-        .name = name,
-        .objptr = object_ref(obj),
+    frame_entry_t new_pair = {
+        .code = code,
+        .object = object_ref(obj),
     };
-    dynarr_name_objptr_append(target, &new_pair);
-    return &(dynarr_name_objptr_back(target)->objptr);
+    dynarr_frame_entry_append(target, &new_pair);
+    return &(dynarr_frame_entry_back(target)->object);
 }
 
 int
@@ -191,13 +191,13 @@ frame_print(frame_t* f)
     /* global */
     printed_bytes_count += printf("globals(%d)=[", f->globals->size);
     for (i = 0; i < f->globals->size; i++) {
-        name_objptr_t* pair = dynarr_name_objptr_at(f->globals, i);
+        frame_entry_t* pair = dynarr_frame_entry_at(f->globals, i);
         if (i != 0) {
             printed_bytes_count += printf(", ");
         }
         printed_bytes_count += printf(
-            "(var_id=%d addr=%p type=%s)", pair->name,
-            PTR_L20BITS(pair->objptr), OBJ_TYPE_STR[pair->objptr->type]
+            "(var_id=%d addr=%p type=%s)", pair->code,
+            PTR_L20BITS(pair->object), OBJ_TYPE_STR[pair->object->type]
         );
     }
     printed_bytes_count += printf("], ");
@@ -224,13 +224,13 @@ frame_print(frame_t* f)
     /* stack entrys */
     printed_bytes_count += printf("stack(%d)=[", f->stack.size);
     for (i = 0; i < f->stack.size; i++) {
-        name_objptr_t* pair = dynarr_name_objptr_at(&f->stack, i);
+        frame_entry_t* pair = dynarr_frame_entry_at(&f->stack, i);
         if (i != 0) {
             printed_bytes_count += printf(", ");
         }
         printed_bytes_count += printf(
-            "(var_id=%d addr=%p type=%s)", pair->name,
-            PTR_L20BITS(pair->objptr), OBJ_TYPE_STR[pair->objptr->type]
+            "(var_id=%d addr=%p type=%s)", pair->code,
+            PTR_L20BITS(pair->object), OBJ_TYPE_STR[pair->object->type]
         );
     }
     printed_bytes_count += printf("]]");
@@ -302,10 +302,10 @@ frame_call_with_closure(const frame_t* caller_frame, const object_t* func)
             printf("frame_call_with_closure: start,end = %d,%d\n", start, end);
 #endif
             for (j = start; j < end; j++) {
-                name_objptr_t* pair
-                    = dynarr_name_objptr_at(&src_frame->stack, j);
-                object_ref(pair->objptr);
-                dynarr_name_objptr_append(&callee_frame->stack, pair);
+                frame_entry_t* pair
+                    = dynarr_frame_entry_at(&src_frame->stack, j);
+                object_ref(pair->object);
+                dynarr_frame_entry_append(&callee_frame->stack, pair);
             }
         }
     }

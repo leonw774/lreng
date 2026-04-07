@@ -5,7 +5,7 @@
 #define TOKEN_H
 
 typedef enum token_type {
-    TOK_ID, /*identifier */
+    TOK_ID, /* identifier */
     TOK_NUM, /* number */
     TOK_OP, /* operator */
     TOK_LB, /* left bracket */
@@ -16,7 +16,7 @@ typedef enum token_type {
 
 typedef struct token {
     const char* str;
-    int name; /* the name of operator or id */
+    int code; /* the code of operator or identifier */
     token_type_enum type;
     linecol_t pos;
 } token_t;

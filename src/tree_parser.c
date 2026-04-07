@@ -70,7 +70,7 @@ get_binding_power(const token_t* token)
     if (token != NULL) {
         return (token->type == TOK_OP)
             // binding power of op is reverse of precedence and smallest is 1
-            ? TIER_COUNT - get_op_precedence(token->name)
+            ? TIER_COUNT - get_op_precedence(token->code)
             : 0;
     }
     return -1;
@@ -81,7 +81,7 @@ is_expression_starter(const token_t* token)
 {
     /* the same allowing condition in nud */
     return token != NULL
-        && ((token->type == TOK_OP && is_unary_op(token->name))
+        && ((token->type == TOK_OP && is_unary_op(token->code))
             || token->type == TOK_ID || token->type == TOK_NUM
             || token->type == TOK_LB);
 }
@@ -111,11 +111,11 @@ nud(pratt_parser_context_t* context)
         pp_context_push(context, token);
     } else if (token->type == TOK_OP) {
         /* is unary operator */
-        if (!is_unary_op(token->name)) {
+        if (!is_unary_op(token->code)) {
             sprintf(
                 ERR_MSG_BUF,
                 "Expect unary operator but get binary operator: '%s'",
-                OP_STRS[token->name]
+                OP_STRS[token->code]
             );
             throw_syntax_error(token->pos, ERR_MSG_BUF);
         }
@@ -131,13 +131,13 @@ nud(pratt_parser_context_t* context)
                 "Unmatched open bracket: Cannot find matching closing bracket"
             );
         }
-        if (token->name == OP_LPAREN && closing->name == OP_RPAREN) {
+        if (token->code == OP_LPAREN && closing->code == OP_RPAREN) {
             /* do nothing */
-        } else if (token->name == OP_LSQUARE && closing->name == OP_RSQUARE) {
+        } else if (token->code == OP_LSQUARE && closing->code == OP_RSQUARE) {
             /* macro maker */
             token_t mmake = { NULL, OP_MMAKE, TOK_OP, token->pos };
             pp_context_push(context, &mmake);
-        } else if (token->name == OP_LCURLY && closing->name == OP_RCURLY) {
+        } else if (token->code == OP_LCURLY && closing->code == OP_RCURLY) {
             /* function maker */
             token_t fmake = { NULL, OP_FMAKE, TOK_OP, token->pos };
             pp_context_push(context, &fmake);
@@ -146,7 +146,7 @@ nud(pratt_parser_context_t* context)
                 ERR_MSG_BUF,
                 "Unmatched open bracket: Cannot find matching closing bracket "
                 "for '%s'",
-                OP_STRS[token->name]
+                OP_STRS[token->code]
             );
             throw_syntax_error(closing->pos, ERR_MSG_BUF);
         }
@@ -154,7 +154,7 @@ nud(pratt_parser_context_t* context)
     } else {
         sprintf(
             ERR_MSG_BUF, "Unexpected token type at beginning of expression: %s",
-            OP_STRS[token->name]
+            OP_STRS[token->code]
         );
         throw_syntax_error(token->pos, ERR_MSG_BUF);
     }
@@ -173,9 +173,9 @@ led(pratt_parser_context_t* context, token_t* next)
     }
 #endif
 
-    if (next->type == TOK_OP && !is_unary_op(next->name)) {
+    if (next->type == TOK_OP && !is_unary_op(next->code)) {
         /* is binary operator */
-        if (is_right_associative_op(next->name)) {
+        if (is_right_associative_op(next->code)) {
             bp--;
         }
         parse_expr(context, bp);
@@ -294,7 +294,7 @@ insert_op(token_t* op_token, dynarr_token_t* op_stack, dynarr_token_t* output)
     token_t* stack_top = dynarr_token_back(op_stack);
     /* pop stack until top is left bracket or precedence is not lower */
     while (stack_top != NULL && stack_top->type != TOK_LB
-           && op_prec_lt(stack_top->name, op_token->name)) {
+           && op_prec_lt(stack_top->code, op_token->code)) {
         dynarr_token_append(output, stack_top);
         dynarr_token_pop(op_stack);
         stack_top = dynarr_token_back(op_stack);
@@ -338,7 +338,7 @@ shunting_yard(const dynarr_token_t tokens)
 
         /* update state */
         if (cur_token->type == TOK_OP) {
-            is_prefixer = is_prefixable_op(cur_token->name);
+            is_prefixer = is_prefixable_op(cur_token->code);
         } else if (cur_token->type == TOK_LB) {
             is_prefixer = 1;
         } else if (cur_token->type == TOK_RB) {
@@ -359,11 +359,11 @@ shunting_yard(const dynarr_token_t tokens)
 
         /* check expectation */
         if (is_prefixer && expectation == INFIXER) {
-            sprintf(ERR_MSG_BUF, EXPECT_INFIX_MSG, OP_STRS[cur_token->name]);
+            sprintf(ERR_MSG_BUF, EXPECT_INFIX_MSG, OP_STRS[cur_token->code]);
             throw_syntax_error(cur_token->pos, ERR_MSG_BUF);
         }
         if (!is_prefixer && expectation == PREFIXER) {
-            sprintf(ERR_MSG_BUF, EXPECT_PREFIX_MSG, OP_STRS[cur_token->name]);
+            sprintf(ERR_MSG_BUF, EXPECT_PREFIX_MSG, OP_STRS[cur_token->code]);
             throw_syntax_error(cur_token->pos, ERR_MSG_BUF);
         }
 
@@ -374,7 +374,7 @@ shunting_yard(const dynarr_token_t tokens)
                 expectation = PREFIXER;
             }
             /* positive sign do nothing, can discard */
-            if (cur_token->name == OP_POS) {
+            if (cur_token->code == OP_POS) {
                 continue;
             }
             insert_op(cur_token, &op_stack, &output);
@@ -400,16 +400,16 @@ shunting_yard(const dynarr_token_t tokens)
             /* pop out the left bracket */
             dynarr_token_pop(&op_stack);
             /* special operators replacement: function and macro maker */
-            if (stack_top->name == OP_LPAREN && cur_token->name == OP_RPAREN) {
+            if (stack_top->code == OP_LPAREN && cur_token->code == OP_RPAREN) {
                 /* do nothing */
             } else if (
-                stack_top->name == OP_LCURLY && cur_token->name == OP_RCURLY
+                stack_top->code == OP_LCURLY && cur_token->code == OP_RCURLY
             ) {
                 /* function maker */
                 token_t fmake = { NULL, OP_FMAKE, TOK_OP, stack_top->pos };
                 dynarr_token_append(&output, &fmake);
             } else if (
-                stack_top->name == OP_LSQUARE && cur_token->name == OP_RSQUARE
+                stack_top->code == OP_LSQUARE && cur_token->code == OP_RSQUARE
             ) {
                 /* macro maker */
                 token_t mmake = { NULL, OP_MMAKE, TOK_OP, stack_top->pos };
@@ -418,7 +418,7 @@ shunting_yard(const dynarr_token_t tokens)
                 sprintf(
                     ERR_MSG_BUF,
                     "Unmatched closing bracket: Found '%s' to '%s'",
-                    OP_STRS[stack_top->name], OP_STRS[cur_token->name]
+                    OP_STRS[stack_top->code], OP_STRS[cur_token->code]
                 );
                 throw_syntax_error(cur_token->pos, ERR_MSG_BUF);
             }

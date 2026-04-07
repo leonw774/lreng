@@ -27,8 +27,8 @@ token_tree_create(dynarr_token_t postfix_tokens)
     /* find max_id_name */
     for (i = postfix_tokens.size - 1; i >= 0; i--) {
         token_t* t = dynarr_token_at(&postfix_tokens, i);
-        if (t->type == TOK_ID && tree.max_id_name < t->name) {
-            tree.max_id_name = t->name;
+        if (t->type == TOK_ID && tree.max_id_name < t->code) {
+            tree.max_id_name = t->code;
         }
     }
 
@@ -46,7 +46,7 @@ token_tree_create(dynarr_token_t postfix_tokens)
 #endif
         if (cur_token->type == TOK_OP) {
             int l_index, r_index = -1;
-            if (!is_unary_op(cur_token->name)) {
+            if (!is_unary_op(cur_token->code)) {
                 r_index = *dynarr_int_back(&index_stack);
                 dynarr_int_pop(&index_stack);
                 tree.rights[i] = r_index;
@@ -115,7 +115,7 @@ token_tree_create(dynarr_token_t postfix_tokens)
                     .number = number_from_str(cur_token->str),
                 }
             );
-        } else if (cur_token->type == TOK_OP && cur_token->name == OP_PAIR) {
+        } else if (cur_token->type == TOK_OP && cur_token->code == OP_PAIR) {
             if (tree.lefts[i] == -1 || tree.rights[i] == -1) {
                 throw_syntax_error(
                     cur_token->pos, "Pair operator has too few operands"
@@ -157,7 +157,7 @@ token_tree_free(token_tree_t* tree)
     */
     for (i = tree->tokens.size - 1; i >= 0; i--) {
         token_t* token = dynarr_token_at(&tree->tokens, i);
-        if (token->type == TOK_ID && token->name < RESERVED_ID_NUM) {
+        if (token->type == TOK_ID && token->code < RESERVED_ID_NUM) {
             continue;
         }
         if (tree->literals[i] != NULL) {

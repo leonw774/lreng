@@ -3,13 +3,13 @@
 #ifndef FRAME_H
 #define FRAME_H
 
-typedef struct name_objptr {
-    int name;
-    object_t* objptr;
-} name_objptr_t;
+typedef struct frame_entry {
+    int code;
+    object_t* object;
+} frame_entry_t;
 
-#define TYPE name_objptr_t
-#define TYPE_NAME name_objptr
+#define TYPE frame_entry_t
+#define TYPE_NAME frame_entry
 #include "utils/dynarr.tmpl.h"
 #undef TYPE_NAME
 #undef TYPE
@@ -20,8 +20,8 @@ typedef struct frame {
     /* do we own the globals? if true, we can free it */
     unsigned int is_own_globals;
 
-    /* the reference to the global stack that stores shared name-object pairs */
-    dynarr_name_objptr_t* globals;
+    /* the reference to the global stack that stores shared code-object pairs */
+    dynarr_frame_entry_t* globals;
 
     /* stores the functions that own each stack section */
     dynarr_int_t entry_indexs;
@@ -29,8 +29,8 @@ typedef struct frame {
     /* store the start index of each stack section */
     dynarr_int_t stack_pointers;
 
-    /* stores the name-object pairs for function stack on a dynamic array */
-    dynarr_name_objptr_t stack;
+    /* stores the code-object pairs for function stack on a dynamic array */
+    dynarr_frame_entry_t stack;
 } frame_t;
 
 extern frame_t* frame_new(const frame_t* parent);
@@ -43,9 +43,9 @@ extern void frame_call(frame_t* f, const int entry_index);
 
 extern void frame_return(frame_t* f);
 
-extern object_t* frame_get(const frame_t* f, const int name);
+extern object_t* frame_get(const frame_t* f, const int code);
 
-extern object_t** frame_set(frame_t* f, const int name, object_t* obj);
+extern object_t** frame_set(frame_t* f, const int code, object_t* obj);
 
 extern int frame_print(frame_t* f);
 

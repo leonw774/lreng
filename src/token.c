@@ -1,6 +1,6 @@
-#include "./token.h"
-#include "./reserved.h"
-#include "./utils/errormsg.h"
+#include "token.h"
+#include "reserved.h"
+#include "utils/errormsg.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -14,7 +14,7 @@ token_print(const token_t* token)
     }
     if (token->type == TOK_OP || token->type == TOK_LB
         || token->type == TOK_RB) {
-        token_str = OP_STRS[token->name];
+        token_str = OP_STRS[token->code];
     } else {
         token_str = token->str;
     }
@@ -38,7 +38,7 @@ token_print(const token_t* token)
         printf("printf_token: bad token type: %d\n", token->type);
         type_str = "";
     }
-    return (token->name == -1)
+    return (token->code == -1)
         ? printf("[%s \"%s\"]", type_str, token_str)
-        : printf("[%s \"%s\" %d]", type_str, token_str, token->name);
+        : printf("[%s \"%s\" %d]", type_str, token_str, token->code);
 }

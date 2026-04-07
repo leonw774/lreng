@@ -55,7 +55,7 @@ is_bad_type(
     sprintf(
         ERR_MSG_BUF,
         "Bad type for operator \"%s\": expect (%s, %s), get (%s, %s)",
-        OP_STRS[op_token.name],
+        OP_STRS[op_token.code],
         left_good_type == NO_OPRAND ? "" : OBJ_TYPE_STR[left_good_type],
         right_good_type == NO_OPRAND ? "" : OBJ_TYPE_STR[right_good_type],
         left_obj == NULL ? "" : OBJ_TYPE_STR[left_obj->type],
@@ -622,7 +622,7 @@ exec_op(
     const token_t op_token, object_t* left_obj, object_t* right_obj
 )
 {
-    switch (op_token.name) {
+    switch (op_token.code) {
     case OP_FMAKE:
         return object_create(
             TYPE_CALL,
@@ -898,7 +898,7 @@ exec_op(
                 &context.tree->tokens,
                 context.tree->lefts[cur_eval_node->token_index]
             );
-            right_obj->as.callable.arg_name = left_token->name;
+            right_obj->as.callable.arg_name = left_token->code;
         }
         return object_ref(right_obj);
     case OP_CONDAND:
@@ -920,10 +920,10 @@ exec_op(
         if (is_bad_type(op_token, NO_OPRAND, TYPE_ANY, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         }
-        if (frame_set(context.cur_frame, left_token->name, right_obj) == NULL) {
+        if (frame_set(context.cur_frame, left_token->code, right_obj) == NULL) {
             const char* err_msg = "Repeated initialization of "
                                   "identifier '%s' (var_id=%d)";
-            sprintf(ERR_MSG_BUF, err_msg, left_token->str, left_token->name);
+            sprintf(ERR_MSG_BUF, err_msg, left_token->str, left_token->code);
             print_runtime_error(left_token->pos, ERR_MSG_BUF);
             return (object_t*)ERR_OBJECT_PTR;
         }
@@ -936,7 +936,7 @@ exec_op(
         /* check inside the pair */
         {
             token_t tmp_op_token = (token_t) {
-                .name = OP_CONDPCALL,
+                .code = OP_CONDPCALL,
                 .pos = op_token.pos,
                 .type = TOK_OP,
                 .str = "the members in the conditional function caller",
@@ -960,7 +960,7 @@ exec_op(
         }
         return object_ref(right_obj);
     default:
-        sprintf(ERR_MSG_BUF, "exec_op: bad op name: %d", op_token.name);
+        sprintf(ERR_MSG_BUF, "exec_op: bad op code: %d", op_token.code);
         print_runtime_error(op_token.pos, ERR_MSG_BUF);
         return (object_t*)ERR_OBJECT_PTR;
     }
@@ -1020,7 +1020,7 @@ eval(context_t context, const int entry_index)
             /* if it is a literal, use it */
             cur_eval_node->object = object_ref(token_tree->literals[cur_index]);
         } else if (cur_token.type == TOK_ID) {
-            object_t* o = frame_get(cur_frame, cur_token.name);
+            object_t* o = frame_get(cur_frame, cur_token.code);
             if (o == NULL) {
                 const char* err_msg = "Identifier '%s' used uninitialized";
                 sprintf(ERR_MSG_BUF, err_msg, cur_token.str);
@@ -1032,8 +1032,8 @@ eval(context_t context, const int entry_index)
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
                 printf(
-                    "  get identifiter '%s' (name=%d) from frame (addr=%p): ",
-                    cur_token.str, cur_token.name, o
+                    "  get identifiter '%s' (code=%d) from frame (addr=%p): ",
+                    cur_token.str, cur_token.code, o
                 );
                 object_print(o, '\n');
             }
@@ -1055,18 +1055,18 @@ eval(context_t context, const int entry_index)
                - op is cond-and and left is not evaled, or
                - op is cond-and and left is false
             */
-            int is_condor_and_left_true = (cur_token.name == OP_CONDOR)
+            int is_condor_and_left_true = (cur_token.code == OP_CONDOR)
                 && ((left_obj == NULL) || object_to_bool(left_obj));
-            int is_condand_and_left_false = (cur_token.name == OP_CONDAND)
+            int is_condand_and_left_false = (cur_token.code == OP_CONDAND)
                 && ((left_obj == NULL) || !object_to_bool(left_obj));
-            int is_bypass_eval_right = is_unary_op(cur_token.name)
+            int is_bypass_eval_right = is_unary_op(cur_token.code)
                 || is_condor_and_left_true || is_condand_and_left_false;
             /* bypass left evaluation if:
                - op is OP_FMAKE or OP_MMAKE or OP_ARG or OP_ASSIGN
             */
-            int is_bypass_eval_left = cur_token.name == OP_FMAKE
-                || cur_token.name == OP_MMAKE || cur_token.name == OP_ARG
-                || cur_token.name == OP_ASSIGN;
+            int is_bypass_eval_left = cur_token.code == OP_FMAKE
+                || cur_token.code == OP_MMAKE || cur_token.code == OP_ARG
+                || cur_token.code == OP_ASSIGN;
 
             /* if left and right both need eval push them and continue */
             if (!is_bypass_eval_left && left_obj == NULL
@@ -1104,13 +1104,13 @@ eval(context_t context, const int entry_index)
             if (global_is_enable_debug_log) {
                 printf(
                     "^ (node %d) exec_op %s returned\n", cur_index,
-                    OP_STRS[cur_token.name]
+                    OP_STRS[cur_token.code]
                 );
-                if (cur_token.name == OP_FMAKE) {
+                if (cur_token.code == OP_FMAKE) {
                     printf("  Made func:");
                     object_print(cur_eval_node->object, '\n');
                 }
-                if (cur_token.name == OP_MMAKE) {
+                if (cur_token.code == OP_MMAKE) {
                     printf("  Made macro:");
                     object_print(cur_eval_node->object, '\n');
                 }
@@ -1119,7 +1119,7 @@ eval(context_t context, const int entry_index)
 #endif
             if (cur_eval_node->object->is_error) {
                 const char* err_msg = "operator \"%s\" returns with error";
-                sprintf(ERR_MSG_BUF, err_msg, OP_STRS[cur_token.name]);
+                sprintf(ERR_MSG_BUF, err_msg, OP_STRS[cur_token.code]);
                 print_runtime_error(cur_token.pos, ERR_MSG_BUF);
             }
             /* free the both sub-tree */
