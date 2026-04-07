@@ -1,7 +1,7 @@
 #ifndef OPERATOR_H
 #define OPERATOR_H
 
-typedef enum op_name {
+typedef enum op_code {
     /* ******** brackets ******** */
     OP_LCURLY,
     OP_RCURLY,
@@ -55,9 +55,11 @@ typedef enum op_name {
     OP_CONDPCALL,
     /* ******** expression separator ******** */
     OP_EXPRSEP,
-} op_name_enum;
+    /* ******** end of enum ******** */
+    OP_END_OF_ENUM,
+} op_code_enum;
 
-#define OPERATOR_COUNT OP_EXPRSEP + 1
+#define OPERATOR_COUNT OP_END_OF_ENUM
 
 static const int UNARY_OPS[] = {
     /* callable makers are also unary operators */
@@ -72,7 +74,7 @@ static const int BINARY_RIGHT_ASSOCIATIVE_OPS[] = {
     OP_EXP, OP_PAIR, OP_CALLR, OP_ARG, OP_CONDPCALL, OP_ASSIGN
 };
 
-/* OP_STR must be aligned with op_name_enum */
+/* OP_STR must be aligned with op_code_enum */
 
 static const char* const OP_STRS[OPERATOR_COUNT] = {
     /* ******** brackets ******** */
@@ -138,13 +140,13 @@ extern int is_op_char(char c);
 
 extern int is_2char_op(char left, char right);
 
-extern int get_op_precedence(op_name_enum op);
+extern int get_op_precedence(op_code_enum op);
 
-extern int is_unary_op(op_name_enum op);
+extern int is_unary_op(op_code_enum op);
 
-extern int is_prefixable_op(op_name_enum op);
+extern int is_prefixable_op(op_code_enum op);
 
-extern int is_right_associative_op(op_name_enum op);
+extern int is_right_associative_op(op_code_enum op);
 
 extern const char R_ASSOCIATIVE_OPS[];
 

@@ -1,17 +1,31 @@
-#include "token_tree.h"
 #include "frame.h"
 #include "reserved.h"
 #include "token.h"
+#include "tree_parser.h"
 #include "utils/arena.h"
 #include "utils/errormsg.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-/* prepare the tree struct for fast lookup and pre-eval of the postfix tokens */
+/* create tree from token list and prepare for fast lookup and pre-eval */
 token_tree_t
-token_tree_create(dynarr_token_t postfix_tokens)
+token_tree_create(dynarr_token_t tokens)
 {
+    /* parse */
+
+    /* old shunting yard */
+    /* dynarr_token_t postfix_tokens = shunting_yard(tokens); */
+
+    /* pratt parsing */
+    pratt_parser_context_t pp_context = {
+        .tokens = tokens,
+        .output = dynarr_token_new(),
+        .pos = 0,
+    };
+    parse_expr(&pp_context, 0);
+    dynarr_token_t postfix_tokens = pp_context.output;
+
     int i = 0, token_size = postfix_tokens.size;
     token_tree_t tree = {
         .tokens = postfix_tokens,
@@ -142,6 +156,13 @@ token_tree_create(dynarr_token_t postfix_tokens)
         }
 #endif
     }
+
+#ifdef ENABLE_DEBUG_LOG
+    if (global_is_enable_debug_log) {
+        printf("final_tree=\n");
+        token_tree_print(&tree);
+    }
+#endif
 
     /* free things */
     dynarr_int_free(&index_stack);

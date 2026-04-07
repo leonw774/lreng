@@ -79,7 +79,7 @@ main(int argc, char** argv)
 
     arena_init(&token_str_arena, fsize);
     dynarr_token_t tokens = tokenize(src, fsize);
-    token_tree_t syntax_tree = parse_tokens_to_tree(tokens);
+    token_tree_t syntax_tree = token_tree_create(tokens);
     int is_good_semantic = check_semantic(syntax_tree);
     if (!is_good_semantic) {
         return SEMANTIC_ERR_CODE;

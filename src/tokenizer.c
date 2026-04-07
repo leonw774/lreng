@@ -75,8 +75,8 @@ get_op_tok_type(char* op_str)
 }
 
 /* return the operator code (enum) of an operator str. return -1 if failed */
-op_name_enum
-get_op_enum(token_t* last_token, char* op_str)
+op_code_enum
+get_op_code(token_t* last_token, char* op_str)
 {
     int is_expect_prefixer = last_token == NULL || last_token->type == TOK_OP
         || last_token->type == TOK_LB;
@@ -144,15 +144,15 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos)
     char* tok_str = dynarr_char_to_str(&cur_cargo->tmp_str);
     if (type == TOK_OP || type == TOK_LB || type == TOK_RB) {
         token_t* last_token = dynarr_token_back(&cur_cargo->tokens);
-        op_name_enum op_name = get_op_enum(last_token, tok_str);
-        if ((int)op_name == -1) {
+        op_code_enum op_code = get_op_code(last_token, tok_str);
+        if ((int)op_code == -1) {
             sprintf(ERR_MSG_BUF, "token '%s' is not a valid operator", tok_str);
             throw_syntax_error(pos, ERR_MSG_BUF);
         }
         free(tok_str);
         /* left and right parenthese with nothing inside a shorthand for null */
         if (last_token != NULL && last_token->type == TOK_LB
-            && last_token->code == OP_LPAREN && op_name == OP_RPAREN) {
+            && last_token->code == OP_LPAREN && op_code == OP_RPAREN) {
             token_t null_tok = {
                 .str = RESERVED_IDS[RESERVED_ID_NAME_NULL],
                 .code = RESERVED_ID_NAME_NULL,
@@ -164,7 +164,7 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos)
             /* replace it with `null` */
             dynarr_token_append(&cur_cargo->tokens, &null_tok);
         } else {
-            token_t new_token = { NULL, op_name, type, pos };
+            token_t new_token = { NULL, op_code, type, pos };
             dynarr_token_append(&cur_cargo->tokens, &new_token);
         }
     } else {

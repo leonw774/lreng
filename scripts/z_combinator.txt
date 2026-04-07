@@ -12,4 +12,4 @@ debug(fib_recursive 2);
 debug(fib_recursive 3);
 debug(fib_recursive 4);
 debug(fib_recursive 5);
-debug(fib_recursive 6)
+debug(fib_recursive 20)

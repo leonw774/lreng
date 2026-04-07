@@ -1,6 +1,6 @@
 #include "main.h"
 #include "reserved.h"
-#include "token_tree.h"
+#include "tree_parser.h"
 #include "utils/errormsg.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,14 +26,6 @@
  * // the final expression grammar
  * <expression> ::= <nud> | <led> | <juxta>
  */
-
-/* Pratt parse context */
-
-typedef struct pratt_parser_context {
-    dynarr_token_t tokens;
-    dynarr_token_t output;
-    int pos;
-} pratt_parser_context_t;
 
 int
 pp_context_advance(pratt_parser_context_t* context)
@@ -85,8 +77,6 @@ is_expression_starter(const token_t* token)
             || token->type == TOK_ID || token->type == TOK_NUM
             || token->type == TOK_LB);
 }
-
-void parse_expr(pratt_parser_context_t* context, int cur_binding_power);
 
 void
 nud(pratt_parser_context_t* context)
@@ -183,7 +173,7 @@ led(pratt_parser_context_t* context, token_t* next)
     }
 }
 
-/* return rearramged tokens in postfix order */
+/* build context.output tokens in postfix order */
 void
 parse_expr(pratt_parser_context_t* context, const int cur_binding_power)
 {
@@ -272,7 +262,7 @@ parse_expr(pratt_parser_context_t* context, const int cur_binding_power)
 
 /* is the precedence o1 < o2 ? */
 static inline unsigned char
-op_prec_lt(op_name_enum o1, op_name_enum o2)
+op_prec_lt(op_code_enum o1, op_code_enum o2)
 {
     /*
     printf(
@@ -469,26 +459,4 @@ shunting_yard(const dynarr_token_t tokens)
 #endif
 
     return output;
-}
-
-token_tree_t
-parse_tokens_to_tree(const dynarr_token_t tokens)
-{
-    // token_tree_t tree = token_tree_create(shunting_yard(tokens));
-
-    pratt_parser_context_t pp_context = {
-        .tokens = tokens,
-        .output = dynarr_token_new(),
-        .pos = 0,
-    };
-    parse_expr(&pp_context, 0);
-    token_tree_t tree = token_tree_create(pp_context.output);
-
-#ifdef ENABLE_DEBUG_LOG
-    if (global_is_enable_debug_log) {
-        printf("final_tree=\n");
-        token_tree_print(&tree);
-    }
-#endif
-    return tree;
 }

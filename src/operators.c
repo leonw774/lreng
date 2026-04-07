@@ -53,7 +53,7 @@ is_2char_op(char left, char right)
 }
 
 int
-get_op_precedence(op_name_enum op)
+get_op_precedence(op_code_enum op)
 {
     static int PRECEDENCES_ARRAY[OPERATOR_COUNT];
     static unsigned char is_initialized = 0;
@@ -76,7 +76,7 @@ get_op_precedence(op_name_enum op)
 };
 
 int
-is_unary_op(op_name_enum op)
+is_unary_op(op_code_enum op)
 {
     static unsigned char IS_UNARY_OP_ARRAY[OPERATOR_COUNT];
     static unsigned char is_initialized = 0;
@@ -95,7 +95,7 @@ is_unary_op(op_name_enum op)
 };
 
 int
-is_prefixable_op(op_name_enum op)
+is_prefixable_op(op_code_enum op)
 {
     unsigned int i;
     if (op == OP_LCURLY || op == OP_LSQUARE || op == OP_LPAREN) {
@@ -110,7 +110,7 @@ is_prefixable_op(op_name_enum op)
 };
 
 int
-is_right_associative_op(op_name_enum op)
+is_right_associative_op(op_code_enum op)
 {
     unsigned int i;
     for (i = 0; i < sizeof(UNARY_OPS) / sizeof(int); i++) {
