@@ -376,7 +376,9 @@ syntax_tree_compile(const syntax_tree_t* tree, const int root_index)
         left_code = syntax_tree_compile(tree, left_index);
         right_code = syntax_tree_compile(tree, right_index);
         dynarr_bytecode_concat(&output, &left_code);
-        bytecode_array_extend(&output, BOP_POP, 0, cur_pos);
+        /* we actually don't need POP because RET will just get the top object
+         * and pop all the rest for us */
+        /* bytecode_array_extend(&output, BOP_POP, 0, cur_pos); */
         dynarr_bytecode_concat(&output, &right_code);
         dynarr_bytecode_free(&left_code);
         dynarr_bytecode_free(&right_code);
