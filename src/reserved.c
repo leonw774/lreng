@@ -27,7 +27,7 @@ const object_t RESERVED_OBJS[RESERVED_ID_COUNT] = {
         .as.callable = {
             .init_frame = NULL,
             .index = -1,
-            .arg_name = -1,
+            .arg_code = -1,
             .builtin_name = RESERVED_ID_CODE_INPUT
         },
     },
@@ -39,7 +39,7 @@ const object_t RESERVED_OBJS[RESERVED_ID_COUNT] = {
         .as.callable = {
             .init_frame = NULL,
             .index = -1,
-            .arg_name = -1,
+            .arg_code = -1,
             .builtin_name = RESERVED_ID_CODE_OUTPUT,
         },
     },
@@ -51,7 +51,7 @@ const object_t RESERVED_OBJS[RESERVED_ID_COUNT] = {
         .as.callable = {
             .init_frame = NULL,
             .index = -1,
-            .arg_name = -1,
+            .arg_code = -1,
             .builtin_name = RESERVED_ID_CODE_ERROR,
         },
     },
@@ -63,7 +63,7 @@ const object_t RESERVED_OBJS[RESERVED_ID_COUNT] = {
         .as.callable = {
             .init_frame = NULL,
             .index = -1,
-            .arg_name = -1,
+            .arg_code = -1,
             .builtin_name = RESERVED_ID_CODE_IS_NUMBER,
         },
     },
@@ -75,7 +75,7 @@ const object_t RESERVED_OBJS[RESERVED_ID_COUNT] = {
         .as.callable = {
             .init_frame = NULL,
             .index = -1,
-            .arg_name = -1,
+            .arg_code = -1,
             .builtin_name = RESERVED_ID_CODE_IS_CALLABLE,
         },
     },
@@ -87,7 +87,7 @@ const object_t RESERVED_OBJS[RESERVED_ID_COUNT] = {
         .as.callable = {
             .init_frame = NULL,
             .index = -1,
-            .arg_name = -1,
+            .arg_code = -1,
             .builtin_name = RESERVED_ID_CODE_IS_PAIR,
         },
     },
@@ -99,7 +99,7 @@ const object_t RESERVED_OBJS[RESERVED_ID_COUNT] = {
         .as.callable = {
             .init_frame = NULL,
             .index = -1,
-            .arg_name = -1,
+            .arg_code = -1,
             .builtin_name = RESERVED_ID_CODE_DEBUG,
         },
     }

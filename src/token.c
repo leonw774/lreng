@@ -14,7 +14,7 @@ token_print(const token_t* token)
     }
     if (token->type == TOK_OP || token->type == TOK_LB
         || token->type == TOK_RB) {
-        token_str = OP_STRS[token->code];
+        token_str = OP_NAMES[token->code];
     } else {
         token_str = token->str;
     }

@@ -79,10 +79,10 @@ frame_free(frame_t* f)
 
 /* push new stack_start_index */
 inline void
-frame_call(frame_t* f, int entry_index)
+frame_push_stack(frame_t* f, int entry_index)
 {
 #ifdef ENABLE_DEBUG_LOG_MORE
-    printf("frame_call: %p\n", f);
+    printf("frame_push_stack: %p\n", f);
 #endif
     dynarr_int_append(&f->entry_indexs, &entry_index);
     dynarr_int_append(&f->stack_pointers, &(f->stack.size));
@@ -90,10 +90,10 @@ frame_call(frame_t* f, int entry_index)
 
 /* deref and pop objects in the last section of stack */
 inline void
-frame_return(frame_t* f)
+frame_pop_stack(frame_t* f)
 {
 #ifdef ENABLE_DEBUG_LOG_MORE
-    printf("frame_return: %p\n", f);
+    printf("frame_pop_stack: %p\n", f);
 #endif
     int i, stack_start_index;
     if (f->entry_indexs.size == 0) {
@@ -187,7 +187,7 @@ frame_print(frame_t* f)
             printed_bytes_count += printf(", ");
         }
         printed_bytes_count += printf(
-            "(var_id=%d addr=%p type=%s)", pair->code,
+            "(id_code=%d addr=%p type=%s)", pair->code,
             PTR_L20BITS(pair->object), OBJ_TYPE_STR[pair->object->type]
         );
     }
@@ -220,7 +220,7 @@ frame_print(frame_t* f)
             printed_bytes_count += printf(", ");
         }
         printed_bytes_count += printf(
-            "(var_id=%d addr=%p type=%s)", pair->code,
+            "(id_code=%d addr=%p type=%s)", pair->code,
             PTR_L20BITS(pair->object), OBJ_TYPE_STR[pair->object->type]
         );
     }
@@ -230,77 +230,77 @@ frame_print(frame_t* f)
 }
 
 frame_t*
-frame_call_with_closure(const frame_t* caller_frame, const object_t* func)
+frame_get_callee_frame(const frame_t* caller_frame, const object_t* func_obj)
 {
     frame_t* callee_frame = NULL;
-    int caller_entry_index = caller_frame->entry_indexs.size == 0
-        ? -1
-        : *dynarr_int_back(&caller_frame->entry_indexs);
+    callable_t callable_obj = func_obj->as.callable;
+    int i, is_forked = 0;
+    int caller_entry_index = -1;
+    if (caller_frame->entry_indexs.size != 0) {
+        caller_entry_index = *dynarr_int_back(&caller_frame->entry_indexs);
+    }
 
     /* if is direct recursion, copy caller frame except last stack section */
     if (caller_frame->stack.size > 0
-        && caller_entry_index == func->as.callable.index) {
+        && caller_entry_index == callable_obj.index) {
         callee_frame = frame_copy(caller_frame);
-        frame_return(callee_frame);
+        frame_pop_stack(callee_frame); /* this remove the last stack */
+        frame_push_stack(callee_frame, callable_obj.index);
+        return callee_frame;
     }
+
     /* otherwise, starting from i = 0, if the i-th entry index of the
-       function's init-time frame and the i-th entry index of the caller frame
-       is the same, then the i-th section of callee frame equals caller frame's
-       i-th section. but once the entry_index is different, they are in
-       different closure path, the rest of init-time frame stack is used
-    */
-    else {
-        int i, is_forked = 0;
-        const frame_t* f_init_frame = func->as.callable.init_frame;
-        callee_frame = frame_new(f_init_frame);
+     * function's init-time frame and the i-th entry index of the caller frame
+     * is the same, then the i-th section of callee frame equals caller frame's
+     * i-th section. but once the entry_index is different, they are in
+     * different closure path, the rest of init-time frame stack is used */
+    callee_frame = frame_new(callable_obj.init_frame);
 
-        /* for every function's init-time frame */
-        for (i = 0; i < f_init_frame->entry_indexs.size; i++) {
-            int j, start, end;
-            const frame_t* src_frame;
-            int f_init_index = *dynarr_int_at(&f_init_frame->entry_indexs, i);
-            int caller_index = -1;
+    /* for every function's init-time frame */
+    for (i = 0; i < callable_obj.init_frame->entry_indexs.size; i++) {
+        int j, start, end;
+        const frame_t* src_frame;
+        int func_init_index = callable_obj.init_frame->entry_indexs.data[i];
+        int caller_index = -1;
 
-            /* get caller frame's entry index at this step of closure path */
-            if (i < caller_frame->entry_indexs.size) {
-                caller_index = *dynarr_int_at(&caller_frame->entry_indexs, i);
-            }
-            /* push the init-time frame's entry_index to callee */
-            dynarr_int_append(&callee_frame->entry_indexs, &f_init_index);
-            /* push the current stack size to stack pointers */
-            dynarr_int_append(
-                &callee_frame->stack_pointers, &callee_frame->stack.size
-            );
-            /* choose the source frame to copy */
-            if (!is_forked && caller_index == f_init_index) {
+        /* get caller frame's entry index at this step of closure path */
+        if (i < caller_frame->entry_indexs.size) {
+            caller_index = *dynarr_int_at(&caller_frame->entry_indexs, i);
+        }
+        /* push the init-time frame's entry_index to callee */
+        dynarr_int_append(&callee_frame->entry_indexs, &func_init_index);
+        /* push the current stack size to stack pointers */
+        dynarr_int_append(
+            &callee_frame->stack_pointers, &callee_frame->stack.size
+        );
+        /* choose the source frame to copy */
+        if (!is_forked && caller_index == func_init_index) {
 #ifdef ENABLE_DEBUG_LOG_MORE
-                printf("frame_call_with_closure: stack[%d] use caller\n", i);
+            printf("frame_get_callee_frame: stack[%d] use caller\n", i);
 #endif
-                src_frame = caller_frame;
-            } else {
+            src_frame = caller_frame;
+        } else {
 #ifdef ENABLE_DEBUG_LOG_MORE
-                printf("frame_call_with_closure: stack[%d] use init-time\n", i);
+            printf("frame_get_callee_frame: stack[%d] use init-time\n", i);
 #endif
-                src_frame = f_init_frame;
-                is_forked = 1;
-            }
-            /* copy the i-th section of the source frameF's stack to callee */
-            start = *dynarr_int_at(&src_frame->stack_pointers, i);
-            end = (i + 1 < src_frame->stack_pointers.size)
-                ? *dynarr_int_at(&src_frame->stack_pointers, i + 1)
-                : src_frame->stack.size;
+            src_frame = callable_obj.init_frame;
+            is_forked = 1;
+        }
+        /* copy the i-th section of the source frameF's stack to callee */
+        start = *dynarr_int_at(&src_frame->stack_pointers, i);
+        end = (i + 1 < src_frame->stack_pointers.size)
+            ? *dynarr_int_at(&src_frame->stack_pointers, i + 1)
+            : src_frame->stack.size;
 #ifdef ENABLE_DEBUG_LOG_MORE
-            printf("frame_call_with_closure: start,end = %d,%d\n", start, end);
+        printf("frame_get_callee_frame: start,end = %d,%d\n", start, end);
 #endif
-            for (j = start; j < end; j++) {
-                frame_entry_t* pair
-                    = dynarr_frame_entry_at(&src_frame->stack, j);
-                object_ref(pair->object);
-                dynarr_frame_entry_append(&callee_frame->stack, pair);
-            }
+        for (j = start; j < end; j++) {
+            frame_entry_t* pair = dynarr_frame_entry_at(&src_frame->stack, j);
+            object_ref(pair->object);
+            dynarr_frame_entry_append(&callee_frame->stack, pair);
         }
     }
     /* then push the new stack section and entry index to callee frame */
-    frame_call(callee_frame, func->as.callable.index);
+    frame_push_stack(callee_frame, callable_obj.index);
     return callee_frame;
 }

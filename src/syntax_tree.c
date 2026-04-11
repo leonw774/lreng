@@ -47,16 +47,17 @@ syntax_tree_create(dynarr_token_t tokens)
 
     /* get max_id_code */
     for (i = postfix_tokens.size - 1; i >= 0; i--) {
-        token_t* t = dynarr_token_at(&postfix_tokens, i);
-        if (t->type == TOK_ID && tree.max_id_code < t->code) {
-            tree.max_id_code = t->code;
+        token_t* cur_token = dynarr_token_at(&postfix_tokens, i);
+        if (cur_token->type == TOK_ID && tree.max_id_code < cur_token->code) {
+            tree.max_id_code = cur_token->code;
         }
     }
     tree.id_code_str_map = calloc(tree.max_id_code + 1, sizeof(char*));
     for (i = postfix_tokens.size - 1; i >= 0; i--) {
-        token_t* t = dynarr_token_at(&postfix_tokens, i);
-        if (t->type == TOK_ID && tree.id_code_str_map[t->code] == NULL) {
-            tree.id_code_str_map[t->code] = t->str;
+        token_t* cur_token = dynarr_token_at(&postfix_tokens, i);
+        if (cur_token->type == TOK_ID
+            && tree.id_code_str_map[cur_token->code] == NULL) {
+            tree.id_code_str_map[cur_token->code] = cur_token->str;
         }
     }
 
@@ -190,9 +191,10 @@ syntax_tree_create(dynarr_token_t tokens)
 
     dynarr_int_append(&tree.bytecode_indexs, &tree.root_index);
     for (i = 0; i < postfix_tokens.size; i++) {
-        token_t* t = dynarr_token_at(&postfix_tokens, i);
-        if (t->type == TOK_OP
-            && (t->code == OP_MAKE_FUNCT || t->code == OP_MAKE_MACRO)) {
+        token_t* cur_token = dynarr_token_at(&postfix_tokens, i);
+        if (cur_token->type == TOK_OP
+            && (cur_token->code == OP_MAKE_FUNCT
+                || cur_token->code == OP_MAKE_MACRO)) {
             dynarr_int_append(&tree.bytecode_indexs, &tree.lefts[i]);
         }
     }
@@ -209,7 +211,10 @@ syntax_tree_create(dynarr_token_t tokens)
         tree.bytecodes[i] = syntax_tree_compile(
             &tree, *dynarr_int_at(&tree.bytecode_indexs, i)
         );
-        bytecode_array_extend(&tree.bytecodes[i], BOP_RET, 0);
+        bytecode_array_extend(
+            &tree.bytecodes[i], BOP_RET, 0,
+            tree.tokens.data[tree.bytecode_indexs.data[i]].pos
+        );
     }
 
 #ifdef ENABLE_DEBUG_LOG
@@ -254,7 +259,7 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
             /* if we left a function */
             if (cur_depth <= cur_func_depth) {
                 dynarr_int_pop(&func_depth_stack);
-                frame_return(cur_frame);
+                frame_pop_stack(cur_frame);
             }
             /* check assign rule */
             if (cur_token->code == OP_ASSIGN) {
@@ -269,7 +274,7 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
             }
             /* walk into a function */
             else if (cur_token->code == OP_MAKE_FUNCT) {
-                frame_call(cur_frame, cur_index);
+                frame_push_stack(cur_frame, cur_index);
                 dynarr_int_append(&func_depth_stack, &cur_depth);
             }
         } else if (cur_token->type == TOK_ID) {
@@ -302,7 +307,12 @@ dynarr_bytecode_t
 syntax_tree_compile(const syntax_tree_t* tree, const int root_index)
 {
     dynarr_bytecode_t output = dynarr_bytecode_new();
+    dynarr_bytecode_t left_code;
+    dynarr_bytecode_t right_code;
     token_t cur_token = tree->tokens.data[root_index];
+    linecol_t cur_pos = cur_token.pos;
+    bytecode_op_code_enum bop_code;
+    int left_index, right_index;
 
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
@@ -314,82 +324,76 @@ syntax_tree_compile(const syntax_tree_t* tree, const int root_index)
 #endif
 
     if (tree->literals[root_index] != NULL) {
-        bytecode_array_extend(&output, BOP_PUSH_LITERAL, root_index);
+        bytecode_array_extend(&output, BOP_PUSH_LITERAL, root_index, cur_pos);
         return output;
     } else if (cur_token.type == TOK_ID) {
-        bytecode_array_extend(&output, BOP_FRAME_GET, cur_token.code);
+        bytecode_array_extend(&output, BOP_FRAME_GET, cur_token.code, cur_pos);
         return output;
     }
 
-    bytecode_op_code_enum bop_code = op_to_bop_code(cur_token.code);
-    int left_index = tree->lefts[root_index];
-    int right_index = tree->rights[root_index];
+    bop_code = op_to_bop_code(cur_token.code);
+    left_index = tree->lefts[root_index];
+    right_index = tree->rights[root_index];
 
     switch (cur_token.code) {
     case OP_MAKE_FUNCT:
     case OP_MAKE_MACRO:
-        bytecode_array_extend(&output, bop_code, left_index);
+        bytecode_array_extend(&output, bop_code, left_index, cur_pos);
         break;
     case OP_ASSIGN:
-    case OP_BIND_ARG: {
-        dynarr_bytecode_t right_code = syntax_tree_compile(tree, right_index);
+    case OP_BIND_ARG:
+        right_code = syntax_tree_compile(tree, right_index);
         dynarr_bytecode_concat(&output, &right_code);
         dynarr_bytecode_free(&right_code);
         bytecode_array_extend(
-            &output, bop_code, tree->tokens.data[left_index].code
+            &output, bop_code, tree->tokens.data[left_index].code, cur_pos
         );
         break;
-    }
-    case OP_COND_AND: {
-        dynarr_bytecode_t left_code = syntax_tree_compile(tree, left_index);
-        dynarr_bytecode_t right_code = syntax_tree_compile(tree, right_index);
+    case OP_COND_AND:
+        left_code = syntax_tree_compile(tree, left_index);
+        right_code = syntax_tree_compile(tree, right_index);
         dynarr_bytecode_concat(&output, &left_code);
-        bytecode_array_extend(&output, BOP_JUMP_FALSE_OR_POP, right_code.size);
+        bytecode_array_extend(
+            &output, BOP_JUMP_FALSE_OR_POP, right_code.size, cur_pos
+        );
         dynarr_bytecode_concat(&output, &right_code);
         dynarr_bytecode_free(&left_code);
         dynarr_bytecode_free(&right_code);
         break;
-    }
-    case OP_COND_OR: {
-        dynarr_bytecode_t left_code = syntax_tree_compile(tree, left_index);
-        dynarr_bytecode_t right_code = syntax_tree_compile(tree, right_index);
+    case OP_COND_OR:
+        left_code = syntax_tree_compile(tree, left_index);
+        right_code = syntax_tree_compile(tree, right_index);
         dynarr_bytecode_concat(&output, &left_code);
-        bytecode_array_extend(&output, BOP_JUMP_TRUE_OR_POP, right_code.size);
+        bytecode_array_extend(
+            &output, BOP_JUMP_TRUE_OR_POP, right_code.size, cur_pos
+        );
         dynarr_bytecode_concat(&output, &right_code);
         dynarr_bytecode_free(&left_code);
         dynarr_bytecode_free(&right_code);
         break;
-    }
-    case OP_EXPRSEP: {
-        dynarr_bytecode_t left_code = syntax_tree_compile(tree, left_index);
-        dynarr_bytecode_t right_code = syntax_tree_compile(tree, right_index);
+
+    case OP_EXPRSEP:
+        left_code = syntax_tree_compile(tree, left_index);
+        right_code = syntax_tree_compile(tree, right_index);
         dynarr_bytecode_concat(&output, &left_code);
+        bytecode_array_extend(&output, BOP_POP, 0, cur_pos);
         dynarr_bytecode_concat(&output, &right_code);
         dynarr_bytecode_free(&left_code);
         dynarr_bytecode_free(&right_code);
-        bytecode_array_extend(&output, BOP_POP, 0);
         break;
-    }
-    default: {
-        dynarr_bytecode_t left_code = syntax_tree_compile(tree, left_index);
+    default:
+        left_code = syntax_tree_compile(tree, left_index);
         if (right_index != -1) {
-            dynarr_bytecode_t right_code
-                = syntax_tree_compile(tree, right_index);
-            if (is_right_associative_op(cur_token.code)) {
-                dynarr_bytecode_concat(&output, &right_code);
-                dynarr_bytecode_concat(&output, &left_code);
-            } else {
-                dynarr_bytecode_concat(&output, &left_code);
-                dynarr_bytecode_concat(&output, &right_code);
-            }
+            right_code = syntax_tree_compile(tree, right_index);
+            dynarr_bytecode_concat(&output, &left_code);
+            dynarr_bytecode_concat(&output, &right_code);
             dynarr_bytecode_free(&right_code);
         } else {
             dynarr_bytecode_concat(&output, &left_code);
         }
         dynarr_bytecode_free(&left_code);
-        bytecode_array_extend(&output, bop_code, 0);
+        bytecode_array_extend(&output, bop_code, 0, cur_pos);
         break;
-    }
     };
     return output;
 }
@@ -557,12 +561,16 @@ syntax_tree_print(const syntax_tree_t* tree)
                 bc.op == BOP_JUMP_FALSE_OR_POP || bc.op == BOP_JUMP_TRUE_OR_POP
             ) {
                 printf(" (to %u)", j + bc.arg + 1);
-            } else if (bc.op == BOP_PUSH_LITERAL) {
+            } else if (
+                bc.op == BOP_PUSH_LITERAL || bc.op == BOP_MAKE_FUNCT
+                || bc.op == BOP_MAKE_MACRO
+            ) {
                 printf(" ((node %u) ", bc.arg);
                 token_print(&tree->tokens.data[bc.arg]);
                 printf(")");
             }
             printf("\n");
         }
+        printf("\n");
     }
 }

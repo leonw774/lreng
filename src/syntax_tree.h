@@ -18,6 +18,7 @@ typedef struct syntax_tree {
     int* sizes; /* number of nodes under a node */
     int max_id_code; /* number of ids in tree */
     const char** id_code_str_map;
+    int** bytecode_node_map;
 } syntax_tree_t;
 
 extern syntax_tree_t syntax_tree_create(dynarr_token_t tokens);

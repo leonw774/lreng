@@ -65,10 +65,10 @@ get_op_tok_type(char* op_str)
     if (op_str[1] != '\0') {
         return TOK_OP;
     }
-    is_left_bracket = c == OP_STRS[OP_LCURLY][0] || c == OP_STRS[OP_LSQUARE][0]
-        || c == OP_STRS[OP_LPAREN][0];
-    is_right_bracket = c == OP_STRS[OP_RCURLY][0] || c == OP_STRS[OP_RSQUARE][0]
-        || c == OP_STRS[OP_RPAREN][0];
+    is_left_bracket = c == OP_NAMES[OP_LCURLY][0] || c == OP_NAMES[OP_LSQUARE][0]
+        || c == OP_NAMES[OP_LPAREN][0];
+    is_right_bracket = c == OP_NAMES[OP_RCURLY][0] || c == OP_NAMES[OP_RSQUARE][0]
+        || c == OP_NAMES[OP_RPAREN][0];
     if (is_left_bracket) {
         return TOK_LB;
     } else if (is_right_bracket) {
@@ -89,7 +89,7 @@ get_op_code(token_t* last_token, char* op_str)
         if (op == OP_MAKE_FUNCT || op == OP_MAKE_MACRO || op == OP_CALL) {
             continue;
         }
-        if (strcmp(OP_STRS[op], op_str) == 0) {
+        if (strcmp(OP_NAMES[op], op_str) == 0) {
             /* bracket don't check for expectation */
             if (op == OP_LCURLY || op == OP_RCURLY || op == OP_RSQUARE
                 || op == OP_LSQUARE || op == OP_RPAREN || op == OP_LPAREN) {

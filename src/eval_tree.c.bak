@@ -56,7 +56,7 @@ is_bad_type(
     sprintf(
         ERR_MSG_BUF,
         "Bad type for operator \"%s\": expect (%s, %s), get (%s, %s)",
-        OP_STRS[op_token.code],
+        OP_NAMES[op_token.code],
         left_good_type == NO_OPRAND ? "" : OBJ_TYPE_STR[left_good_type],
         right_good_type == NO_OPRAND ? "" : OBJ_TYPE_STR[right_good_type],
         left_obj == NULL ? "" : OBJ_TYPE_STR[left_obj->type],
@@ -96,8 +96,8 @@ exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
     if (callable.is_macro) {
         callee_frame = caller_frame;
     } else {
-        int arg_name = callable.arg_name;
-        callee_frame = frame_call_with_closure(caller_frame, call);
+        int arg_code = callable.arg_code;
+        callee_frame = frame_get_callee_frame(caller_frame, call);
         /* set argument to call-frame */
         if (arg_name != -1 && frame_set(callee_frame, arg_name, arg) == NULL) {
             int arg_token_index = context.tree->lefts[callable.index];
@@ -127,7 +127,7 @@ exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
     result = eval(new_context, callable.index);
     if (!callable.is_macro) {
         /* free the objects own by this function call */
-        frame_return(callee_frame);
+        frame_pop_stack(callee_frame);
         /* free the stacks */
         frame_free(callee_frame);
         free(callee_frame);
@@ -630,7 +630,7 @@ exec_op(
             (object_data_union)(callable_t) {
                 .is_macro = 0,
                 .builtin_name = NOT_BUILTIN_FUNC,
-                .arg_name = -1,
+                .arg_code = -1,
                 .index = context.tree->lefts[cur_eval_node->token_index],
                 /* function will own a copy of the frame it created under */
                 .init_frame = frame_copy(context.cur_frame),
@@ -642,7 +642,7 @@ exec_op(
             (object_data_union)(callable_t) {
                 .is_macro = 1,
                 .builtin_name = NOT_BUILTIN_FUNC,
-                .arg_name = -1,
+                .arg_code = -1,
                 .index = context.tree->lefts[cur_eval_node->token_index],
                 /* function will own a copy of the frame it created under */
                 .init_frame = NULL,
@@ -888,7 +888,7 @@ exec_op(
             print_runtime_error(op_token.pos, err_msg);
             return (object_t*)ERR_OBJECT_PTR;
         }
-        if (right_obj->as.callable.arg_name != -1) {
+        if (right_obj->as.callable.arg_code != -1) {
             const char* err_msg
                 = "Bind argument to a function that already has one";
             print_runtime_error(op_token.pos, err_msg);
@@ -899,7 +899,7 @@ exec_op(
                 &context.tree->tokens,
                 context.tree->lefts[cur_eval_node->token_index]
             );
-            right_obj->as.callable.arg_name = left_token->code;
+            right_obj->as.callable.arg_code = left_token->code;
         }
         return object_ref(right_obj);
     case OP_COND_AND:
@@ -923,7 +923,7 @@ exec_op(
         }
         if (frame_set(context.cur_frame, left_token->code, right_obj) == NULL) {
             const char* err_msg = "Repeated initialization of "
-                                  "identifier '%s' (var_id=%d)";
+                                  "identifier '%s' (id_code=%d)";
             sprintf(ERR_MSG_BUF, err_msg, left_token->str, left_token->code);
             print_runtime_error(left_token->pos, ERR_MSG_BUF);
             return (object_t*)ERR_OBJECT_PTR;
@@ -1107,7 +1107,7 @@ eval(context_t context, const int entry_index)
             if (global_is_enable_debug_log) {
                 printf(
                     "^ (node %d) exec_op %s returned\n", cur_index,
-                    OP_STRS[cur_token.code]
+                    OP_NAMES[cur_token.code]
                 );
                 if (cur_token.code == OP_MAKE_FUNCT) {
                     printf("  Made func:");
@@ -1122,7 +1122,7 @@ eval(context_t context, const int entry_index)
 #endif
             if (cur_eval_node->object->is_error) {
                 const char* err_msg = "operator \"%s\" returns with error";
-                sprintf(ERR_MSG_BUF, err_msg, OP_STRS[cur_token.code]);
+                sprintf(ERR_MSG_BUF, err_msg, OP_NAMES[cur_token.code]);
                 print_runtime_error(cur_token.pos, ERR_MSG_BUF);
             }
             /* free the both sub-tree */

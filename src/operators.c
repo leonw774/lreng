@@ -12,9 +12,9 @@ is_op_char(char c)
     int i, j;
     if (!is_initialized) {
         for (i = 0; i < OPERATOR_COUNT; i++) {
-            for (j = 0; OP_STRS[i][j] != '\0'; j++) {
-                if (OP_STRS[i][j] > 32) {
-                    IS_OP_CHAR[OP_STRS[i][j] - 32] = 1;
+            for (j = 0; OP_NAMES[i][j] != '\0'; j++) {
+                if (OP_NAMES[i][j] > 32) {
+                    IS_OP_CHAR[OP_NAMES[i][j] - 32] = 1;
                 }
             }
         }
@@ -32,8 +32,8 @@ is_2char_op(char left, char right)
     unsigned int i;
     if (!is_initialized) {
         for (i = 0; i < OPERATOR_COUNT; i++) {
-            if (OP_STRS[i][1] != '\0' && OP_STRS[i][2] == '\0') {
-                int h = (((int)OP_STRS[i][0]) << 8) | ((int)OP_STRS[i][1]);
+            if (OP_NAMES[i][1] != '\0' && OP_NAMES[i][2] == '\0') {
+                int h = (((int)OP_NAMES[i][0]) << 8) | ((int)OP_NAMES[i][1]);
                 OP_HASH_ARRAY[i] = h;
             } else {
                 OP_HASH_ARRAY[i] = 0;

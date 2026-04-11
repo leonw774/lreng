@@ -40,9 +40,9 @@ extern frame_t* frame_copy(const frame_t* f);
 
 extern void frame_free(frame_t* f);
 
-extern void frame_call(frame_t* f, const int entry_index);
+extern void frame_push_stack(frame_t* f, const int entry_index);
 
-extern void frame_return(frame_t* f);
+extern void frame_pop_stack(frame_t* f);
 
 extern object_t* frame_get(const frame_t* f, const int code);
 
@@ -51,6 +51,6 @@ extern object_t** frame_set(frame_t* f, const int code, object_t* obj);
 extern int frame_print(frame_t* f);
 
 extern frame_t*
-frame_call_with_closure(const frame_t* caller_frame, const object_t* func);
+frame_get_callee_frame(const frame_t* caller_frame, const object_t* func);
 
 #endif

@@ -28,7 +28,7 @@ typedef struct callable {
     int is_macro;
     int builtin_name; /* -1 if is not builtin function */
     int index; /* the index on tree */
-    int arg_name; /* -1 if no arg */
+    int arg_code; /* -1 if no arg */
     frame_t* init_frame;
 } callable_t;
 

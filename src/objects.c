@@ -125,13 +125,13 @@ object_print(const object_t* obj, char end)
             );
         } else if (obj->as.callable.is_macro) {
             printed_bytes_count = printf(
-                "[Callable type=MACRO, arg_id=%d, entry_index=%d]",
-                obj->as.callable.arg_name, obj->as.callable.index
+                "[Callable type=MACRO, arg_code=%d, entry_index=%d]",
+                obj->as.callable.arg_code, obj->as.callable.index
             );
         } else {
             printed_bytes_count = printf(
-                "[Callable type=FUNC, arg_id=%d, entry_index=%d, frame=",
-                obj->as.callable.arg_name, obj->as.callable.index
+                "[Callable type=FUNC, arg_code=%d, entry_index=%d, frame=",
+                obj->as.callable.arg_code, obj->as.callable.index
             );
             printed_bytes_count += frame_print(obj->as.callable.init_frame);
             printed_bytes_count += printf("]");
@@ -156,7 +156,7 @@ object_eq(object_t* a, object_t* b)
         callable_t *a_func = &a->as.callable, *b_func = &b->as.callable;
         return (
             a_func->is_macro == b_func->is_macro
-            && a_func->arg_name == b_func->arg_name
+            && a_func->arg_code == b_func->arg_code
             && a_func->builtin_name == b_func->builtin_name
             && a_func->init_frame == b_func->init_frame
             && a_func->index == b_func->index

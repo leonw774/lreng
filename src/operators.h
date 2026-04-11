@@ -76,7 +76,7 @@ static const int BINARY_RIGHT_ASSOCIATIVE_OPS[] = {
 
 /* OP_STR must be aligned with op_code_enum */
 
-static const char* const OP_STRS[OPERATOR_COUNT] = {
+static const char* const OP_NAMES[OPERATOR_COUNT] = {
     /* ******** brackets ******** */
     "{", "}", "make_func", "[", "]", "make_macro", "(", ")",
     /* ******** function call ******** */

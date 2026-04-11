@@ -11,25 +11,24 @@ typedef enum bytecode_op_code {
     BOP_EXTEND_ARG,
     /* frame & stack manipulation */
     BOP_PUSH_LITERAL, /* push a literal object to stack */
-    BOP_FRAME_GET, /* get object from frame and push it to stack */
+    BOP_FRAME_GET, /* get object from frame and push to stack */
     BOP_FRAME_SET, /* set object from top of stack to frame */
+    BOP_FRAME_SET_LITERAL, /* set literal object to frame and push to stack */
     BOP_POP, /* remove the top of stack */
-    BOP_TOP, /* get the top of stack */
+    BOP_RET, /* return the callable with top of stack and clear the stack */
     /* branching and jumping */
     BOP_JUMP,
-    BOP_JUMP_TRUE_OR_POP, /* jump if top of stack is true, otherwise, pop */
     BOP_JUMP_FALSE_OR_POP, /* jump if top of stack is false, otherwise, pop */
-    BOP_RET,
-    /* unary operations */
+    BOP_JUMP_TRUE_OR_POP, /* jump if top of stack is true, otherwise, pop */
+    /* normal operator */
     BOP_MAKE_FUNCT,
     BOP_MAKE_MACRO,
-    BOP_NEG,
-    BOP_NOT,
-    /* binary operations */
     BOP_CALL,
     BOP_MAP,
     BOP_FILTER,
     BOP_REDUCE,
+    BOP_NEG,
+    BOP_NOT,
     BOP_CEIL,
     BOP_FLOOR,
     BOP_GETL,
@@ -62,20 +61,20 @@ static const char* const BYTECODE_OP_NAMES[BOP_END_Of_ENUM] = {
     "PUSH_LITERAL",
     "FRAME_GET",
     "FRAME_SET",
+    "FRAME_SET_LITERAL",
     "POP",
-    "TOP",
+    "RET",
     "JUMP",
     "JUMP_TRUE_OR_POP",
     "JUMP_FALSE_OR_POP",
-    "RET",
     "MAKE_FUNCT",
     "MAKE_MACRO",
-    "NEG",
-    "NOT",
     "CALL",
     "MAP",
     "FILTER",
     "REDUCE",
+    "NEG",
+    "NOT",
     "CEIL",
     "FLOOR",
     "GETL",
@@ -142,6 +141,7 @@ static const int OP_TO_BOP_MAPPING[][2] = {
 typedef struct bytecode {
     uint8_t op;
     uint8_t arg;
+    linecol_t pos;
 } bytecode_t;
 
 #define TYPE bytecode_t
@@ -151,7 +151,8 @@ typedef struct bytecode {
 #undef TYPE
 
 void bytecode_array_extend(
-    dynarr_bytecode_t* arr, bytecode_op_code_enum op_code, uint32_t full_arg
+    dynarr_bytecode_t* arr, bytecode_op_code_enum op_code, uint32_t full_arg,
+    linecol_t pos
 );
 
 int bytecode_print(const bytecode_t bytecode);

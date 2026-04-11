@@ -103,7 +103,7 @@ nud(pratt_parser_context_t* context)
             sprintf(
                 ERR_MSG_BUF,
                 "Expect unary operator but get binary operator: '%s'",
-                OP_STRS[token->code]
+                OP_NAMES[token->code]
             );
             throw_syntax_error(token->pos, ERR_MSG_BUF);
         }
@@ -134,7 +134,7 @@ nud(pratt_parser_context_t* context)
                 ERR_MSG_BUF,
                 "Unmatched open bracket: Cannot find matching closing bracket "
                 "for '%s'",
-                OP_STRS[token->code]
+                OP_NAMES[token->code]
             );
             throw_syntax_error(closing->pos, ERR_MSG_BUF);
         }
@@ -142,7 +142,7 @@ nud(pratt_parser_context_t* context)
     } else {
         sprintf(
             ERR_MSG_BUF, "Unexpected token type at beginning of expression: %s",
-            OP_STRS[token->code]
+            OP_NAMES[token->code]
         );
         throw_syntax_error(token->pos, ERR_MSG_BUF);
     }
@@ -265,8 +265,8 @@ op_prec_lt(op_code_enum o1, op_code_enum o2)
     /*
     printf(
         "op_prec_lt: %s %d  %s %d\n",
-        OP_STRS[o1], get_op_precedence(o1),
-        OP_STRS[o2], get_op_precedence(o2)
+        OP_NAMES[o1], get_op_precedence(o1),
+        OP_NAMES[o2], get_op_precedence(o2)
     );
     */
     return (
@@ -347,11 +347,11 @@ shunting_yard(const dynarr_token_t tokens)
 
         /* check expectation */
         if (is_prefixer && expectation == INFIXER) {
-            sprintf(ERR_MSG_BUF, EXPECT_INFIX_MSG, OP_STRS[cur_token->code]);
+            sprintf(ERR_MSG_BUF, EXPECT_INFIX_MSG, OP_NAMES[cur_token->code]);
             throw_syntax_error(cur_token->pos, ERR_MSG_BUF);
         }
         if (!is_prefixer && expectation == PREFIXER) {
-            sprintf(ERR_MSG_BUF, EXPECT_PREFIX_MSG, OP_STRS[cur_token->code]);
+            sprintf(ERR_MSG_BUF, EXPECT_PREFIX_MSG, OP_NAMES[cur_token->code]);
             throw_syntax_error(cur_token->pos, ERR_MSG_BUF);
         }
 
@@ -406,7 +406,7 @@ shunting_yard(const dynarr_token_t tokens)
                 sprintf(
                     ERR_MSG_BUF,
                     "Unmatched closing bracket: Found '%s' to '%s'",
-                    OP_STRS[stack_top->code], OP_STRS[cur_token->code]
+                    OP_NAMES[stack_top->code], OP_NAMES[cur_token->code]
                 );
                 throw_syntax_error(cur_token->pos, ERR_MSG_BUF);
             }

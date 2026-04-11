@@ -29,7 +29,7 @@ check_assign_rule(
 #endif
     if (left_token->type != TOK_ID) {
         const char* err_msg = "Left side of %s is not identifier.";
-        sprintf(ERR_MSG_BUF, err_msg, OP_STRS[cur_token->code]);
+        sprintf(ERR_MSG_BUF, err_msg, OP_NAMES[cur_token->code]);
         print_semantic_error(left_token->pos, ERR_MSG_BUF);
         return 0;
     } else if (frame_get(frame, left_token->code)) {
@@ -65,7 +65,7 @@ check_bind_arg_rule(const syntax_tree_t* tree, const int index)
 #endif
     if (left_token->type != TOK_ID) {
         const char* err_msg = "Left side of %s is not identifier.";
-        sprintf(ERR_MSG_BUF, err_msg, OP_STRS[cur_token->code]);
+        sprintf(ERR_MSG_BUF, err_msg, OP_NAMES[cur_token->code]);
         print_semantic_error(left_token->pos, ERR_MSG_BUF);
         return 0;
     }
