@@ -1,6 +1,6 @@
 #include "reserved.h"
 
-const char* RESERVED_IDS[RESERVED_ID_NUM] = {
+const char* RESERVED_IDS[RESERVED_ID_COUNT] = {
     "null",
     "input",
     "output",
@@ -11,7 +11,7 @@ const char* RESERVED_IDS[RESERVED_ID_NUM] = {
     "debug",
 };
 
-const object_t RESERVED_OBJS[RESERVED_ID_NUM] = {
+const object_t RESERVED_OBJS[RESERVED_ID_COUNT] = {
     (object_t) {
         .is_error = 0,
         .is_const = 1,
@@ -28,7 +28,7 @@ const object_t RESERVED_OBJS[RESERVED_ID_NUM] = {
             .init_frame = NULL,
             .index = -1,
             .arg_name = -1,
-            .builtin_name = RESERVED_ID_NAME_INPUT
+            .builtin_name = RESERVED_ID_CODE_INPUT
         },
     },
     (object_t) {
@@ -40,7 +40,7 @@ const object_t RESERVED_OBJS[RESERVED_ID_NUM] = {
             .init_frame = NULL,
             .index = -1,
             .arg_name = -1,
-            .builtin_name = RESERVED_ID_NAME_OUTPUT,
+            .builtin_name = RESERVED_ID_CODE_OUTPUT,
         },
     },
     (object_t) {
@@ -52,7 +52,7 @@ const object_t RESERVED_OBJS[RESERVED_ID_NUM] = {
             .init_frame = NULL,
             .index = -1,
             .arg_name = -1,
-            .builtin_name = RESERVED_ID_NAME_ERROR,
+            .builtin_name = RESERVED_ID_CODE_ERROR,
         },
     },
     (object_t) {
@@ -64,7 +64,7 @@ const object_t RESERVED_OBJS[RESERVED_ID_NUM] = {
             .init_frame = NULL,
             .index = -1,
             .arg_name = -1,
-            .builtin_name = RESERVED_ID_NAME_IS_NUMBER,
+            .builtin_name = RESERVED_ID_CODE_IS_NUMBER,
         },
     },
     (object_t) {
@@ -76,7 +76,7 @@ const object_t RESERVED_OBJS[RESERVED_ID_NUM] = {
             .init_frame = NULL,
             .index = -1,
             .arg_name = -1,
-            .builtin_name = RESERVED_ID_NAME_IS_CALLABLE,
+            .builtin_name = RESERVED_ID_CODE_IS_CALLABLE,
         },
     },
     (object_t) {
@@ -88,7 +88,7 @@ const object_t RESERVED_OBJS[RESERVED_ID_NUM] = {
             .init_frame = NULL,
             .index = -1,
             .arg_name = -1,
-            .builtin_name = RESERVED_ID_NAME_IS_PAIR,
+            .builtin_name = RESERVED_ID_CODE_IS_PAIR,
         },
     },
     (object_t) {
@@ -100,9 +100,9 @@ const object_t RESERVED_OBJS[RESERVED_ID_NUM] = {
             .init_frame = NULL,
             .index = -1,
             .arg_name = -1,
-            .builtin_name = RESERVED_ID_NAME_DEBUG,
+            .builtin_name = RESERVED_ID_CODE_DEBUG,
         },
     }
 };
 
-const object_t* NULL_OBJECT_PTR = &RESERVED_OBJS[RESERVED_ID_NAME_NULL];
+const object_t* NULL_OBJECT_PTR = &RESERVED_OBJS[RESERVED_ID_CODE_NULL];

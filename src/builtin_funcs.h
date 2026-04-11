@@ -149,16 +149,16 @@ builtin_func_debug(const object_t* obj)
     return (object_t*)NULL_OBJECT_PTR;
 }
 
-/* correspond to reserved_id_name in reserved.h */
-static object_t* (*BUILDTIN_FUNC_ARRAY[RESERVED_ID_NUM])(const object_t*) = {
-    NULL, /* RESERVED_ID_NAME_NULL */
-    &builtin_func_input, /* RESERVED_ID_NAME_INPUT */
-    &builtin_func_output, /* RESERVED_ID_NAME_OUTPUT */
-    &builtin_func_error, /* RESERVED_ID_NAME_ERROR */
-    &builtin_func_is_number, /* RESERVED_ID_NAME_IS_NUMBER */
-    &builtin_func_is_callable, /* RESERVED_ID_NAME_IS_CALLABLE */
-    &builtin_func_is_pair, /* RESERVED_ID_NAME_IS_PAIR */
-    &builtin_func_debug, /* RESERVED_ID_NAME_DEBUG */
+/* correspond to reserved_id_code in reserved.h */
+static object_t* (*BUILDTIN_FUNC_ARRAY[RESERVED_ID_COUNT])(const object_t*) = {
+    NULL, /* RESERVED_ID_CODE_NULL */
+    &builtin_func_input, /* RESERVED_ID_CODE_INPUT */
+    &builtin_func_output, /* RESERVED_ID_CODE_OUTPUT */
+    &builtin_func_error, /* RESERVED_ID_CODE_ERROR */
+    &builtin_func_is_number, /* RESERVED_ID_CODE_IS_NUMBER */
+    &builtin_func_is_callable, /* RESERVED_ID_CODE_IS_CALLABLE */
+    &builtin_func_is_pair, /* RESERVED_ID_CODE_IS_PAIR */
+    &builtin_func_debug, /* RESERVED_ID_CODE_DEBUG */
 };
 
 #endif

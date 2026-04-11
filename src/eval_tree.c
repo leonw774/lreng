@@ -714,7 +714,7 @@ exec_op(
         if (left_obj->type == TYPE_CALL) {
             return exec_call(
                 context, op_token.pos, left_obj,
-                (object_t*)&RESERVED_OBJS[RESERVED_ID_NAME_NULL]
+                (object_t*)&RESERVED_OBJS[RESERVED_ID_CODE_NULL]
             );
         }
         return object_ref(left_obj);
@@ -952,7 +952,7 @@ exec_op(
             return exec_call(
                 context, op_token.pos,
                 (object_to_bool(left_obj) ? right_left : right_right),
-                (object_t*)&RESERVED_OBJS[RESERVED_ID_NAME_NULL]
+                (object_t*)&RESERVED_OBJS[RESERVED_ID_CODE_NULL]
             );
         }
     case OP_EXPRSEP:

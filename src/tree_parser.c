@@ -14,8 +14,8 @@
  * // nud: the leftmost token is single token
  * <nud> ::=
  *      | <identifier>
- *      | <literal>
- *      | <unary_operator>
+ *      | <number>
+ *      | <unary_operator> <expression>
  *      | <left_bracket> <expression> <right_bracket>
  * // lud: the middle node is single token
  * <led> ::= <expression> <binary_operator> <expression>

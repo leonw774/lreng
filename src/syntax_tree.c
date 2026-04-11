@@ -5,8 +5,8 @@
 #include "token.h"
 #include "tree_parser.h"
 #include "utils/arena.h"
-#include "utils/errormsg.h"
 #include "utils/debug_flag.h"
+#include "utils/errormsg.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,21 +34,29 @@ syntax_tree_create(dynarr_token_t tokens)
         .tokens = postfix_tokens,
         .bytecodes = NULL,
         .bytecode_indexs = dynarr_int_new(),
+        .root_index = -1,
         .lefts = NULL,
         .rights = NULL,
         .sizes = NULL,
-        .root_index = -1,
-        .max_id_name = -1,
+        .max_id_code = -1,
+        .id_code_str_map = NULL,
     };
     dynarr_int_t index_stack = dynarr_int_new();
     int* tree_data = malloc(token_size * sizeof(int) * 3);
     assert(tree_data != NULL);
 
-    /* find max_id_name */
+    /* get max_id_code */
     for (i = postfix_tokens.size - 1; i >= 0; i--) {
         token_t* t = dynarr_token_at(&postfix_tokens, i);
-        if (t->type == TOK_ID && tree.max_id_name < t->code) {
-            tree.max_id_name = t->code;
+        if (t->type == TOK_ID && tree.max_id_code < t->code) {
+            tree.max_id_code = t->code;
+        }
+    }
+    tree.id_code_str_map = calloc(tree.max_id_code + 1, sizeof(char*));
+    for (i = postfix_tokens.size - 1; i >= 0; i--) {
+        token_t* t = dynarr_token_at(&postfix_tokens, i);
+        if (t->type == TOK_ID && tree.id_code_str_map[t->code] == NULL) {
+            tree.id_code_str_map[t->code] = t->str;
         }
     }
 
@@ -60,7 +68,7 @@ syntax_tree_create(dynarr_token_t tokens)
     memset(tree.rights, -1, token_size * sizeof(int));
     memset(tree.sizes, 0, token_size * sizeof(int));
     for (i = 0; i < token_size; i++) {
-        token_t* cur_token = dynarr_token_at(&tree.tokens, i);
+        token_t* cur_token = dynarr_token_at(&postfix_tokens, i);
 #ifdef ENABLE_DEBUG_LOG_MORE
         token_print(cur_token);
 #endif
@@ -82,10 +90,10 @@ syntax_tree_create(dynarr_token_t tokens)
             dynarr_int_append(&index_stack, &i);
 #ifdef ENABLE_DEBUG_LOG_MORE
             printf(" L=");
-            token_print(dynarr_token_at(&tree.tokens, l_index));
+            token_print(dynarr_token_at(&postfix_tokens, l_index));
             printf(" R=");
             if (r_index != -1) {
-                token_print(dynarr_token_at(&tree.tokens, r_index));
+                token_print(dynarr_token_at(&postfix_tokens, r_index));
             }
 #endif
         } else {
@@ -109,7 +117,7 @@ syntax_tree_create(dynarr_token_t tokens)
         printf("REMAINED IN STACK:\n");
         for (n = 0; n < index_stack.size; n++) {
             int index = *dynarr_int_at(&index_stack, n);
-            token_print(dynarr_token_at(&tree.tokens, index));
+            token_print(dynarr_token_at(&postfix_tokens, index));
             puts("");
         }
 #endif
@@ -127,8 +135,11 @@ syntax_tree_create(dynarr_token_t tokens)
     tree.literals = calloc(token_size, sizeof(object_t*));
     assert(tree.literals != NULL);
     for (i = 0; i < token_size; i++) {
-        token_t* cur_token = dynarr_token_at(&tree.tokens, i);
-        if (cur_token->type == TOK_NUM) {
+        token_t* cur_token = dynarr_token_at(&postfix_tokens, i);
+        if (cur_token->type == TOK_ID && cur_token->code < RESERVED_ID_COUNT) {
+            tree.literals[i]
+                = object_ref((object_t*)&RESERVED_OBJS[cur_token->code]);
+        } else if (cur_token->type == TOK_NUM) {
             tree.literals[i] = object_create(
                 TYPE_NUM,
                 (object_data_union) {
@@ -178,8 +189,8 @@ syntax_tree_create(dynarr_token_t tokens)
     /* compile bytecodes for top and all functions and macros */
 
     dynarr_int_append(&tree.bytecode_indexs, &tree.root_index);
-    for (i = 0; i < tree.tokens.size; i++) {
-        token_t* t = dynarr_token_at(&tree.tokens, i);
+    for (i = 0; i < postfix_tokens.size; i++) {
+        token_t* t = dynarr_token_at(&postfix_tokens, i);
         if (t->type == TOK_OP
             && (t->code == OP_MAKE_FUNCT || t->code == OP_MAKE_MACRO)) {
             dynarr_int_append(&tree.bytecode_indexs, &tree.lefts[i]);
@@ -215,9 +226,9 @@ int
 syntax_tree_check_semantic(const syntax_tree_t* tree)
 {
     int i, is_passed = 1;
-    uint8_t* id_usage = calloc(tree->max_id_name + 1, sizeof(uint8_t));
+    uint8_t* id_usage = calloc(tree->max_id_code + 1, sizeof(uint8_t));
     assert(id_usage != NULL);
-    for (i = 0; i < RESERVED_ID_NUM; i++) {
+    for (i = 0; i < RESERVED_ID_COUNT; i++) {
         id_usage[i] = (uint8_t)1;
     }
 
@@ -387,12 +398,11 @@ inline void
 syntax_tree_free(syntax_tree_t* tree)
 {
     int i;
-    /* iterate from back because literal could be pair and we waant to
-       free parents first
-    */
+    /* iterate from back because literal could be pair and we want to
+     * free parents first */
     for (i = tree->tokens.size - 1; i >= 0; i--) {
         token_t* token = dynarr_token_at(&tree->tokens, i);
-        if (token->type == TOK_ID && token->code < RESERVED_ID_NUM) {
+        if (token->type == TOK_ID && token->code < RESERVED_ID_COUNT) {
             continue;
         }
         if (tree->literals[i] != NULL) {
@@ -405,15 +415,20 @@ syntax_tree_free(syntax_tree_t* tree)
             object_deref(tree->literals[i]);
         }
     }
+    free(tree->literals);
+
+    tree->root_index = -1;
     dynarr_token_free(&tree->tokens);
-    free(tree->lefts);
     /* lefts, rights, and sizes share same heap chunk and left is the
      * head so only need to free left */
-    free(tree->literals);
-    tree->root_index = -1;
+    free(tree->lefts);
+    free(tree->id_code_str_map);
 
     /* bytecodes */
     if (tree->bytecodes) {
+        for (i = 0; i < tree->bytecode_indexs.size; i++) {
+            dynarr_bytecode_free(&tree->bytecodes[i]);
+        }
         free(tree->bytecodes);
     }
     dynarr_int_free(&tree->bytecode_indexs);
@@ -515,11 +530,39 @@ syntax_tree_print(const syntax_tree_t* tree)
         }
     }
     syntax_tree_iter_free(&iter);
+
+    printf("----- LITERALS -----\n");
+    for (i = 0; i < tree->tokens.size; i++) {
+        if (tree->literals[i]) {
+            printf("%u: ", i);
+            token_print(&tree->tokens.data[i]);
+            printf("\n");
+        }
+    }
+
     printf("----- BYTECODES -----\n");
     for (i = 0; i < tree->bytecode_indexs.size; i++) {
+        int j;
         printf(
             "Bytecode of node %d\n", *dynarr_int_at(&tree->bytecode_indexs, i)
         );
-        bytecode_array_print(&tree->bytecodes[i], tree->tokens.data);
+        for (j = 0; j < tree->bytecodes[i].size; j++) {
+            bytecode_t bc = tree->bytecodes[i].data[j];
+            printf("%4u: ", j);
+            bytecode_print(bc);
+            if (bc.op == BOP_BIND_ARG || bc.op == BOP_FRAME_GET
+                || bc.op == BOP_FRAME_SET) {
+                printf(" (\"%s\")", tree->id_code_str_map[bc.arg]);
+            } else if (
+                bc.op == BOP_JUMP_FALSE_OR_POP || bc.op == BOP_JUMP_TRUE_OR_POP
+            ) {
+                printf(" (to %u)", j + bc.arg + 1);
+            } else if (bc.op == BOP_PUSH_LITERAL) {
+                printf(" ((node %u) ", bc.arg);
+                token_print(&tree->tokens.data[bc.arg]);
+                printf(")");
+            }
+            printf("\n");
+        }
     }
 }

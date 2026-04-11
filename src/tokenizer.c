@@ -157,8 +157,8 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos)
         if (last_token != NULL && last_token->type == TOK_LB
             && last_token->code == OP_LPAREN && op_code == OP_RPAREN) {
             token_t null_tok = {
-                .str = RESERVED_IDS[RESERVED_ID_NAME_NULL],
-                .code = RESERVED_ID_NAME_NULL,
+                .str = RESERVED_IDS[RESERVED_ID_CODE_NULL],
+                .code = RESERVED_ID_CODE_NULL,
                 .type = TOK_ID,
                 .pos = pos,
             };
@@ -178,7 +178,7 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos)
             );
             throw_syntax_error(pos, ERR_MSG_BUF);
         }
-        for (i = 0; i < RESERVED_ID_NUM; i++) {
+        for (i = 0; i < RESERVED_ID_COUNT; i++) {
             if (strcmp(RESERVED_IDS[i], tok_str) == 0) {
                 is_in_reserved_ids = 1;
                 break;
@@ -247,27 +247,27 @@ void
 print_state_name(state_ret (*state_func)(linecol_iterator_t*, cargo))
 {
     if (state_func == &ws_state)
-        printf("%-6s", "ws");
+        printf("state=%-6s", "ws");
     else if (state_func == &comment_state)
-        printf("%-6s", "com");
+        printf("state=%-6s", "com");
     else if (state_func == &zero_state)
-        printf("%-6s", "zero");
+        printf("state=%-6s", "zero");
     else if (state_func == &num_state)
-        printf("%-6s", "num");
+        printf("state=%-6s", "num");
     else if (state_func == &hex_state)
-        printf("%-6s", "hex");
+        printf("state=%-6s", "hex");
     else if (state_func == &bin_state)
-        printf("%-6s", "bin");
+        printf("state=%-6s", "bin");
     else if (state_func == &ch_open_state)
-        printf("%-6s", "copen");
+        printf("state=%-6s", "copen");
     else if (state_func == &ch_esc_state)
-        printf("%-6s", "cesc");
+        printf("state=%-6s", "cesc");
     else if (state_func == &ch_lit_state)
-        printf("%-6s", "clit");
+        printf("state=%-6s", "clit");
     else if (state_func == &id_state)
-        printf("%-6s", "id");
+        printf("state=%-6s", "id");
     else if (state_func == &op_state)
-        printf("%-6s", "op");
+        printf("state=%-6s", "op");
 }
 
 /* define the states */
@@ -615,7 +615,7 @@ tokenize(const char* src, const unsigned long src_len)
 #ifdef ENABLE_DEBUG_LOG
     int prev_tokens_count = 0;
     if (global_is_enable_debug_log) {
-        printf("tokenize");
+        printf("tokenize\n");
     }
 #endif
     while (1) {
@@ -625,9 +625,9 @@ tokenize(const char* src, const unsigned long src_len)
                 ? pos_iter.src[pos_iter.index]
                 : '\0';
             if (isprint(c)) {
-                printf("c=\'%c\'\n", c);
+                printf("c=\'%c'\t", c);
             } else {
-                printf("c=0x%x\n", c);
+                printf("c=0x%x\t", c);
             }
         }
 #endif
@@ -642,10 +642,10 @@ tokenize(const char* src, const unsigned long src_len)
             char* tmp_str = dynarr_char_to_str(&cur_cargo.tmp_str);
             int size = cur_cargo.tokens.size;
             print_state_name(state_func);
-            printf("str=\"%s\" ", tmp_str);
+            printf("str=\"%s\"", tmp_str);
             free(tmp_str);
             if (prev_tokens_count != size && size) {
-                printf("new_token=");
+                printf("\nnew_token=");
                 token_print(dynarr_token_at(&cur_cargo.tokens, size - 1));
                 prev_tokens_count = size;
             }
@@ -656,7 +656,7 @@ tokenize(const char* src, const unsigned long src_len)
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         int k;
-        printf("tokens=");
+        printf("\nfinal tokens=");
         for (k = 0; k < cur_cargo.tokens.size; k++) {
             token_print(dynarr_token_at(&cur_cargo.tokens, k));
             printf(" ");
@@ -668,7 +668,7 @@ tokenize(const char* src, const unsigned long src_len)
        init code-str map with keywords */
     /* TODO: rewrite this with prefix-tree */
     dynarr_char_ptr_t code_str_map = dynarr_char_ptr_new();
-    for (i = 0; i < RESERVED_ID_NUM; i++) {
+    for (i = 0; i < RESERVED_ID_COUNT; i++) {
         dynarr_char_ptr_append(&code_str_map, &RESERVED_IDS[i]);
     }
     for (i = 0; i < cur_cargo.tokens.size; i++) {

@@ -12,11 +12,12 @@ typedef struct syntax_tree {
     object_t** literals;
     dynarr_bytecode_t* bytecodes;
     dynarr_int_t bytecode_indexs;
+    int root_index; /* index of the root node */
     int* lefts; /* index of left child, -1 of none */
     int* rights; /* index of right child, -1 of none */
     int* sizes; /* number of nodes under a node */
-    int root_index; /* index of the root node */
-    int max_id_name; /* number of ids in tree */
+    int max_id_code; /* number of ids in tree */
+    const char** id_code_str_map;
 } syntax_tree_t;
 
 extern syntax_tree_t syntax_tree_create(dynarr_token_t tokens);

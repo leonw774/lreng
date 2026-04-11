@@ -15,7 +15,6 @@
 inline frame_t*
 frame_new(const frame_t* parent)
 {
-    int i;
     frame_t* f = calloc(1, sizeof(frame_t));
     assert(f != NULL);
     if (parent == NULL) {
@@ -24,14 +23,6 @@ frame_new(const frame_t* parent)
         assert(f->globals != NULL);
         *(f->globals) = dynarr_frame_entry_new();
         f->is_own_globals = 1;
-        /* add reserved ids to global frame */
-        for (i = 0; i < RESERVED_ID_NUM; i++) {
-            frame_entry_t pair = {
-                .code = i,
-                .object = (object_t*)&RESERVED_OBJS[i],
-            };
-            dynarr_frame_entry_append(f->globals, &pair);
-        }
     } else {
         /* copy the globals from parent */
         f->globals = parent->globals;

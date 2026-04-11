@@ -40,7 +40,7 @@ check_assign_rule(
     } else {
         frame_set(
             frame, left_token->code,
-            (object_t*)&RESERVED_OBJS[RESERVED_ID_NAME_NULL]
+            (object_t*)&RESERVED_OBJS[RESERVED_ID_CODE_NULL]
         );
     }
     return 1;

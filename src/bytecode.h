@@ -154,7 +154,7 @@ void bytecode_array_extend(
     dynarr_bytecode_t* arr, bytecode_op_code_enum op_code, uint32_t full_arg
 );
 
-int bytecode_array_print(dynarr_bytecode_t* arr, const token_t* context_tokens);
+int bytecode_print(const bytecode_t bytecode);
 
 bytecode_op_code_enum op_to_bop_code(op_code_enum op_code);
 

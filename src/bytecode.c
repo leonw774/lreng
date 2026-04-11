@@ -71,30 +71,21 @@ is_arg_bop(bytecode_op_code_enum bop)
 {
     return (
         bop == BOP_BIND_ARG || bop == BOP_FRAME_GET || bop == BOP_FRAME_SET
-        || bop == BOP_EXTEND_ARG || bop == BOP_JUMP
+        || bop == BOP_PUSH_LITERAL || bop == BOP_EXTEND_ARG || bop == BOP_JUMP
         || bop == BOP_JUMP_FALSE_OR_POP || bop == BOP_JUMP_TRUE_OR_POP
     );
 }
 
 int
-bytecode_array_print(dynarr_bytecode_t* arr, const token_t* context_tokens)
+bytecode_print(const bytecode_t bytecode)
 {
-    int i, printed_bytes_count = 0;
-    for (i = 0; i < arr->size; i++) {
-        if (is_arg_bop(arr->data[i].op)) {
-            const char* context_str = NULL;
-            if (context_tokens && context_tokens[arr->data[i].arg].str) {
-                context_str = context_tokens[arr->data[i].arg].str;
-            }
-            printed_bytes_count += printf(
-                "%4u: %24s %4u %8s\n", i, BYTECODE_OP_NAMES[arr->data[i].op],
-                arr->data[i].arg, context_str
-            );
-        } else {
-            printed_bytes_count += printf(
-                "%4u: %24s    \n", i, BYTECODE_OP_NAMES[arr->data[i].op]
-            );
-        }
+    int printed_bytes_count = 0;
+    if (is_arg_bop(bytecode.op)) {
+        printed_bytes_count += printf(
+            "%24s %4u", BYTECODE_OP_NAMES[bytecode.op], bytecode.arg
+        );
+    } else {
+        printed_bytes_count += printf("%24s", BYTECODE_OP_NAMES[bytecode.op]);
     }
     return printed_bytes_count;
 }
