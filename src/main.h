@@ -1,8 +1,8 @@
+#include "syntax_tree.h"
 #include "frame.h"
-#include "token_tree.h"
 
 typedef struct context {
-    const token_tree_t* tree;
+    const syntax_tree_t* tree;
     frame_t* cur_frame;
     int call_depth;
 } context_t;
@@ -10,9 +10,3 @@ typedef struct context {
 extern object_t* eval(context_t context, const int entry_index);
 
 extern dynarr_token_t tokenize(const char* src, const unsigned long src_len);
-
-extern void parse_tree_to_bytecode(token_tree_t* tree);
-
-extern int check_semantic(const token_tree_t tree);
-
-extern int global_is_enable_debug_log;

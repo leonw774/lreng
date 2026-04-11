@@ -1,8 +1,8 @@
-#include "main.h"
 #include "operators.h"
 #include "reserved.h"
 #include "token.h"
 #include "utils/arena.h"
+#include "utils/debug_flag.h"
 #include "utils/errormsg.h"
 #include <ctype.h>
 #include <stdio.h>
@@ -15,6 +15,9 @@
 #undef TYPE_NAME
 #undef TYPE
 
+#define TOKEN_COUNT_LIMIT 1 << (sizeof(int) * 8 - 3)
+#define IDENTIFIER_CODE_LIMIT 1 << (sizeof(int) * 8 - 3)
+
 /* operator constant and tools */
 
 #define COMMENT_CHAR '#'
@@ -24,7 +27,7 @@
 #define IS_HEX(c)                                                              \
     ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
 
-char*
+static inline char*
 invalid_char_msg(int c)
 {
     return (
@@ -33,7 +36,7 @@ invalid_char_msg(int c)
     );
 }
 
-char*
+static inline char*
 invalid_escchar_msg(int c)
 {
     return (
@@ -42,7 +45,7 @@ invalid_escchar_msg(int c)
     );
 }
 
-char*
+static inline char*
 invalid_litchar_msg(int c)
 {
     return (
@@ -83,7 +86,7 @@ get_op_code(token_t* last_token, char* op_str)
     int op;
     for (op = 0; op < OPERATOR_COUNT; op++) {
         /* ignore special */
-        if (op == OP_FMAKE || op == OP_MMAKE || op == OP_CALL) {
+        if (op == OP_MAKE_FUNCT || op == OP_MAKE_MACRO || op == OP_CALL) {
             continue;
         }
         if (strcmp(OP_STRS[op], op_str) == 0) {
@@ -205,6 +208,9 @@ harvest(cargo* cur_cargo, token_type_enum type, linecol_t pos)
                 pos,
             };
             dynarr_token_append(&cur_cargo->tokens, &new_token);
+            if (cur_cargo->tokens.size > TOKEN_COUNT_LIMIT) {
+                throw_syntax_error(pos, "too many tokens");
+            }
         }
     }
     dynarr_char_reset(&cur_cargo->tmp_str);
@@ -658,12 +664,12 @@ tokenize(const char* src, const unsigned long src_len)
         printf("\n");
     }
 #endif
-    /* give identifier names:
+    /* give identifier codes:
        init code-str map with keywords */
     /* TODO: rewrite this with prefix-tree */
-    dynarr_char_ptr_t name_str_map = dynarr_char_ptr_new();
+    dynarr_char_ptr_t code_str_map = dynarr_char_ptr_new();
     for (i = 0; i < RESERVED_ID_NUM; i++) {
-        dynarr_char_ptr_append(&name_str_map, &RESERVED_IDS[i]);
+        dynarr_char_ptr_append(&code_str_map, &RESERVED_IDS[i]);
     }
     for (i = 0; i < cur_cargo.tokens.size; i++) {
         int j;
@@ -673,21 +679,24 @@ tokenize(const char* src, const unsigned long src_len)
         }
         {
             const char* cur_token_str = cur_token->str;
-            int given_name = name_str_map.size;
-            for (j = 0; j < name_str_map.size; j++) {
-                const char* str = *dynarr_char_ptr_at(&name_str_map, j);
+            int given_code = code_str_map.size;
+            for (j = 0; j < code_str_map.size; j++) {
+                const char* str = *dynarr_char_ptr_at(&code_str_map, j);
                 if (cur_token_str && strcmp(str, cur_token_str) == 0) {
-                    given_name = j;
+                    given_code = j;
                     break;
                 }
             }
-            (dynarr_token_at(&cur_cargo.tokens, i))->code = given_name;
-            if (given_name == name_str_map.size) {
-                dynarr_char_ptr_append(&name_str_map, &cur_token_str);
+            cur_token->code = given_code;
+            if (given_code == code_str_map.size) {
+                dynarr_char_ptr_append(&code_str_map, &cur_token_str);
+                if (code_str_map.size > IDENTIFIER_CODE_LIMIT) {
+                    throw_syntax_error(cur_token->pos, "too many identifiers");
+                }
             }
         }
     }
-    dynarr_char_ptr_free(&name_str_map);
+    dynarr_char_ptr_free(&code_str_map);
     dynarr_char_free(&cur_cargo.tmp_str);
     return cur_cargo.tokens;
 }

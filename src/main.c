@@ -1,8 +1,9 @@
 #include "main.h"
 #include "objects.h"
 #include "reserved.h"
-#include "token_tree.h"
+#include "syntax_tree.h"
 #include "utils/arena.h"
+#include "utils/debug_flag.h"
 #include "utils/errormsg.h"
 #include <getopt.h>
 #include <stdio.h>
@@ -79,11 +80,7 @@ main(int argc, char** argv)
 
     arena_init(&token_str_arena, fsize);
     dynarr_token_t tokens = tokenize(src, fsize);
-    token_tree_t syntax_tree = token_tree_create(tokens);
-    int is_good_semantic = check_semantic(syntax_tree);
-    if (!is_good_semantic) {
-        return SEMANTIC_ERR_CODE;
-    }
+    syntax_tree_t syntax_tree = syntax_tree_create(tokens);
     frame_t* top_frame = frame_new(NULL);
     context_t top_context = {
         .tree = &syntax_tree,
@@ -94,7 +91,7 @@ main(int argc, char** argv)
     object_deref(final_result);
     frame_free(top_frame);
     free(top_frame);
-    token_tree_free(&syntax_tree);
+    syntax_tree_free(&syntax_tree);
     dynarr_token_free(&tokens);
     arena_free(&token_str_arena);
 

@@ -1,4 +1,4 @@
-#include "number.h"
+#include "../src/number.h"
 #include "assert.h"
 #include <stdio.h>
 #include <stdlib.h>

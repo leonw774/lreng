@@ -1,4 +1,5 @@
 #include "objects.h"
+#include "utils/dynarr_int.h"
 
 #ifndef FRAME_H
 #define FRAME_H

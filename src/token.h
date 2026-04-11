@@ -21,6 +21,12 @@ typedef struct token {
     linecol_t pos;
 } token_t;
 
+#define TYPE token_t
+#define TYPE_NAME token
+#include "utils/dynarr.tmpl.h"
+#undef TYPE_NAME
+#undef TYPE
+
 extern int token_print(const token_t* token);
 
 #endif

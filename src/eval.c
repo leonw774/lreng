@@ -2,7 +2,8 @@
 #include "eval_tree.h"
 #include "frame.h"
 #include "main.h"
-#include "token_tree.h"
+#include "syntax_tree.h"
+#include "utils/debug_flag.h"
 #include "utils/errormsg.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -623,7 +624,7 @@ exec_op(
 )
 {
     switch (op_token.code) {
-    case OP_FMAKE:
+    case OP_MAKE_FUNCT:
         return object_create(
             TYPE_CALL,
             (object_data_union)(callable_t) {
@@ -635,7 +636,7 @@ exec_op(
                 .init_frame = frame_copy(context.cur_frame),
             }
         );
-    case OP_MMAKE:
+    case OP_MAKE_MACRO:
         return object_create(
             TYPE_CALL,
             (object_data_union)(callable_t) {
@@ -709,7 +710,7 @@ exec_op(
             return (object_t*)ERR_OBJECT_PTR;
         }
         return object_ref(left_obj->as.pair.right);
-    case OP_CONDCALL:
+    case OP_COND_CALL:
         if (left_obj->type == TYPE_CALL) {
             return exec_call(
                 context, op_token.pos, left_obj,
@@ -877,7 +878,7 @@ exec_op(
             return (object_t*)ERR_OBJECT_PTR;
         }
         return exec_call(context, op_token.pos, left_obj, right_obj);
-    case OP_ARG:
+    case OP_BIND_ARG:
         if (is_bad_type(op_token, NO_OPRAND, TYPE_CALL, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         }
@@ -901,8 +902,8 @@ exec_op(
             right_obj->as.callable.arg_name = left_token->code;
         }
         return object_ref(right_obj);
-    case OP_CONDAND:
-    case OP_CONDOR:
+    case OP_COND_AND:
+    case OP_COND_OR:
         /* if the right_obj is NULL, returns left_obj, otherwise right_obj */
         if (right_obj == NULL) {
             if (is_bad_type(
@@ -929,14 +930,14 @@ exec_op(
         }
         return object_ref(right_obj);
     }
-    case OP_CONDPCALL:
+    case OP_COND_PAIR_CALL:
         if (is_bad_type(op_token, TYPE_ANY, TYPE_PAIR, left_obj, right_obj)) {
             return (object_t*)ERR_OBJECT_PTR;
         }
         /* check inside the pair */
         {
             token_t tmp_op_token = (token_t) {
-                .code = OP_CONDPCALL,
+                .code = OP_COND_PAIR_CALL,
                 .pos = op_token.pos,
                 .type = TOK_OP,
                 .str = "the members in the conditional function caller",
@@ -971,14 +972,14 @@ eval(context_t context, const int entry_index)
 {
     object_t* result = NULL;
     frame_t* cur_frame = context.cur_frame;
-    const token_tree_t* token_tree = context.tree;
-    const token_t* tokens = token_tree->tokens.data;
+    const syntax_tree_t* syntax_tree = context.tree;
+    const token_t* tokens = syntax_tree->tokens.data;
     dynarr_eval_tree_ptr_t eval_node_stack;
     eval_tree_t* root_eval_node = NULL;
 
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
-        const int tree_size = token_tree->sizes[entry_index];
+        const int tree_size = syntax_tree->sizes[entry_index];
         printf("eval\n");
         printf(
             "entry_index=%d tree_size=%d stack_depth=%d cur_frame=",
@@ -1004,8 +1005,8 @@ eval(context_t context, const int entry_index)
         eval_tree_t* cur_eval_node
             = *dynarr_eval_tree_ptr_back(&eval_node_stack);
         const int cur_index = cur_eval_node->token_index,
-                  left_index = token_tree->lefts[cur_index],
-                  right_index = token_tree->rights[cur_index];
+                  left_index = syntax_tree->lefts[cur_index],
+                  right_index = syntax_tree->rights[cur_index];
         const token_t cur_token = tokens[cur_index];
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
@@ -1016,9 +1017,10 @@ eval(context_t context, const int entry_index)
         }
 #endif
 
-        if (token_tree->literals[cur_index]) {
+        if (syntax_tree->literals[cur_index]) {
             /* if it is a literal, use it */
-            cur_eval_node->object = object_ref(token_tree->literals[cur_index]);
+            cur_eval_node->object
+                = object_ref(syntax_tree->literals[cur_index]);
         } else if (cur_token.type == TOK_ID) {
             object_t* o = frame_get(cur_frame, cur_token.code);
             if (o == NULL) {
@@ -1042,7 +1044,8 @@ eval(context_t context, const int entry_index)
             /* we are sure numbers are all pre-evaled when creating token tree
                so this line will almost never run, but just keep it in case
             */
-            cur_eval_node->object = object_ref(token_tree->literals[cur_index]);
+            cur_eval_node->object
+                = object_ref(syntax_tree->literals[cur_index]);
         } else if (cur_token.type == TOK_OP) {
             object_t* left_obj
                 = (cur_eval_node->left) ? cur_eval_node->left->object : NULL;
@@ -1055,18 +1058,18 @@ eval(context_t context, const int entry_index)
                - op is cond-and and left is not evaled, or
                - op is cond-and and left is false
             */
-            int is_condor_and_left_true = (cur_token.code == OP_CONDOR)
+            int is_condor_and_left_true = (cur_token.code == OP_COND_OR)
                 && ((left_obj == NULL) || object_to_bool(left_obj));
-            int is_condand_and_left_false = (cur_token.code == OP_CONDAND)
+            int is_condand_and_left_false = (cur_token.code == OP_COND_AND)
                 && ((left_obj == NULL) || !object_to_bool(left_obj));
             int is_bypass_eval_right = is_unary_op(cur_token.code)
                 || is_condor_and_left_true || is_condand_and_left_false;
-            /* bypass left evaluation if:
-               - op is OP_FMAKE or OP_MMAKE or OP_ARG or OP_ASSIGN
+            /* bypass left evaluation if op is OP_MAKE_FUNCT or OP_MAKE_MACRO or
+               OP_BIND_ARG or OP_ASSIGN
             */
-            int is_bypass_eval_left = cur_token.code == OP_FMAKE
-                || cur_token.code == OP_MMAKE || cur_token.code == OP_ARG
-                || cur_token.code == OP_ASSIGN;
+            int is_bypass_eval_left = cur_token.code == OP_MAKE_FUNCT
+                || cur_token.code == OP_MAKE_MACRO
+                || cur_token.code == OP_BIND_ARG || cur_token.code == OP_ASSIGN;
 
             /* if left and right both need eval push them and continue */
             if (!is_bypass_eval_left && left_obj == NULL
@@ -1106,11 +1109,11 @@ eval(context_t context, const int entry_index)
                     "^ (node %d) exec_op %s returned\n", cur_index,
                     OP_STRS[cur_token.code]
                 );
-                if (cur_token.code == OP_FMAKE) {
+                if (cur_token.code == OP_MAKE_FUNCT) {
                     printf("  Made func:");
                     object_print(cur_eval_node->object, '\n');
                 }
-                if (cur_token.code == OP_MMAKE) {
+                if (cur_token.code == OP_MAKE_MACRO) {
                     printf("  Made macro:");
                     object_print(cur_eval_node->object, '\n');
                 }

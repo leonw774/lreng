@@ -5,10 +5,10 @@ typedef enum op_code {
     /* ******** brackets ******** */
     OP_LCURLY,
     OP_RCURLY,
-    OP_FMAKE,
+    OP_MAKE_FUNCT,
     OP_LSQUARE,
     OP_RSQUARE,
-    OP_MMAKE,
+    OP_MAKE_MACRO,
     OP_LPAREN,
     OP_RPAREN,
     /* ******** call ******** */
@@ -25,7 +25,7 @@ typedef enum op_code {
     OP_FLOOR,
     OP_GETL,
     OP_GETR,
-    OP_CONDCALL,
+    OP_COND_CALL,
     OP_SWAP,
     /* ******** arithmetic ******** */
     OP_EXP,
@@ -47,12 +47,12 @@ typedef enum op_code {
     /* ******** pair and callables ******** */
     OP_PAIR,
     OP_CALLR,
-    OP_ARG,
+    OP_BIND_ARG,
     /* ******** conditional and assignment ******** */
-    OP_CONDAND,
-    OP_CONDOR,
+    OP_COND_AND,
+    OP_COND_OR,
     OP_ASSIGN,
-    OP_CONDPCALL,
+    OP_COND_PAIR_CALL,
     /* ******** expression separator ******** */
     OP_EXPRSEP,
     /* ******** end of enum ******** */
@@ -63,15 +63,15 @@ typedef enum op_code {
 
 static const int UNARY_OPS[] = {
     /* callable makers are also unary operators */
-    OP_FMAKE, OP_MMAKE,
+    OP_MAKE_FUNCT, OP_MAKE_MACRO,
     /* other unary operators */
-    OP_POS, OP_NEG, OP_NOT, OP_CEIL, OP_FLOOR, OP_GETL, OP_GETR, OP_CONDCALL,
+    OP_POS, OP_NEG, OP_NOT, OP_CEIL, OP_FLOOR, OP_GETL, OP_GETR, OP_COND_CALL,
     OP_SWAP
 };
 
 static const int BINARY_RIGHT_ASSOCIATIVE_OPS[] = {
     /* exponent, pair, special call operations, and assignment */
-    OP_EXP, OP_PAIR, OP_CALLR, OP_ARG, OP_CONDPCALL, OP_ASSIGN
+    OP_EXP, OP_PAIR, OP_CALLR, OP_BIND_ARG, OP_COND_PAIR_CALL, OP_ASSIGN
 };
 
 /* OP_STR must be aligned with op_code_enum */
@@ -103,14 +103,14 @@ static const char* const OP_STRS[OPERATOR_COUNT] = {
 
 static const int OP_TIER_LIST[][MAX_OPS_IN_TIER] = {
     /* ******** brackets ******** */
-    { OP_LCURLY, OP_RCURLY, OP_FMAKE, OP_LSQUARE, OP_RSQUARE, OP_MMAKE, -1 },
+    { OP_LCURLY, OP_RCURLY, OP_MAKE_FUNCT, OP_LSQUARE, OP_RSQUARE, OP_MAKE_MACRO, -1 },
     { OP_LPAREN, OP_RPAREN, -1 },
     /* ******** function call ******** */
     { OP_CALL, -1 },
     /* ******** map filter reduce ******** */
     { OP_MAP, OP_FILTER, OP_REDUCE, -1 },
     /* ******** unary ******** */
-    { OP_POS, OP_NEG, OP_NOT, OP_CEIL, OP_FLOOR, OP_GETL, OP_GETR, OP_CONDCALL,
+    { OP_POS, OP_NEG, OP_NOT, OP_CEIL, OP_FLOOR, OP_GETL, OP_GETR, OP_COND_CALL,
       OP_SWAP, -1 },
     /* ******** arithmetic ******** */
     { OP_EXP, -1 },
@@ -125,11 +125,11 @@ static const int OP_TIER_LIST[][MAX_OPS_IN_TIER] = {
     /* ******** pair and callables ******** */
     { OP_PAIR, -1 },
     { OP_CALLR, -1 },
-    { OP_ARG, -1 },
+    { OP_BIND_ARG, -1 },
     /* ******** conditional and assignment ******** */
-    { OP_CONDAND, -1 },
-    { OP_CONDOR, -1 },
-    { OP_ASSIGN, OP_CONDPCALL, -1 },
+    { OP_COND_AND, -1 },
+    { OP_COND_OR, -1 },
+    { OP_ASSIGN, OP_COND_PAIR_CALL, -1 },
     /* ******** expression separator ******** */
     { OP_EXPRSEP, -1 }
 };

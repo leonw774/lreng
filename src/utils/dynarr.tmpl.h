@@ -143,17 +143,16 @@ RENDER(_NAME, _concat)(
     }
     if (x->size + y->size > x->cap) {
         x->cap = x->size + y->size;
-        TYPE* tmp_mem = calloc(sizeof(TYPE), x->cap);
-        // if (tmp_mem == NULL) {
-        //     return 0;
-        // }
-        memcpy(tmp_mem, x->data, sizeof(TYPE) * x->size);
-        free(x->data);
-        x->data = tmp_mem;
+        x->data = realloc(x->data, sizeof(TYPE) * x->cap);
     }
-    int arr_sz = x->size * sizeof(TYPE);
-    memcpy(x->data + arr_sz, y->data, arr_sz);
-    x->size += y->size;
+    if (y->size) {
+        memcpy(
+            &x->data[x->size],
+            y->data,
+            y->size * sizeof(TYPE)
+        );
+        x->size += y->size;
+    }
     return 1;
 };
 

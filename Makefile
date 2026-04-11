@@ -1,15 +1,15 @@
-CFLAGS = -I include/ -Wall -Wextra
+CFLAGS = -I src/ -Wall -Wextra
 DEFAULT_FLAGS = -O3
 DEBUG_FLAGS = -g -D ENABLE_DEBUG_LOG \
 	#-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
-DEBUG_MORE_FLAGS = -D ENABLE_DEBUG_LOG_MORE \
+DEBUG_MORE_FLAGS = -g -D ENABLE_DEBUG_LOG_MORE \
 	#-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
 MEMCHECK_FLAGS = -include memcheck/memcheck.h \
 	-D ENABLE_DEBUG_LOG -D ENABLE_DEBUG_LOG_MORE \
 	-Wno-implicit-function-declaration -Wno-unused-function -Wno-unused-variable
 TEST_DIR = tests
 
-SHARED_SRC = src/**/*.c
+SHARED_SRC = src/**/*.c src/bigint.c src/number.c
 TEST_SRC = $(wildcard $(TEST_DIR)/*.c)
 MAIN_SRC = src/*.c
 

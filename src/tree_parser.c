@@ -1,13 +1,11 @@
-#include "main.h"
-#include "reserved.h"
 #include "tree_parser.h"
+#include "reserved.h"
+#include "syntax_tree.h"
+#include "utils/debug_flag.h"
 #include "utils/errormsg.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "token_tree.h"
-#include "utils/errormsg.h"
 
 /* Pratt Parsing */
 
@@ -125,11 +123,11 @@ nud(pratt_parser_context_t* context)
             /* do nothing */
         } else if (token->code == OP_LSQUARE && closing->code == OP_RSQUARE) {
             /* macro maker */
-            token_t mmake = { NULL, OP_MMAKE, TOK_OP, token->pos };
+            token_t mmake = { NULL, OP_MAKE_MACRO, TOK_OP, token->pos };
             pp_context_push(context, &mmake);
         } else if (token->code == OP_LCURLY && closing->code == OP_RCURLY) {
             /* function maker */
-            token_t fmake = { NULL, OP_FMAKE, TOK_OP, token->pos };
+            token_t fmake = { NULL, OP_MAKE_FUNCT, TOK_OP, token->pos };
             pp_context_push(context, &fmake);
         } else {
             sprintf(
@@ -396,13 +394,13 @@ shunting_yard(const dynarr_token_t tokens)
                 stack_top->code == OP_LCURLY && cur_token->code == OP_RCURLY
             ) {
                 /* function maker */
-                token_t fmake = { NULL, OP_FMAKE, TOK_OP, stack_top->pos };
+                token_t fmake = { NULL, OP_MAKE_FUNCT, TOK_OP, stack_top->pos };
                 dynarr_token_append(&output, &fmake);
             } else if (
                 stack_top->code == OP_LSQUARE && cur_token->code == OP_RSQUARE
             ) {
                 /* macro maker */
-                token_t mmake = { NULL, OP_MMAKE, TOK_OP, stack_top->pos };
+                token_t mmake = { NULL, OP_MAKE_MACRO, TOK_OP, stack_top->pos };
                 dynarr_token_append(&output, &mmake);
             } else {
                 sprintf(

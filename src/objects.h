@@ -1,7 +1,6 @@
 #include "bigint.h"
 #include "number.h"
 #include "token.h"
-#include "token_tree.h"
 
 #ifndef OBJECT_H
 #define OBJECT_H
