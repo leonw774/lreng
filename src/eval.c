@@ -8,17 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define TYPE object_t*
-#define TYPE_NAME object_ptr
-#include "./utils/dynarr.tmpl.h"
-#undef TYPE_NAME
-#undef TYPE
-
-#define TYPE object_t**
-#define TYPE_NAME object_ptr_ptr
-#include "./utils/dynarr.tmpl.h"
-#undef TYPE_NAME
-#undef TYPE
+object_t* eval(context_t context, const int entry_index);
 
 #define NO_OPRAND -1
 
@@ -60,14 +50,17 @@ is_bad_type(
 }
 
 static inline object_t*
-exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
+eval_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
 {
     object_t* result;
     frame_t* caller_frame = context.cur_frame;
+    frame_t* callee_frame;
+    callable_t callable = call->as.callable;
+
     /* if is builtin */
-    if (call->as.callable.builtin_name != -1) {
+    if (callable.builtin_name != -1) {
         object_t* (*func_ptr)(const object_t*)
-            = BUILDTIN_FUNC_ARRAY[call->as.callable.builtin_name];
+            = BUILDTIN_FUNC_ARRAY[callable.builtin_name];
         if (func_ptr == NULL) {
             return (object_t*)ERR_OBJECT_PTR;
         }
@@ -81,11 +74,9 @@ exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
 
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
-        printf("exec_call: prepare call frame\n");
+        printf("eval_call: prepare call frame\n");
     }
 #endif
-    frame_t* callee_frame;
-    callable_t callable = call->as.callable;
     if (callable.is_macro) {
         callee_frame = caller_frame;
     } else {
@@ -105,19 +96,19 @@ exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
 
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
-        printf("exec_call: callee_frame=%p\nfunc_obj=", callee_frame);
+        printf("eval_call: callee_frame=%p\nfunc_obj=", callee_frame);
         object_print(call, '\n');
         printf("arg=");
         object_print(arg, '\n');
     }
 #endif
     /* eval from function's entry index */
-    context_t new_context = {
-        .tree = context.tree,
-        .cur_frame = callee_frame,
-        .call_depth = context.call_depth + 1,
-    };
-    result = eval(new_context, callable.index);
+    {
+        context_t new_context = context;
+        new_context.cur_frame = callee_frame;
+        new_context.call_depth++;
+        result = eval(new_context, callable.index);
+    }
     if (!callable.is_macro) {
         /* free the objects own by this function call */
         frame_pop_stack(callee_frame);
@@ -134,7 +125,7 @@ exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
             caller_entry_index = *last_entry_index;
         }
         printf(
-            "exec_call: return to caller (entry_index=%d)\n", caller_entry_index
+            "eval_call: return to caller (entry_index=%d)\n", caller_entry_index
         );
     }
 #endif
@@ -166,11 +157,11 @@ map_process_node(
         return VISITED_PAIR;
     }
     if (*res == NULL) {
-        object_t* result = exec_call(context, pos, call, arg);
+        object_t* result = eval_call(context, pos, call, arg);
         if (result->is_error) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
-                printf("exec_map: a child return with error: ");
+                printf("eval_map: a child return with error: ");
                 object_print(result, '\n');
             }
 #endif
@@ -185,11 +176,11 @@ map_process_node(
 
 /* apply callable recursively in postfix order and return a new pair */
 object_t*
-exec_map(context_t context, linecol_t pos, const object_t* call, object_t* pair)
+eval_map(context_t context, linecol_t pos, const object_t* call, object_t* pair)
 {
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
-        printf("exec_map\n");
+        printf("eval_map\n");
         printf("call=");
         object_print(call, '\n');
         printf("pair=");
@@ -218,7 +209,7 @@ exec_map(context_t context, linecol_t pos, const object_t* call, object_t* pair)
         if (arg_left == NULL || arg_right == NULL) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
-                printf("exec_map: bad pair - left or right is empty: ");
+                printf("eval_map: bad pair - left or right is empty: ");
                 object_print(arg_pair, '\n');
             }
 #endif
@@ -231,7 +222,7 @@ exec_map(context_t context, linecol_t pos, const object_t* call, object_t* pair)
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
-                printf("exec_map: a left child return with error: ");
+                printf("eval_map: a left child return with error: ");
                 object_print(*res_left, '\n');
             }
 #endif
@@ -248,7 +239,7 @@ exec_map(context_t context, linecol_t pos, const object_t* call, object_t* pair)
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
-                printf("exec_map: a right child return with error: ");
+                printf("eval_map: a right child return with error: ");
                 object_print(*res_right, '\n');
             }
 #endif
@@ -338,7 +329,7 @@ filter_process_node(
         return VISITED_PAIR;
     }
     if (*res == NULL) {
-        object_t* result = exec_call(context, pos, func, arg);
+        object_t* result = eval_call(context, pos, func, arg);
         if (result->is_error) {
             object_deref(result);
             return ERROR;
@@ -361,13 +352,13 @@ filter_process_node(
    if a pair's two children's return value is all false, the pair itself becomes
    NULL as well. */
 object_t*
-exec_filter(
+eval_filter(
     context_t context, linecol_t pos, const object_t* call, object_t* pair
 )
 {
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
-        printf("exec_filter\n");
+        printf("eval_filter\n");
         printf("call=");
         object_print(call, '\n');
         printf("pair=");
@@ -399,7 +390,7 @@ exec_filter(
         if (arg_left == NULL || arg_right == NULL) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
-                printf("exec_filter: bad pair - left or right is empty: ");
+                printf("eval_filter: bad pair - left or right is empty: ");
                 object_print(arg_pair, '\n');
             }
 #endif
@@ -412,7 +403,7 @@ exec_filter(
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
-                printf("exec_filter: a left child return with error: ");
+                printf("eval_filter: a left child return with error: ");
                 object_print(result, '\n');
             }
 #endif
@@ -429,7 +420,7 @@ exec_filter(
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
-                printf("exec_filter: a right child return with error: ");
+                printf("eval_filter: a right child return with error: ");
                 object_print(result, '\n');
             }
 #endif
@@ -445,9 +436,9 @@ exec_filter(
         *res_right = filter_merge(*res_right);
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
-            printf("exec_filter: pair=");
+            printf("eval_filter: pair=");
             object_print(arg_pair, '\n');
-            printf("exec_filter: res_obj=");
+            printf("eval_filter: res_obj=");
             object_print(res_pair, '\n');
         }
 #endif
@@ -461,7 +452,7 @@ exec_filter(
     if (is_error) {
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
-            printf("exec_filter: error\n");
+            printf("eval_filter: error\n");
         }
 #endif
         object_deref(result);
@@ -472,7 +463,7 @@ exec_filter(
     if (result->type == TYPE_PAIR) {
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
-            printf("exec_filter: do final merge on ");
+            printf("eval_filter: do final merge on ");
             object_print(result, '\n');
         }
 #endif
@@ -508,13 +499,13 @@ reduce_process_node(object_t* arg, object_t** res)
 /* apply callable (taking a pair) recursively in postfix order to the pair
  */
 object_t*
-exec_reduce(
+eval_reduce(
     context_t context, linecol_t token_pos, const object_t* call, object_t* pair
 )
 {
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
-        printf("exec_reduce\n");
+        printf("eval_reduce\n");
         printf("call=");
         object_print(call, '\n');
         printf("pair=");
@@ -548,7 +539,7 @@ exec_reduce(
         if (arg_left == NULL || arg_right == NULL) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
-                printf("exec_reduce: bad pair - left or right is empty: ");
+                printf("eval_reduce: bad pair - left or right is empty: ");
                 object_print(*arg_pair_ptr, '\n');
             }
 #endif
@@ -560,7 +551,7 @@ exec_reduce(
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
-                printf("exec_reduce: a left child return with error: ");
+                printf("eval_reduce: a left child return with error: ");
                 object_print(*res_left_ptr, '\n');
             }
 #endif
@@ -576,7 +567,7 @@ exec_reduce(
         if (process_result_enum == ERROR) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
-                printf("exec_reduce: a right child return with error: ");
+                printf("eval_reduce: a right child return with error: ");
                 object_print(*res_right_ptr, '\n');
             }
 #endif
@@ -589,11 +580,11 @@ exec_reduce(
         }
         /* reduce */
         object_t* reduce_result
-            = exec_call(context, token_pos, call, *res_pair_ptr);
+            = eval_call(context, token_pos, call, *res_pair_ptr);
         if (reduce_result->is_error) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
-                printf("exec_reduce: a child return with error: ");
+                printf("eval_reduce: a child return with error: ");
                 object_print(reduce_result, '\n');
             }
 #endif
@@ -623,18 +614,45 @@ exec_reduce(
     return result;
 }
 
+void
+eval_root(const syntax_tree_t* syntax_tree)
+{
+    frame_t* root_frame = frame_new(NULL);
+    dynarr_object_ptr_t stack = dynarr_object_ptr_new();
+    context_t root_context = {
+        .tree = syntax_tree,
+        .cur_frame = root_frame,
+        .stack = &stack,
+        .call_depth = 0,
+    };
+    object_t* final_result = eval(root_context, syntax_tree->root_index);
+    if (final_result == NULL || final_result->is_error) {
+        int i;
+        /* clear stack because it may not be cleared if not properly returned */
+        for (i = 0; i < stack.size; i++) {
+            object_deref(stack.data[i]);
+        }
+    }
+    object_deref(final_result);
+    dynarr_object_ptr_free(&stack);
+    frame_free(root_frame);
+    free(root_frame);
+}
+
 object_t*
 eval(context_t context, const int entry_index)
 {
     int i;
     const syntax_tree_t* tree = context.tree;
-    object_t* return_obj = NULL;
-    dynarr_bytecode_t bytecodes = { .cap = 0, .size = 0, .data = NULL };
-    dynarr_object_ptr_t stack;
-    int pc = 0; /* program counter */
-    uint32_t arg = 0; /* extendable argument */
-    int is_returned = 0;
+    dynarr_bytecode_t bytecodes
+        = syntax_tree_get_bytecode_from_node_index(tree, entry_index);
+    dynarr_object_ptr_t* stack = context.stack;
 
+    /*  registers */
+    object_t* return_obj = NULL;
+    uint32_t arg = 0; /* extendable argument */
+    int inst_ptr = 0; /* instruction pointer */
+    int ret_flag = 0; /* return flag */
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf("eval\n");
@@ -655,24 +673,19 @@ eval(context_t context, const int entry_index)
         return (object_t*)ERR_OBJECT_PTR;
     }
 
-    /* get the bytecode */
-    for (i = 0; i < tree->bytecode_indexs.size; i++) {
-        if (tree->bytecode_indexs.data[i] == entry_index) {
-            bytecodes = tree->bytecodes[i];
-            break;
-        }
-    }
-    if (bytecodes.data == NULL) {
-        print_runtime_error(
-            tree->tokens.data[entry_index].pos, "Cannot find bytecode"
-        );
-        return (object_t*)ERR_OBJECT_PTR;
+#define GET_L_CHECK_TYPE(stack, left_tmp, left_type)                           \
+    {                                                                          \
+        left_tmp = *dynarr_object_ptr_back(stack);                             \
+        if (is_bad_type(bc, left_type, NO_OPRAND, left_tmp, NULL)) {           \
+            return_obj = (object_t*)ERR_OBJECT_PTR;                            \
+            break;                                                             \
+        }                                                                      \
     }
 
 #define POP_L_CHECK_TYPE(stack, left_tmp, left_type)                           \
     {                                                                          \
-        left_tmp = *dynarr_object_ptr_back(&stack);                            \
-        dynarr_object_ptr_pop(&stack);                                         \
+        left_tmp = *dynarr_object_ptr_back(stack);                             \
+        dynarr_object_ptr_pop(stack);                                          \
         if (is_bad_type(bc, left_type, NO_OPRAND, left_tmp, NULL)) {           \
             return_obj = (object_t*)ERR_OBJECT_PTR;                            \
             break;                                                             \
@@ -681,10 +694,10 @@ eval(context_t context, const int entry_index)
 
 #define POP_LR_CHECK_TYPE(stack, left_obj, right_obj, left_type, right_type)   \
     {                                                                          \
-        right_obj = *dynarr_object_ptr_back(&stack);                           \
-        dynarr_object_ptr_pop(&stack);                                         \
-        left_obj = *dynarr_object_ptr_back(&stack);                            \
-        dynarr_object_ptr_pop(&stack);                                         \
+        right_obj = *dynarr_object_ptr_back(stack);                            \
+        dynarr_object_ptr_pop(stack);                                          \
+        left_obj = *dynarr_object_ptr_back(stack);                             \
+        dynarr_object_ptr_pop(stack);                                          \
         if (is_bad_type(bc, left_type, right_type, left_obj, right_obj)) {     \
             return_obj = (object_t*)ERR_OBJECT_PTR;                            \
             break;                                                             \
@@ -698,17 +711,16 @@ eval(context_t context, const int entry_index)
     }
 
     /* begin evaluation */
-    stack = dynarr_object_ptr_new();
-    while (is_returned == 0) {
-        bytecode_t bc = bytecodes.data[pc];
+    while (ret_flag == 0) {
+        bytecode_t bc = bytecodes.data[inst_ptr];
         object_t* left_obj;
         object_t* right_obj;
 
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
-            printf("pc=%d, arg=%u, eval_stack=[", pc, arg);
-            for (i = 0; i < stack.size; i++) {
-                object_print(stack.data[i], ',');
+            printf("inst_ptr=%d, arg=%u, eval_stack=[", inst_ptr, arg);
+            for (i = 0; i < stack->size; i++) {
+                object_print(stack->data[i], ',');
                 printf(" ");
             }
             printf("]\n");
@@ -727,16 +739,26 @@ eval(context_t context, const int entry_index)
         case BOP_PUSH_LITERAL:
             arg = arg | bc.arg;
             return_obj = object_ref(tree->literals[arg]);
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             break;
         case BOP_FRAME_GET:
             arg = arg | bc.arg;
-            return_obj = object_ref(frame_get(context.cur_frame, arg));
-            dynarr_object_ptr_append(&stack, &return_obj);
+            {
+                object_t* o = frame_get(context.cur_frame, arg);
+                if (o == NULL) {
+                    const char* err_msg = "Identifier '%s' used uninitialized";
+                    sprintf(ERR_MSG_BUF, err_msg, tree->id_code_str_map[arg]);
+                    print_runtime_error(bc.pos, ERR_MSG_BUF);
+                    return_obj = (object_t*)ERR_OBJECT_PTR;
+                } else {
+                    return_obj = object_ref(o);
+                }
+            }
+            dynarr_object_ptr_append(stack, &return_obj);
             break;
         case BOP_FRAME_SET:
             arg = arg | bc.arg;
-            return_obj = *dynarr_object_ptr_back(&stack);
+            return_obj = *dynarr_object_ptr_back(stack);
             if (!frame_set(context.cur_frame, arg, return_obj)) {
                 const char* err_msg
                     = "Repeated initialization of identifier '%s'";
@@ -746,45 +768,40 @@ eval(context_t context, const int entry_index)
             }
             break;
         case BOP_POP:
-            return_obj = *dynarr_object_ptr_back(&stack);
-            dynarr_object_ptr_pop(&stack);
+            return_obj = *dynarr_object_ptr_back(stack);
+            dynarr_object_ptr_pop(stack);
             object_deref(return_obj);
             return_obj = NULL;
             break;
         case BOP_RET:
-            return_obj = *dynarr_object_ptr_back(&stack);
-            dynarr_object_ptr_pop(&stack);
-            for (i = 0; i < stack.size; i++) {
-                object_t* tmp_obj = *dynarr_object_ptr_back(&stack);
-                object_deref(tmp_obj);
-                dynarr_object_ptr_pop(&stack);
-            }
-            is_returned = 1;
+            return_obj = *dynarr_object_ptr_back(stack);
+            dynarr_object_ptr_pop(stack);
+            ret_flag = 1;
             break;
         case BOP_JUMP:
             /* not implemented */
             break;
         case BOP_JUMP_FALSE_OR_POP:
-            return_obj = *dynarr_object_ptr_back(&stack);
+            return_obj = *dynarr_object_ptr_back(stack);
             if (object_to_bool(return_obj)) {
-                dynarr_object_ptr_pop(&stack);
+                dynarr_object_ptr_pop(stack);
                 object_deref(return_obj);
+                return_obj = NULL;
             } else {
                 arg = arg | bc.arg;
-                pc += arg;
+                inst_ptr += arg;
             }
-            return_obj = NULL;
             break;
         case BOP_JUMP_TRUE_OR_POP:
-            return_obj = *dynarr_object_ptr_back(&stack);
+            return_obj = *dynarr_object_ptr_back(stack);
             if (!object_to_bool(return_obj)) {
-                dynarr_object_ptr_pop(&stack);
+                dynarr_object_ptr_pop(stack);
                 object_deref(return_obj);
+                return_obj = NULL;
             } else {
                 arg = arg | bc.arg;
-                pc += arg;
+                inst_ptr += arg;
             }
-            return_obj = NULL;
             break;
         case BOP_MAKE_FUNCT:
             arg = arg | bc.arg;
@@ -799,7 +816,7 @@ eval(context_t context, const int entry_index)
                     .init_frame = frame_copy(context.cur_frame),
                 }
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             break;
         case BOP_MAKE_MACRO:
             arg = arg | bc.arg;
@@ -814,30 +831,30 @@ eval(context_t context, const int entry_index)
                     .init_frame = NULL,
                 }
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             break;
         case BOP_CALL:
             POP_LR_CHECK_TYPE(stack, left_obj, right_obj, TYPE_CALL, TYPE_ANY);
-            return_obj = exec_call(context, bc.pos, left_obj, right_obj);
-            dynarr_object_ptr_append(&stack, &return_obj);
+            return_obj = eval_call(context, bc.pos, left_obj, right_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_MAP:
             POP_LR_CHECK_TYPE(stack, left_obj, right_obj, TYPE_CALL, TYPE_PAIR);
-            return_obj = exec_map(context, bc.pos, left_obj, right_obj);
-            dynarr_object_ptr_append(&stack, &return_obj);
+            return_obj = eval_map(context, bc.pos, left_obj, right_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_FILTER:
             POP_LR_CHECK_TYPE(stack, left_obj, right_obj, TYPE_CALL, TYPE_PAIR);
-            return_obj = exec_filter(context, bc.pos, left_obj, right_obj);
-            dynarr_object_ptr_append(&stack, &return_obj);
+            return_obj = eval_filter(context, bc.pos, left_obj, right_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_REDUCE:
             POP_LR_CHECK_TYPE(stack, left_obj, right_obj, TYPE_CALL, TYPE_PAIR);
-            return_obj = exec_reduce(context, bc.pos, left_obj, right_obj);
-            dynarr_object_ptr_append(&stack, &return_obj);
+            return_obj = eval_reduce(context, bc.pos, left_obj, right_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_NEG:
@@ -846,7 +863,7 @@ eval(context_t context, const int entry_index)
                 left_obj->type,
                 (object_data_union)number_neg(&left_obj->as.number)
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             object_deref(left_obj);
             break;
         case BOP_NOT:
@@ -856,7 +873,7 @@ eval(context_t context, const int entry_index)
                 (object_data_union)(object_to_bool(left_obj) ? ONE_NUMBER
                                                              : ZERO_NUMBER)
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             object_deref(left_obj);
             break;
         case BOP_CEIL:
@@ -864,7 +881,7 @@ eval(context_t context, const int entry_index)
             return_obj = object_create(
                 TYPE_NUM, (object_data_union)number_ceil(&left_obj->as.number)
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             object_deref(left_obj);
             break;
         case BOP_FLOOR:
@@ -872,32 +889,32 @@ eval(context_t context, const int entry_index)
             return_obj = object_create(
                 TYPE_NUM, (object_data_union)number_floor(&left_obj->as.number)
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             object_deref(left_obj);
             break;
         case BOP_GETL:
             POP_L_CHECK_TYPE(stack, left_obj, TYPE_PAIR);
             return_obj = object_ref(left_obj->as.pair.left);
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             object_deref(left_obj);
             break;
         case BOP_GETR:
             POP_L_CHECK_TYPE(stack, left_obj, TYPE_PAIR);
             return_obj = object_ref(left_obj->as.pair.right);
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             object_deref(left_obj);
             break;
         case BOP_COND_CALL:
             POP_L_CHECK_TYPE(stack, left_obj, TYPE_ANY);
             if (left_obj->type == TYPE_CALL) {
-                return_obj = exec_call(
+                return_obj = eval_call(
                     context, bc.pos, left_obj,
                     (object_t*)&RESERVED_OBJS[RESERVED_ID_CODE_NULL]
                 );
             } else {
                 return_obj = object_ref(left_obj);
             }
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             object_deref(left_obj);
             break;
         case BOP_SWAP:
@@ -909,7 +926,7 @@ eval(context_t context, const int entry_index)
                     .right = object_ref(left_obj->as.pair.left),
                 }
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             object_deref(left_obj);
             break;
         case BOP_EXP:
@@ -925,7 +942,7 @@ eval(context_t context, const int entry_index)
                 (object_data_union)
                     number_exp(&left_obj->as.number, &right_obj->as.number)
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_MUL:
@@ -935,7 +952,7 @@ eval(context_t context, const int entry_index)
                 (object_data_union)
                     number_mul(&left_obj->as.number, &right_obj->as.number)
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_DIV:
@@ -950,7 +967,7 @@ eval(context_t context, const int entry_index)
                 (object_data_union)
                     number_div(&left_obj->as.number, &right_obj->as.number)
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_MOD:
@@ -960,7 +977,7 @@ eval(context_t context, const int entry_index)
                 (object_data_union)
                     number_mod(&left_obj->as.number, &right_obj->as.number)
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_ADD:
@@ -970,7 +987,7 @@ eval(context_t context, const int entry_index)
                 (object_data_union)
                     number_add(&left_obj->as.number, &right_obj->as.number)
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_SUB:
@@ -980,7 +997,7 @@ eval(context_t context, const int entry_index)
                 (object_data_union)
                     number_sub(&left_obj->as.number, &right_obj->as.number)
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_LT:
@@ -991,7 +1008,7 @@ eval(context_t context, const int entry_index)
                     number_lt(&left_obj->as.number, &right_obj->as.number)
                 )
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_LE:
@@ -1002,7 +1019,7 @@ eval(context_t context, const int entry_index)
                     !number_lt(&right_obj->as.number, &left_obj->as.number)
                 )
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_GT:
@@ -1013,7 +1030,7 @@ eval(context_t context, const int entry_index)
                     number_lt(&right_obj->as.number, &left_obj->as.number)
                 )
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_GE:
@@ -1024,7 +1041,7 @@ eval(context_t context, const int entry_index)
                     !number_lt(&left_obj->as.number, &right_obj->as.number)
                 )
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_EQ:
@@ -1034,7 +1051,7 @@ eval(context_t context, const int entry_index)
                 (object_data_union)
                     number_from_i32(object_eq(left_obj, right_obj))
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_NE:
@@ -1044,7 +1061,7 @@ eval(context_t context, const int entry_index)
                 (object_data_union)
                     number_from_i32(!object_eq(left_obj, right_obj))
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_AND:
@@ -1055,7 +1072,7 @@ eval(context_t context, const int entry_index)
                     object_to_bool(left_obj) && object_to_bool(right_obj)
                 )
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_OR:
@@ -1066,7 +1083,7 @@ eval(context_t context, const int entry_index)
                     object_to_bool(left_obj) || object_to_bool(right_obj)
                 )
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_PAIR:
@@ -1078,11 +1095,11 @@ eval(context_t context, const int entry_index)
                     .right = object_ref(right_obj),
                 }
             );
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         case BOP_BIND_ARG:
-            return_obj = *dynarr_object_ptr_back(&stack);
+            return_obj = *dynarr_object_ptr_back(stack);
             if (is_bad_type(bc, NO_OPRAND, TYPE_CALL, NULL, return_obj)) {
                 return_obj = (object_t*)ERR_OBJECT_PTR;
                 break;
@@ -1116,13 +1133,13 @@ eval(context_t context, const int entry_index)
                     return_obj = (object_t*)ERR_OBJECT_PTR;
                     break;
                 }
-                return_obj = exec_call(
+                return_obj = eval_call(
                     context, bc.pos,
                     (object_to_bool(left_obj) ? right_left : right_right),
                     (object_t*)&RESERVED_OBJS[RESERVED_ID_CODE_NULL]
                 );
             }
-            dynarr_object_ptr_append(&stack, &return_obj);
+            dynarr_object_ptr_append(stack, &return_obj);
             DEREF_RL(left_obj, right_obj);
             break;
         default:
@@ -1139,29 +1156,15 @@ eval(context_t context, const int entry_index)
 #endif
             break;
         }
-        pc++;
+        inst_ptr++;
         if (bc.op != BOP_EXTEND_ARG) {
             arg = 0;
         }
     }
 
-    /* prepare return object */
-    if (return_obj == NULL || return_obj->is_error == 1) {
-        /* clear stack because it may not be cleared if not properly returned */
-        for (i = 0; i < stack.size; i++) {
-            object_deref(stack.data[i]);
-        }
+    if (return_obj == NULL) {
         return_obj = (object_t*)ERR_OBJECT_PTR;
     }
-
-    /* free the stack */
-#ifdef ENABLE_DEBUG_LOG
-    if (global_is_enable_debug_log) {
-        printf("free eval stack\n");
-        fflush(stdout);
-    }
-#endif
-    dynarr_object_ptr_free(&stack);
 
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {

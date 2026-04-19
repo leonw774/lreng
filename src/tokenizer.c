@@ -664,8 +664,7 @@ tokenize(const char* src, const unsigned long src_len)
         printf("\n");
     }
 #endif
-    /* give identifier codes:
-       init code-str map with keywords */
+    /* give identifier codes: init code-str map with keywords */
     /* TODO: rewrite this with prefix-tree */
     dynarr_char_ptr_t code_str_map = dynarr_char_ptr_new();
     for (i = 0; i < RESERVED_ID_COUNT; i++) {

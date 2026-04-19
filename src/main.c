@@ -81,16 +81,7 @@ main(int argc, char** argv)
     arena_init(&token_str_arena, fsize);
     dynarr_token_t tokens = tokenize(src, fsize);
     syntax_tree_t syntax_tree = syntax_tree_create(tokens);
-    frame_t* top_frame = frame_new(NULL);
-    context_t top_context = {
-        .tree = &syntax_tree,
-        .cur_frame = top_frame,
-        .call_depth = 0,
-    };
-    object_t* final_result = eval(top_context, syntax_tree.root_index);
-    object_deref(final_result);
-    frame_free(top_frame);
-    free(top_frame);
+    eval_root(&syntax_tree);
     syntax_tree_free(&syntax_tree);
     dynarr_token_free(&tokens);
     arena_free(&token_str_arena);

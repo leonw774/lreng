@@ -17,6 +17,18 @@ typedef enum object_type {
 
 typedef struct object object_t;
 
+#define TYPE object_t*
+#define TYPE_NAME object_ptr
+#include "./utils/dynarr.tmpl.h"
+#undef TYPE_NAME
+#undef TYPE
+
+#define TYPE object_t**
+#define TYPE_NAME object_ptr_ptr
+#include "./utils/dynarr.tmpl.h"
+#undef TYPE_NAME
+#undef TYPE
+
 typedef struct pair {
     object_t* left;
     object_t* right;

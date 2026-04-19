@@ -11,6 +11,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+int
+int_cmp(const void* a, const void* b)
+{
+    int arg1 = *(const int*)a;
+    int arg2 = *(const int*)b;
+    if (arg1 < arg2) {
+        return -1;
+    }
+    if (arg1 > arg2) {
+        return 1;
+    }
+    return 0;
+}
+
 /* create tree from token list and prepare for fast lookup and pre-eval */
 syntax_tree_t
 syntax_tree_create(dynarr_token_t tokens)
@@ -39,7 +53,6 @@ syntax_tree_create(dynarr_token_t tokens)
         .rights = NULL,
         .sizes = NULL,
         .max_id_code = -1,
-        .id_code_str_map = NULL,
     };
     dynarr_int_t index_stack = dynarr_int_new();
     int* tree_data = malloc(token_size * sizeof(int) * 3);
@@ -187,9 +200,7 @@ syntax_tree_create(dynarr_token_t tokens)
     }
 #endif
 
-    /* compile bytecodes for top and all functions and macros */
-
-    dynarr_int_append(&tree.bytecode_indexs, &tree.root_index);
+    /* compile bytecodes for root and all functions and macros */
     for (i = 0; i < postfix_tokens.size; i++) {
         token_t* cur_token = dynarr_token_at(&postfix_tokens, i);
         if (cur_token->type == TOK_OP
@@ -198,19 +209,24 @@ syntax_tree_create(dynarr_token_t tokens)
             dynarr_int_append(&tree.bytecode_indexs, &tree.lefts[i]);
         }
     }
+    dynarr_int_append(&tree.bytecode_indexs, &tree.root_index);
+    /* sort the array */
+    qsort(
+        tree.bytecode_indexs.data, tree.bytecode_indexs.size, sizeof(int),
+        int_cmp
+    );
 
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
-        printf("find %d callables\n", tree.bytecode_indexs.size);
+        printf("find %d callables\n", tree.bytecode_indexs.size - 1);
     }
 #endif
 
     tree.bytecodes
         = malloc(tree.bytecode_indexs.size * sizeof(dynarr_bytecode_t));
     for (i = 0; i < tree.bytecode_indexs.size; i++) {
-        tree.bytecodes[i] = syntax_tree_compile(
-            &tree, *dynarr_int_at(&tree.bytecode_indexs, i)
-        );
+        tree.bytecodes[i]
+            = syntax_tree_compile(&tree, tree.bytecode_indexs.data[i]);
         bytecode_array_extend(
             &tree.bytecodes[i], BOP_RET, 0,
             tree.tokens.data[tree.bytecode_indexs.data[i]].pos
@@ -376,9 +392,7 @@ syntax_tree_compile(const syntax_tree_t* tree, const int root_index)
         left_code = syntax_tree_compile(tree, left_index);
         right_code = syntax_tree_compile(tree, right_index);
         dynarr_bytecode_concat(&output, &left_code);
-        /* we actually don't need POP because RET will just get the top object
-         * and pop all the rest for us */
-        /* bytecode_array_extend(&output, BOP_POP, 0, cur_pos); */
+        bytecode_array_extend(&output, BOP_POP, 0, cur_pos);
         dynarr_bytecode_concat(&output, &right_code);
         dynarr_bytecode_free(&left_code);
         dynarr_bytecode_free(&right_code);
@@ -398,6 +412,31 @@ syntax_tree_compile(const syntax_tree_t* tree, const int root_index)
         break;
     };
     return output;
+}
+
+inline dynarr_bytecode_t
+syntax_tree_get_bytecode_from_node_index(
+    const syntax_tree_t* tree, const int node_index
+)
+{
+    const int* found_bytecode_index_ptr = bsearch(
+        &node_index, tree->bytecode_indexs.data, tree->bytecode_indexs.size,
+        sizeof(int), int_cmp
+    );
+    const int found_bytecode_index
+        = found_bytecode_index_ptr - tree->bytecode_indexs.data;
+    assert(found_bytecode_index_ptr != NULL);
+    assert(found_bytecode_index < tree->bytecode_indexs.size);
+#ifdef ENABLE_DEBUG_LOG
+    if (global_is_enable_debug_log) {
+        printf(
+            "syntax_tree_get_bytecode_from_node_index: node_index=%d, "
+            "found_bytecode_index=%d\n",
+            node_index, found_bytecode_index
+        );
+    }
+#endif
+    return tree->bytecodes[found_bytecode_index];
 }
 
 inline void
