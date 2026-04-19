@@ -9,11 +9,11 @@ MEMCHECK_FLAGS = -include memcheck/memcheck.h \
 	-Wno-implicit-function-declaration -Wno-unused-function -Wno-unused-variable
 TEST_DIR = tests
 
-SHARED_SRC = src/**/*.c src/bigint.c src/number.c
-TEST_SRC = $(wildcard $(TEST_DIR)/*.c)
-MAIN_SRC = src/*.c
+TEST_DEP_SRC = src/bigint.c src/number.c
+TEST_TARGET_SRC = $(wildcard $(TEST_DIR)/*.c)
+MAIN_SRC = src/*.c src/**/*.c
 
-TEST_TARGET = $(patsubst %.c, %.out, $(TEST_SRC))
+TEST_TARGET = $(patsubst %.c, %.out, $(TEST_TARGET_SRC))
 MAIN_TARGET = lreng
 
 .PHONY: lreng debug memcheck clean
@@ -34,11 +34,11 @@ clean:
 	rm $(MAIN_TARGET) $(TEST_TARGET) || true
 
 # The rule for main target (./lreng)
-$(MAIN_TARGET): $(MAIN_SRC) $(SHARED_SRC)
+$(MAIN_TARGET): $(MAIN_SRC)
 	gcc $(CFLAGS) -o $@ $^
 
 # The rules of test targets
-%.out: %.c $(SHARED_SRC)
+%.out: %.c $(TEST_DEP_SRC)
 	gcc $(CFLAGS) -o $@ $^
 
 # ================================
@@ -49,7 +49,7 @@ WEB_TARGET = webplayground/lreng.js
 
 web:
 	rm -r webplayground/lreng.* || true
-	emcc $(SHARED_SRC) $(MAIN_SRC) \
+	emcc $(MAIN_SRC) \
 		-I include/ -D IS_WASM -O3 -sSTACK_SIZE=5MB -o $(WEB_TARGET) \
 		-s "EXPORTED_RUNTIME_METHODS=['FS','callMain']"
 	cp README.md webplayground/README.md
