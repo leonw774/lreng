@@ -1,7 +1,7 @@
 read_list = {
   c = input();
-  is_number(c) ? [
-    c == '\n' ? [
+  is_number(c) ?? [
+    c == '\n' ?? [
       null
     ], [
       (c, read_list())

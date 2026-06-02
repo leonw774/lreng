@@ -51,6 +51,7 @@ typedef enum bytecode_op_code {
     BOP_OR,
     BOP_PAIR,
     BOP_BIND_ARG,
+    BOP_COND_PAIR_GET,
     BOP_COND_PAIR_CALL,
     BOP_END_Of_ENUM,
 } bytecode_op_code_enum;
@@ -97,6 +98,7 @@ static const char* const BYTECODE_OP_NAMES[BOP_END_Of_ENUM] = {
     "OR",
     "PAIR",
     "BIND_ARG",
+    "COND_PAIR_GET",
     "COND_PAIR_CALL",
 };
 
@@ -136,6 +138,7 @@ static const int OP_TO_BOP_MAPPING[][2] = {
     { OP_COND_AND, BOP_JUMP_TRUE_OR_POP },
     { OP_COND_OR, BOP_JUMP_FALSE_OR_POP },
     { OP_ASSIGN, BOP_FRAME_SET },
+    { OP_COND_PAIR_GET, BOP_COND_PAIR_GET },
     { OP_COND_PAIR_CALL, BOP_COND_PAIR_CALL },
 };
 

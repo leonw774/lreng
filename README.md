@@ -147,11 +147,15 @@ You can also use `$`. The syntax is `foo $ expr`.  The `$` is right-associative,
 
 ### Conditional caller
 
-The unary operator `` `foo `` is an useful short hand for `is_callable(foo) && foo() || foo `. 
+The unary operator `` `foo `` evaluates to `foo()` when `foo` is callable and stay itself when otherwise. 
+
+### Conditional pair getter
+
+The `cond ? pair` operator returns `<pair` when `cond` is true and `>pair` when otherwise. Note that both side of the pair are evaluated before the conditional get is performed.
 
 ### Conditional pair caller
 
-The `?` operator is designed to do proper conditional expression evaluation. The syntax is `cond ? callable_pair`. If `cond` is true, the `<callable_pair` is called, otherwise, the `>callable_pair` is called. The passed argument is always null.
+The `??` operator is an useful short hand of `` `(cond ? pair) `` for proper conditional expression evaluation. The syntax is `cond ? callable_pair`. If `cond` is true, the `<callable_pair` is called, otherwise, the `>callable_pair` is called. The passed argument is always null.
 
 ### Map, filter, and reduce
 

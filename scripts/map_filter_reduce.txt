@@ -21,9 +21,9 @@ print = string => {
     (c => { c != null && output c }) $> string
 };
 print_tree = tree => {
-    is_pair tree ? [
+    is_pair tree ?? [
         (x => {
-            x == null ? [
+            x == null ?? [
                 print ('n', 'u', 'l', 'l', null)
             ], [
                 print $ format_int $ x

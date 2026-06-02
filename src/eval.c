@@ -1132,6 +1132,21 @@ eval_bytecode(context_t context, registers_t regs, bytecode_t bc)
         regs.arg = regs.arg | bc.arg;
         tmp->as.callable.arg_code = regs.arg;
         break;
+    case OP_COND_PAIR_GET:
+        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_ANY, TYPE_PAIR)) {
+            regs.reto = (object_t*)ERR_OBJECT_PTR;
+            break;
+        }
+        /* check inside the pair */
+        {
+            object_t* right_left = right->as.pair.left;
+            object_t* right_right = right->as.pair.right;
+            tmp = (object_to_bool(left) ? right_left : right_right);
+        }
+        dynarr_object_ptr_append(stack, &tmp);
+        object_deref(left);
+        object_deref(right);
+        break;
     case OP_COND_PAIR_CALL:
         if (pop_lr_and_check(stack, bc, &left, &right, TYPE_ANY, TYPE_PAIR)) {
             regs.reto = (object_t*)ERR_OBJECT_PTR;

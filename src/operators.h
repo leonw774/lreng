@@ -52,6 +52,7 @@ typedef enum op_code {
     OP_COND_AND,
     OP_COND_OR,
     OP_ASSIGN,
+    OP_COND_PAIR_GET,
     OP_COND_PAIR_CALL,
     /* ******** expression separator ******** */
     OP_EXPRSEP,
@@ -70,8 +71,9 @@ static const int UNARY_OPS[] = {
 };
 
 static const int BINARY_RIGHT_ASSOCIATIVE_OPS[] = {
-    /* exponent, pair, special call operations, and assignment */
-    OP_EXP, OP_PAIR, OP_CALLR, OP_BIND_ARG, OP_COND_PAIR_CALL, OP_ASSIGN
+    /* exponent, pair, conditional pair call operations, and assignment */
+    OP_EXP,           OP_PAIR,           OP_CALLR,  OP_BIND_ARG,
+    OP_COND_PAIR_GET, OP_COND_PAIR_CALL, OP_ASSIGN,
 };
 
 /* OP_STR must be aligned with op_code_enum */
@@ -94,7 +96,7 @@ static const char* const OP_NAMES[OPERATOR_COUNT] = {
     /* ******** pair and callables ******** */
     ",", "$", "=>",
     /* ******** conditional and assignment ******** */
-    "&&", "||", "=", "?",
+    "&&", "||", "=", "?", "??",
     /* ******** expression separator ******** */
     ";"
 };
@@ -103,7 +105,8 @@ static const char* const OP_NAMES[OPERATOR_COUNT] = {
 
 static const int OP_TIER_LIST[][MAX_OPS_IN_TIER] = {
     /* ******** brackets ******** */
-    { OP_LCURLY, OP_RCURLY, OP_MAKE_FUNCT, OP_LSQUARE, OP_RSQUARE, OP_MAKE_MACRO, -1 },
+    { OP_LCURLY, OP_RCURLY, OP_MAKE_FUNCT, OP_LSQUARE, OP_RSQUARE,
+      OP_MAKE_MACRO, -1 },
     { OP_LPAREN, OP_RPAREN, -1 },
     /* ******** function call ******** */
     { OP_CALL, -1 },
@@ -129,7 +132,7 @@ static const int OP_TIER_LIST[][MAX_OPS_IN_TIER] = {
     /* ******** conditional and assignment ******** */
     { OP_COND_AND, -1 },
     { OP_COND_OR, -1 },
-    { OP_ASSIGN, OP_COND_PAIR_CALL, -1 },
+    { OP_ASSIGN, OP_COND_PAIR_GET, OP_COND_PAIR_CALL, -1 },
     /* ******** expression separator ******** */
     { OP_EXPRSEP, -1 }
 };
