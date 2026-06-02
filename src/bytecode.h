@@ -124,6 +124,7 @@ static const int OP_TO_BOP_MAPPING[][2] = {
     { OP_SUB, BOP_SUB },
     { OP_LT, BOP_LT },
     { OP_LE, BOP_LE },
+    { OP_GT, BOP_GT },
     { OP_GE, BOP_GE },
     { OP_EQ, BOP_EQ },
     { OP_NE, BOP_NE },
