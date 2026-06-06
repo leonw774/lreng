@@ -157,6 +157,7 @@ The `cond ? pair` operator returns `<pair` when `cond` is true and `>pair` when 
 
 The `??` operator is an useful short hand of `` `(cond ? pair) `` for proper conditional expression evaluation. The syntax is `cond ? callable_pair`. If `cond` is true, the `<callable_pair` is called, otherwise, the `>callable_pair` is called. The passed argument is always null.
 
+<!--
 ### Map, filter, and reduce
 
 The map `f $> x`, filter `f $| x`, and reduce `f $/ x` operators apply callable recursively to a pair. 
@@ -201,6 +202,7 @@ reduce(f, x) =
     x                                          , if x is not a Pair
     f(reduce(f, left(x)), reduce(f, right(x))) , otherwise
 ```
+-->
 
 
 ## Built-in functions

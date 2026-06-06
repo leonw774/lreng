@@ -34,9 +34,18 @@ typedef struct frame {
     dynarr_frame_entry_t stack;
 } frame_t;
 
+#define TYPE frame_t
+#define TYPE_NAME frame
+#include "utils/dynarr.tmpl.h"
+#undef TYPE_NAME
+#undef TYPE
+
+
 extern frame_t* frame_new(const frame_t* parent);
 
 extern frame_t* frame_copy(const frame_t* f);
+
+extern frame_t* frame_ref(frame_t* f);
 
 extern void frame_free(frame_t* f);
 

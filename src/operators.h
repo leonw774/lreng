@@ -14,9 +14,9 @@ typedef enum op_code {
     /* ******** call ******** */
     OP_CALL,
     /* ******** map filter reduce ******** */
-    OP_MAP,
-    OP_FILTER,
-    OP_REDUCE,
+    // OP_MAP,
+    // OP_FILTER,
+    // OP_REDUCE,
     /* ******** unary ******** */
     OP_POS,
     OP_NEG,
@@ -84,7 +84,7 @@ static const char* const OP_NAMES[OPERATOR_COUNT] = {
     /* ******** function call ******** */
     "call",
     /* ******** map filter reduce ******** */
-    "$>", "$|", "$/",
+    // "$>", "$|", "$/",
     /* ******** unary ******** */
     "+", "-", "!", "^", "\\", "<", ">", "`", "~",
     /* ******** arithmetic ******** */
@@ -111,7 +111,7 @@ static const int OP_TIER_LIST[][MAX_OPS_IN_TIER] = {
     /* ******** function call ******** */
     { OP_CALL, -1 },
     /* ******** map filter reduce ******** */
-    { OP_MAP, OP_FILTER, OP_REDUCE, -1 },
+    // { OP_MAP, OP_FILTER, OP_REDUCE, -1 },
     /* ******** unary ******** */
     { OP_POS, OP_NEG, OP_NOT, OP_CEIL, OP_FLOOR, OP_GETL, OP_GETR, OP_COND_CALL,
       OP_SWAP, -1 },

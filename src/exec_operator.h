@@ -1,17 +1,17 @@
 #include "eval.h"
 
-extern object_t* exec_call(
+extern void exec_call(
     context_t context, linecol_t pos, const object_t* call, object_t* arg
 );
 
-extern object_t* exec_map(
+extern void exec_map(
     context_t context, linecol_t pos, const object_t* call, object_t* pair
 );
 
-extern object_t* exec_filter(
+extern void exec_filter(
     context_t context, linecol_t pos, const object_t* call, object_t* pair
 );
 
-extern object_t* exec_reduce(
+extern void exec_reduce(
     context_t context, linecol_t pos, const object_t* call, object_t* pair
 );

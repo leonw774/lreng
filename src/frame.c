@@ -54,6 +54,14 @@ frame_copy(const frame_t* f)
     return clone_frame;
 }
 
+/* increase ref of the frame, doesn't touch the objects in stack */
+inline frame_t*
+frame_ref(frame_t* f)
+{
+    f->ref_count++;
+    return f;
+}
+
 /* free the stacks and globals if owned it */
 inline void
 frame_free(frame_t* f)
@@ -62,6 +70,10 @@ frame_free(frame_t* f)
 #ifdef ENABLE_DEBUG_LOG_MORE
     printf("frame_free: %p\n", f);
 #endif
+    if (f->ref_count > 1) {
+        f->ref_count--;
+        return;
+    }
     if (f->is_own_globals && f->globals) {
         for (i = 0; i < f->globals->size; i++) {
             object_deref(dynarr_frame_entry_at(f->globals, i)->object);

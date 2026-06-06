@@ -1,21 +1,15 @@
 #include "objects.h"
+#include "frame.h"
 #include "syntax_tree.h"
 #include <stdint.h>
 
 #ifndef EVAL_H
 #define EVAL_H
 
-typedef struct context {
-    const syntax_tree_t* tree;
-    frame_t* cur_frame;
-    dynarr_object_ptr_t* stack;
-    int call_depth;
-} context_t;
-
 typedef struct registers {
     uint32_t arg; /* extendable argument */
     uint32_t insp; /* instruction pointer */
-    object_t* reto; /* return object */
+    uint16_t errf; /* error flag */
 } registers_t;
 
 #define TYPE registers_t
@@ -24,7 +18,14 @@ typedef struct registers {
 #undef TYPE_NAME
 #undef TYPE
 
-object_t* eval(context_t context, const int entry_index);
+typedef struct context {
+    const syntax_tree_t* tree;
+    dynarr_frame_t* frame_stack;
+    dynarr_registers_t* regs_stack;
+    dynarr_object_ptr_t* object_stack;
+} context_t;
+
+void eval(context_t context);
 
 extern void eval_root(const syntax_tree_t* tree);
 

@@ -46,8 +46,9 @@ syntax_tree_create(dynarr_token_t tokens)
     int i = 0, token_size = postfix_tokens.size;
     syntax_tree_t tree = {
         .tokens = postfix_tokens,
-        .bytecodes = NULL,
-        .bytecode_indexs = dynarr_int_new(),
+        .bytecodes = dynarr_bytecode_new(),
+        .bytecode_start_index = dynarr_int_new(),
+        .entry_indexs = dynarr_int_new(),
         .root_index = -1,
         .lefts = NULL,
         .rights = NULL,
@@ -201,37 +202,39 @@ syntax_tree_create(dynarr_token_t tokens)
 #endif
 
     /* compile bytecodes for root and all functions and macros */
+
     for (i = 0; i < postfix_tokens.size; i++) {
         token_t* cur_token = dynarr_token_at(&postfix_tokens, i);
         if (cur_token->type == TOK_OP
             && (cur_token->code == OP_MAKE_FUNCT
                 || cur_token->code == OP_MAKE_MACRO)) {
-            dynarr_int_append(&tree.bytecode_indexs, &tree.lefts[i]);
+            dynarr_int_append(&tree.entry_indexs, &tree.lefts[i]);
         }
     }
-    dynarr_int_append(&tree.bytecode_indexs, &tree.root_index);
+    dynarr_int_append(&tree.entry_indexs, &tree.root_index);
     /* sort the array */
-    qsort(
-        tree.bytecode_indexs.data, tree.bytecode_indexs.size, sizeof(int),
-        int_cmp
-    );
+    qsort(tree.entry_indexs.data, tree.entry_indexs.size, sizeof(int), int_cmp);
 
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
-        printf("find %d callables\n", tree.bytecode_indexs.size - 1);
+        printf("find %d callables\n", tree.entry_indexs.size - 1);
     }
 #endif
 
-    tree.bytecodes
-        = malloc(tree.bytecode_indexs.size * sizeof(dynarr_bytecode_t));
-    for (i = 0; i < tree.bytecode_indexs.size; i++) {
-        tree.bytecodes[i]
-            = syntax_tree_compile(&tree, tree.bytecode_indexs.data[i]);
+    for (i = 0; i < tree.entry_indexs.size; i++) {
+        int entry_index_i = tree.entry_indexs.data[i];
+        dynarr_bytecode_t bc_i = syntax_tree_compile(&tree, entry_index_i);
+        dynarr_int_append(&tree.bytecode_start_index, &tree.bytecodes.size);
         bytecode_array_extend(
-            &tree.bytecodes[i], BOP_RET, 0,
-            tree.tokens.data[tree.bytecode_indexs.data[i]].pos
+            &bc_i, BOP_RET, 0, tree.tokens.data[entry_index_i].pos
         );
+        bytecode_array_extend(
+            &bc_i, BOP_NOP, 0, (linecol_t) { .line = -1, .col = -1 }
+        );
+        dynarr_bytecode_concat(&tree.bytecodes, &bc_i);
+        dynarr_bytecode_free(&bc_i);
     }
+    dynarr_int_append(&tree.bytecode_start_index, &tree.bytecodes.size);
 
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
@@ -414,29 +417,29 @@ syntax_tree_compile(const syntax_tree_t* tree, const int root_index)
     return output;
 }
 
-inline dynarr_bytecode_t
-syntax_tree_get_bytecode_from_node_index(
+inline int
+syntax_tree_get_bytecode_start_index(
     const syntax_tree_t* tree, const int node_index
 )
 {
-    const int* found_bytecode_index_ptr = bsearch(
-        &node_index, tree->bytecode_indexs.data, tree->bytecode_indexs.size,
+    const int* found_entry_index_ptr = bsearch(
+        &node_index, tree->entry_indexs.data, tree->entry_indexs.size,
         sizeof(int), int_cmp
     );
-    const int found_bytecode_index
-        = found_bytecode_index_ptr - tree->bytecode_indexs.data;
-    assert(found_bytecode_index_ptr != NULL);
-    assert(found_bytecode_index < tree->bytecode_indexs.size);
+    const int found_bytecode_start_index
+        = found_entry_index_ptr - tree->entry_indexs.data;
+    assert(found_entry_index_ptr != NULL);
+    assert(found_bytecode_start_index < tree->entry_indexs.size);
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf(
-            "syntax_tree_get_bytecode_from_node_index: node_index=%d, "
-            "found_bytecode_index=%d\n",
-            node_index, found_bytecode_index
+            "syntax_tree_get_bytecode_start_index: node_index=%d, "
+            "found_bytecode_start_index=%d\n",
+            node_index, found_bytecode_start_index
         );
     }
 #endif
-    return tree->bytecodes[found_bytecode_index];
+    return tree->bytecode_start_index.data[found_bytecode_start_index];
 }
 
 inline void
@@ -470,13 +473,9 @@ syntax_tree_free(syntax_tree_t* tree)
     free(tree->id_code_str_map);
 
     /* bytecodes */
-    if (tree->bytecodes) {
-        for (i = 0; i < tree->bytecode_indexs.size; i++) {
-            dynarr_bytecode_free(&tree->bytecodes[i]);
-        }
-        free(tree->bytecodes);
-    }
-    dynarr_int_free(&tree->bytecode_indexs);
+    dynarr_bytecode_free(&tree->bytecodes);
+    dynarr_int_free(&tree->entry_indexs);
+    dynarr_int_free(&tree->bytecode_start_index);
 }
 
 /* set entry_index to -1 to use tree's root index */
@@ -586,13 +585,13 @@ syntax_tree_print(const syntax_tree_t* tree)
     }
 
     printf("----- BYTECODES -----\n");
-    for (i = 0; i < tree->bytecode_indexs.size; i++) {
-        int j;
-        printf(
-            "Bytecode of node %d\n", *dynarr_int_at(&tree->bytecode_indexs, i)
-        );
-        for (j = 0; j < tree->bytecodes[i].size; j++) {
-            bytecode_t bc = tree->bytecodes[i].data[j];
+    for (i = 0; i < tree->entry_indexs.size; i++) {
+        int j = 0;
+        int bc_start = tree->bytecode_start_index.data[i];
+        int bc_end = tree->bytecode_start_index.data[i + 1];
+        printf("Bytecode of node %d\n", *dynarr_int_at(&tree->entry_indexs, i));
+        for (j = bc_start; j < bc_end; j++) {
+            bytecode_t bc = tree->bytecodes.data[j];
             printf("%4u: ", j);
             bytecode_print(bc);
             if (bc.op == BOP_BIND_ARG || bc.op == BOP_FRAME_GET
