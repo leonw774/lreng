@@ -63,7 +63,7 @@ The ceiling `^` and floor `\` operators only accept number and do what they norm
 
 ### Assignment
 
-The assignment operator `x = expr` requires the left hand side `x` to be an uninitialized variable identifier. It initializes left hand side variable to the evaluated value of right hand side expression and the whole assignment expression evaluates to the assigned value.
+The assignment operator `x = expr` requires the left hand side `x` to be an uninitialized variable identifier. Other than that, it simply works like C assignment.
 
 ### Comparison
 
@@ -137,11 +137,11 @@ The argument binder `x => func` binds *one* argument identifier to a function. A
 
 Like the function, the macro maker `[ ... ]` turns the wrapped expression into a macro. Macro do not use argument.
 
-Another different between macro and function is that function has it own stack and macro does not. Therefore, its body expression executes in the context of its caller.
+A importance different between macro and function is that function has it own stack and macro does not. Therefore, its body expression executes in the context of its caller.
 
 ### Callers
 
-The callers operation is done by putting caller (function/macro) before the callee: `foo expr` calls `foo` with argument `expr`. If the callable `foo` is macro, it simply ignores the argument.
+The callers operation is done by putting caller (function/macro) before the callee: `foo expr` calls `foo` with argument `expr`. If the callable `foo` is a macro, it simply takes and ignores the argument.
 
 You can also use `$`. The syntax is `foo $ expr`.  The `$` is right-associative, just like in Haskell, designed to apply multiple callables on a value without too much parenthese. The expressions: `f3 $ f2 $ f1 $ val` and `f3 (f2 (f1 val)))` are equivalent.
 
