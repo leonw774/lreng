@@ -103,7 +103,7 @@ For example:
 - `x == 1 && 3` evaluates to `3` if `x` is `1`, otherwise it evaluates to `0`.
 - `x == 1 && 0 || -1` always evaluates to `-1` because `x == 1 && 0` evaluates to `0` regardless of `x`.
 
-The idiom `cond && t || f` does not work exactly the same as `if cond then t else f` since `t` could be `0` or `null`. The equivalent of "if-then-else" is `cond && t; !cond || f` or using conditional pair caller and macros `cond ? [ t ], [ f ]`.
+The idiom `cond && t || f` does not work exactly the same as `if cond then t else f` since `t` could be `0` or `null`. The equivalent of "if-then-else" is `cond && t; !cond || f` or using conditional pair caller and macros `cond ?? [ t ], [ f ]`.
 
 ### Expression connector
 
@@ -155,7 +155,7 @@ The `cond ? pair` operator returns `<pair` when `cond` is true and `>pair` when 
 
 ### Conditional pair caller
 
-The `??` operator is an useful short hand of `` `(cond ? pair) `` for proper conditional expression evaluation. The syntax is `cond ? callable_pair`. If `cond` is true, the `<callable_pair` is called, otherwise, the `>callable_pair` is called. The passed argument is always null.
+The `??` operator is an useful short hand of `` `(cond ? pair) `` for proper conditional expression evaluation. The syntax is `cond ?? maybe_callable_pair`.
 
 <!--
 ### Map, filter, and reduce
