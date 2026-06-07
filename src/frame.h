@@ -16,8 +16,6 @@ typedef struct frame_entry {
 #undef TYPE
 
 typedef struct frame {
-    unsigned int ref_count;
-
     /* do we own the globals? if true, we can free it */
     unsigned int is_own_globals;
 
@@ -34,6 +32,8 @@ typedef struct frame {
     dynarr_frame_entry_t stack;
 } frame_t;
 
+#define frame_struct_size sizeof(frame_t)
+
 #define TYPE frame_t
 #define TYPE_NAME frame
 #include "utils/dynarr.tmpl.h"
@@ -41,11 +41,9 @@ typedef struct frame {
 #undef TYPE
 
 
-extern frame_t* frame_new(const frame_t* parent);
+extern frame_t frame_new(const frame_t* parent);
 
-extern frame_t* frame_copy(const frame_t* f);
-
-extern frame_t* frame_ref(frame_t* f);
+extern frame_t frame_copy(const frame_t* f);
 
 extern void frame_free(frame_t* f);
 
@@ -59,7 +57,7 @@ extern object_t** frame_set(frame_t* f, const int code, object_t* obj);
 
 extern int frame_print(frame_t* f);
 
-extern frame_t*
+extern frame_t
 frame_get_callee_frame(const frame_t* caller_frame, const object_t* func);
 
 #endif

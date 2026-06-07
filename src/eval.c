@@ -8,7 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define NO_OPRAND -1
+#define NO_OPERAND -1
+#define ANY_TYPE -2
 
 static inline int
 is_bad_type(
@@ -17,16 +18,16 @@ is_bad_type(
 )
 {
     int left_passed, right_passed;
-    if (left_good_type == NO_OPRAND) {
+    if (left_good_type == NO_OPERAND) {
         left_passed = left == NULL;
-    } else if (left_good_type == TYPE_ANY) {
+    } else if (left_good_type == ANY_TYPE) {
         left_passed = left != NULL;
     } else {
         left_passed = left != NULL && left->type == left_good_type;
     }
-    if (right_good_type == NO_OPRAND) {
+    if (right_good_type == NO_OPERAND) {
         right_passed = right == NULL;
-    } else if (right_good_type == TYPE_ANY) {
+    } else if (right_good_type == ANY_TYPE) {
         right_passed = right != NULL;
     } else {
         right_passed = right != NULL && right->type == right_good_type;
@@ -38,8 +39,8 @@ is_bad_type(
         ERR_MSG_BUF,
         "Bad type for operator \"%s\": expect (%s, %s), get (%s, %s)",
         BYTECODE_OP_NAMES[bytecode.op],
-        left_good_type == NO_OPRAND ? "" : OBJ_TYPE_STR[left_good_type],
-        right_good_type == NO_OPRAND ? "" : OBJ_TYPE_STR[right_good_type],
+        left_good_type == NO_OPERAND ? "" : OBJ_TYPE_STR[left_good_type],
+        right_good_type == NO_OPERAND ? "" : OBJ_TYPE_STR[right_good_type],
         left == NULL ? "" : OBJ_TYPE_STR[left->type],
         right == NULL ? "" : OBJ_TYPE_STR[right->type]
     );
@@ -48,20 +49,20 @@ is_bad_type(
 }
 
 /* return 1 if check result is bad */
-int
-pop_l_and_check(
+static inline int
+pop_l_check(
     dynarr_object_ptr_t* stack, bytecode_t bc, object_t** left_ptr,
     object_type_enum left_good_type
 )
 {
     *left_ptr = *dynarr_object_ptr_back(stack);
     dynarr_object_ptr_pop(stack);
-    return is_bad_type(bc, left_good_type, NO_OPRAND, *left_ptr, NULL);
+    return is_bad_type(bc, left_good_type, NO_OPERAND, *left_ptr, NULL);
 }
 
 /* return 1 if check result is bad */
-int
-pop_lr_and_check(
+static inline int
+pop_lr_check(
     dynarr_object_ptr_t* stack, bytecode_t bc, object_t** left_ptr,
     object_t** right_ptr, object_type_enum left_good_type,
     object_type_enum right_good_type
@@ -131,6 +132,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         break;
     case BOP_RET:
         dynarr_registers_pop(context.regs_stack);
+        regs = dynarr_registers_back(regs_stack);
         frame_free(cur_frame);
         dynarr_frame_pop(context.frame_stack);
 #ifdef ENABLE_DEBUG_LOG
@@ -179,17 +181,21 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         break;
     case BOP_MAKE_FUNCT:
         regs->arg = regs->arg | bc.arg;
-        tmp = object_create(
-            TYPE_CALL,
-            (object_data_union)(callable_t) {
-                .is_macro = 0,
-                .builtin_name = NOT_BUILTIN_FUNC,
-                .arg_code = -1,
-                .index = regs->arg,
-                /* function owns copy of frame it created under */
-                .init_frame = frame_copy(cur_frame),
-            }
-        );
+        {
+            frame_t* init_frame = malloc(sizeof(frame_t));
+            *init_frame = frame_copy(cur_frame);
+            tmp = object_create(
+                TYPE_CALL,
+                (object_data_union)(callable_t) {
+                    .is_macro = 0,
+                    .builtin_name = NOT_BUILTIN_FUNC,
+                    .arg_code = -1,
+                    .index = regs->arg,
+                    /* function owns a deep copy of frame it created under */
+                    .init_frame = init_frame,
+                }
+            );
+        }
         dynarr_object_ptr_append(stack, &tmp);
         break;
     case BOP_MAKE_MACRO:
@@ -208,7 +214,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         dynarr_object_ptr_append(stack, &tmp);
         break;
     case BOP_CALL:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_CALL, TYPE_ANY)) {
+        if (pop_lr_check(stack, bc, &left, &right, TYPE_CALL, ANY_TYPE)) {
             regs->errf = 1;
             break;
         }
@@ -223,7 +229,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(right);
         break;
     // case BOP_MAP:
-    //     if (pop_lr_and_check(object_stack, bc, &left, &right, TYPE_CALL,
+    //     if (pop_lr_check(object_stack, bc, &left, &right, TYPE_CALL,
     //     TYPE_PAIR))
     //     {
     //         regs->errf = 1;
@@ -235,7 +241,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
     //     object_deref(right);
     //     break;
     // case BOP_FILTER:
-    //     if (pop_lr_and_check(object_stack, bc, &left, &right, TYPE_CALL,
+    //     if (pop_lr_check(object_stack, bc, &left, &right, TYPE_CALL,
     //     TYPE_PAIR))
     //     {
     //         regs->errf = 1;
@@ -247,7 +253,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
     //     object_deref(right);
     //     break;
     // case BOP_REDUCE:
-    //     if (pop_lr_and_check(object_stack, bc, &left, &right, TYPE_CALL,
+    //     if (pop_lr_check(object_stack, bc, &left, &right, TYPE_CALL,
     //     TYPE_PAIR))
     //     {
     //         regs->errf = 1;
@@ -259,7 +265,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
     //     object_deref(right);
     //     break;
     case BOP_NEG:
-        if (pop_l_and_check(stack, bc, &left, TYPE_NUM)) {
+        if (pop_l_check(stack, bc, &left, TYPE_NUM)) {
             regs->errf = 1;
             break;
         }
@@ -270,7 +276,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(left);
         break;
     case BOP_NOT:
-        if (pop_l_and_check(stack, bc, &left, TYPE_ANY)) {
+        if (pop_l_check(stack, bc, &left, ANY_TYPE)) {
             regs->errf = 1;
             break;
         }
@@ -282,7 +288,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(left);
         break;
     case BOP_CEIL:
-        if (pop_l_and_check(stack, bc, &left, TYPE_NUM)) {
+        if (pop_l_check(stack, bc, &left, TYPE_NUM)) {
             regs->errf = 1;
             break;
         }
@@ -293,7 +299,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(left);
         break;
     case BOP_FLOOR:
-        if (pop_l_and_check(stack, bc, &left, TYPE_NUM)) {
+        if (pop_l_check(stack, bc, &left, TYPE_NUM)) {
             regs->errf = 1;
             break;
         }
@@ -304,7 +310,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(left);
         break;
     case BOP_GETL:
-        if (pop_l_and_check(stack, bc, &left, TYPE_PAIR)) {
+        if (pop_l_check(stack, bc, &left, TYPE_PAIR)) {
             regs->errf = 1;
             break;
         }
@@ -313,7 +319,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(left);
         break;
     case BOP_GETR:
-        if (pop_l_and_check(stack, bc, &left, TYPE_PAIR)) {
+        if (pop_l_check(stack, bc, &left, TYPE_PAIR)) {
             regs->errf = 1;
             break;
         }
@@ -322,7 +328,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(left);
         break;
     case BOP_COND_CALL:
-        if (pop_l_and_check(stack, bc, &left, TYPE_ANY)) {
+        if (pop_l_check(stack, bc, &left, ANY_TYPE)) {
             regs->errf = 1;
             break;
         }
@@ -337,7 +343,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         }
         break;
     case BOP_SWAP:
-        if (pop_l_and_check(stack, bc, &left, TYPE_PAIR)) {
+        if (pop_l_check(stack, bc, &left, TYPE_PAIR)) {
             regs->errf = 1;
             break;
         }
@@ -352,7 +358,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(left);
         break;
     case BOP_EXP:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
+        if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
             regs->errf = 1;
             break;
         }
@@ -371,7 +377,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(right);
         break;
     case BOP_MUL:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
+        if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
             regs->errf = 1;
             break;
         }
@@ -384,7 +390,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(right);
         break;
     case BOP_DIV:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
+        if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
             regs->errf = 1;
             break;
         }
@@ -402,7 +408,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(right);
         break;
     case BOP_MOD:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
+        if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
             regs->errf = 1;
             break;
         }
@@ -415,7 +421,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(right);
         break;
     case BOP_ADD:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
+        if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
             regs->errf = 1;
             break;
         }
@@ -428,7 +434,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(right);
         break;
     case BOP_SUB:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
+        if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
             regs->errf = 1;
             break;
         }
@@ -441,7 +447,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(right);
         break;
     case BOP_LT:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
+        if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
             regs->errf = 1;
             break;
         }
@@ -455,7 +461,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(right);
         break;
     case BOP_LE:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
+        if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
             regs->errf = 1;
             break;
         }
@@ -469,7 +475,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(right);
         break;
     case BOP_GT:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
+        if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
             regs->errf = 1;
             break;
         }
@@ -483,7 +489,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(right);
         break;
     case BOP_GE:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
+        if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
             regs->errf = 1;
             break;
         }
@@ -497,7 +503,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(right);
         break;
     case BOP_EQ:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_ANY, TYPE_ANY)) {
+        if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, ANY_TYPE)) {
             regs->errf = 1;
             break;
         }
@@ -509,7 +515,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(right);
         break;
     case BOP_NE:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_ANY, TYPE_ANY)) {
+        if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, ANY_TYPE)) {
             regs->errf = 1;
             break;
         }
@@ -522,7 +528,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(right);
         break;
     case BOP_AND:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_ANY, TYPE_ANY)) {
+        if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, ANY_TYPE)) {
             regs->errf = 1;
             break;
         }
@@ -536,7 +542,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(right);
         break;
     case BOP_OR:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_ANY, TYPE_ANY)) {
+        if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, ANY_TYPE)) {
             regs->errf = 1;
             break;
         }
@@ -550,7 +556,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(right);
         break;
     case BOP_PAIR:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_ANY, TYPE_ANY)) {
+        if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, ANY_TYPE)) {
             regs->errf = 1;
             break;
         }
@@ -567,7 +573,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         break;
     case BOP_BIND_ARG:
         tmp = *dynarr_object_ptr_back(stack);
-        if (is_bad_type(bc, NO_OPRAND, TYPE_CALL, NULL, tmp)) {
+        if (is_bad_type(bc, NO_OPERAND, TYPE_CALL, NULL, tmp)) {
             regs->errf = 1;
             break;
         }
@@ -589,7 +595,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         tmp->as.callable.arg_code = regs->arg;
         break;
     case OP_COND_PAIR_GET:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_ANY, TYPE_PAIR)) {
+        if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, TYPE_PAIR)) {
             regs->errf = 1;
             break;
         }
@@ -600,7 +606,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(right);
         break;
     case OP_COND_PAIR_CALL:
-        if (pop_lr_and_check(stack, bc, &left, &right, TYPE_ANY, TYPE_PAIR)) {
+        if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, TYPE_PAIR)) {
             regs->errf = 1;
             break;
         }
@@ -629,10 +635,10 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         print_runtime_error(bc.pos, ERR_MSG_BUF);
         exit(RUNTIME_ERR_CODE);
     }
-    if (tmp && tmp->is_error) {
+    if (regs && tmp && tmp->is_error) {
         regs->errf = 1;
     }
-    if (bc.op != BOP_EXTEND_ARG) {
+    if (regs && bc.op != BOP_EXTEND_ARG) {
         regs->arg = 0;
     }
 }
@@ -696,7 +702,7 @@ eval(context_t context)
 void
 eval_root(const syntax_tree_t* syntax_tree)
 {
-    frame_t* root_frame = frame_new(NULL);
+    frame_t root_frame = frame_new(NULL);
     dynarr_frame_t frame_stack = dynarr_frame_new();
 
     registers_t regs = {
@@ -719,7 +725,7 @@ eval_root(const syntax_tree_t* syntax_tree)
     object_t* final_result = NULL;
 
     dynarr_registers_append(&regs_stack, &regs);
-    dynarr_frame_append(&frame_stack, root_frame);
+    dynarr_frame_append(&frame_stack, &root_frame);
 
     eval(root_context);
 
@@ -735,10 +741,8 @@ eval_root(const syntax_tree_t* syntax_tree)
     object_deref(final_result);
     dynarr_object_ptr_free(&object_stack);
 
-    /* don't need to clear register & frame stack because callee handles them */
-    /*
     dynarr_registers_free(&regs_stack);
-    frame_free(root_frame);
-    free(root_frame);
-    */
+    /* don't need to free frame because callee free it in RET */
+    /* frame_free(root_frame); */
+    dynarr_frame_free(&frame_stack);
 }

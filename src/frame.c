@@ -12,54 +12,46 @@
 
 #define PTR_L20BITS(p) ((void*)(((uintptr_t)p) & 0xfffff))
 
-inline frame_t*
+inline frame_t
 frame_new(const frame_t* parent)
 {
-    frame_t* f = calloc(1, sizeof(frame_t));
-    assert(f != NULL);
+    frame_t f = (frame_t) {
+        .globals = NULL,
+        .is_own_globals = 0,
+        .entry_indexs = dynarr_int_new(),
+        .stack_pointers = dynarr_int_new(),
+        .stack = dynarr_frame_entry_new(),
+    };
     if (parent == NULL) {
         /* allocate a globals ourself */
-        f->globals = calloc(1, sizeof(dynarr_int_t));
-        assert(f->globals != NULL);
-        *(f->globals) = dynarr_frame_entry_new();
-        f->is_own_globals = 1;
+        f.globals = calloc(1, sizeof(dynarr_int_t));
+        assert(f.globals != NULL);
+        *(f.globals) = dynarr_frame_entry_new();
+        f.is_own_globals = 1;
     } else {
         /* copy the globals from parent */
-        f->globals = parent->globals;
+        f.globals = parent->globals;
     }
-    f->entry_indexs = dynarr_int_new();
-    f->stack_pointers = dynarr_int_new();
-    f->stack = dynarr_frame_entry_new();
-    f->ref_count = 1;
     return f;
 }
 
-/* copy a frame and increase ref count of all objects in stack */
-inline frame_t*
+/* deep copy a frame and increase ref count of all objects in stack */
+inline frame_t
 frame_copy(const frame_t* f)
 {
     int i;
-    frame_t* clone_frame = calloc(1, sizeof(frame_t));
-    assert(clone_frame != NULL);
-    clone_frame->globals = f->globals;
+    frame_t clone_frame;
+    clone_frame.globals = f->globals;
+    clone_frame.is_own_globals = 0;
     /* copy the entry_indexs and stack pointers */
-    clone_frame->entry_indexs = dynarr_int_copy(&f->entry_indexs);
-    clone_frame->stack_pointers = dynarr_int_copy(&f->stack_pointers);
+    clone_frame.entry_indexs = dynarr_int_copy(&f->entry_indexs);
+    clone_frame.stack_pointers = dynarr_int_copy(&f->stack_pointers);
     /* deep copy stack */
-    clone_frame->stack = dynarr_frame_entry_copy(&f->stack);
+    clone_frame.stack = dynarr_frame_entry_copy(&f->stack);
     for (i = 0; i < f->stack.size; i++) {
-        object_ref(dynarr_frame_entry_at(&clone_frame->stack, i)->object);
+        object_ref(dynarr_frame_entry_at(&clone_frame.stack, i)->object);
     }
-    clone_frame->ref_count = 1;
     return clone_frame;
-}
-
-/* increase ref of the frame, doesn't touch the objects in stack */
-inline frame_t*
-frame_ref(frame_t* f)
-{
-    f->ref_count++;
-    return f;
 }
 
 /* free the stacks and globals if owned it */
@@ -70,10 +62,6 @@ frame_free(frame_t* f)
 #ifdef ENABLE_DEBUG_LOG_MORE
     printf("frame_free: %p\n", f);
 #endif
-    if (f->ref_count > 1) {
-        f->ref_count--;
-        return;
-    }
     if (f->is_own_globals && f->globals) {
         for (i = 0; i < f->globals->size; i++) {
             object_deref(dynarr_frame_entry_at(f->globals, i)->object);
@@ -189,7 +177,7 @@ frame_print(frame_t* f)
         return printf("[Frame NULL]");
     }
     printed_bytes_count = printf(
-        "[Frame addr=%p, ref_count=%d, ", PTR_L20BITS(f), f->ref_count
+        "[Frame addr=%p", PTR_L20BITS(f)
     );
     /* global */
     printed_bytes_count += printf("globals(%d)=[", f->globals->size);
@@ -241,10 +229,10 @@ frame_print(frame_t* f)
     return printed_bytes_count;
 }
 
-frame_t*
+frame_t
 frame_get_callee_frame(const frame_t* caller_frame, const object_t* func_obj)
 {
-    frame_t* callee_frame = NULL;
+    frame_t callee_frame;
     callable_t callable_obj = func_obj->as.callable;
     int i, is_forked = 0;
     int caller_entry_index = -1;
@@ -256,8 +244,8 @@ frame_get_callee_frame(const frame_t* caller_frame, const object_t* func_obj)
     if (caller_frame->stack.size > 0
         && caller_entry_index == callable_obj.index) {
         callee_frame = frame_copy(caller_frame);
-        frame_pop_stack(callee_frame); /* this remove the last stack */
-        frame_push_stack(callee_frame, callable_obj.index);
+        frame_pop_stack(&callee_frame); /* this remove the last stack */
+        frame_push_stack(&callee_frame, callable_obj.index);
         return callee_frame;
     }
 
@@ -280,10 +268,10 @@ frame_get_callee_frame(const frame_t* caller_frame, const object_t* func_obj)
             caller_index = *dynarr_int_at(&caller_frame->entry_indexs, i);
         }
         /* push the init-time frame's entry_index to callee */
-        dynarr_int_append(&callee_frame->entry_indexs, &func_init_index);
+        dynarr_int_append(&callee_frame.entry_indexs, &func_init_index);
         /* push the current stack size to stack pointers */
         dynarr_int_append(
-            &callee_frame->stack_pointers, &callee_frame->stack.size
+            &callee_frame.stack_pointers, &callee_frame.stack.size
         );
         /* choose the source frame to copy */
         if (!is_forked && caller_index == func_init_index) {
@@ -309,10 +297,10 @@ frame_get_callee_frame(const frame_t* caller_frame, const object_t* func_obj)
         for (j = start; j < end; j++) {
             frame_entry_t* pair = dynarr_frame_entry_at(&src_frame->stack, j);
             object_ref(pair->object);
-            dynarr_frame_entry_append(&callee_frame->stack, pair);
+            dynarr_frame_entry_append(&callee_frame.stack, pair);
         }
     }
     /* then push the new stack section and entry index to callee frame */
-    frame_push_stack(callee_frame, callable_obj.index);
+    frame_push_stack(&callee_frame, callable_obj.index);
     return callee_frame;
 }

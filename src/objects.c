@@ -77,16 +77,11 @@ object_deref(object_t* obj)
             object_deref(obj->as.pair.right);
         }
     } else if (obj->type == TYPE_CALL) {
-        /* if is builtin function, it doesn't have frame */
-        if (obj->as.callable.builtin_name != NOT_BUILTIN_FUNC) {
-            return;
-        }
-        if (obj->as.callable.init_frame != NULL) {
-            if (obj->as.callable.init_frame->ref_count == 1) {
+        /* builtin function doesn't have frame */
+        if (obj->as.callable.builtin_name == NOT_BUILTIN_FUNC) {
+            if (obj->as.callable.init_frame != NULL) {
                 frame_free(obj->as.callable.init_frame);
                 free(obj->as.callable.init_frame);
-            } else {
-                obj->as.callable.init_frame->ref_count--;
             }
         }
     }
@@ -120,8 +115,8 @@ object_print(const object_t* obj, char end)
     } else if (obj->type == TYPE_CALL) {
         if (obj->as.callable.builtin_name != NOT_BUILTIN_FUNC) {
             printed_bytes_count = printf(
-                "[Callable type=BUILTIN_FUNC, code=%s]",
-                RESERVED_IDS[obj->as.callable.builtin_name]
+                "[Callable type=BUILTIN_FUNC const=%d code=%s]",
+                obj->is_const, RESERVED_IDS[obj->as.callable.builtin_name]
             );
         } else if (obj->as.callable.is_macro) {
             printed_bytes_count = printf(

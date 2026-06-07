@@ -1,14 +1,8 @@
 read_list = {
   c = input();
-  is_number(c) ?? [
-    c == '\n' ?? [
-      null
-    ], [
-      (c, read_list())
-    ]
-  ], [
-    null
-  ]
+  is_number(c) ?? (
+    c == '\n' ?? null , [ (c, read_list()) ]
+  ), null
 };
 
 print_reverse = list => {
