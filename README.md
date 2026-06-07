@@ -63,7 +63,7 @@ The ceiling `^` and floor `\` operators only accept number and do what they norm
 
 ### Assignment
 
-The assignment operator `x = expr` requires the left hand side `x` to be an uninitialized variable identifier. It initializes left hand side variable to the evaluated value of right hand side expression and the whole assignment expression evaluates to the assigned value.
+The assignment operator `x = expr` requires the left hand side `x` to be an uninitialized variable identifier. Other than that, it simply works like C assignment.
 
 ### Comparison
 
@@ -103,7 +103,7 @@ For example:
 - `x == 1 && 3` evaluates to `3` if `x` is `1`, otherwise it evaluates to `0`.
 - `x == 1 && 0 || -1` always evaluates to `-1` because `x == 1 && 0` evaluates to `0` regardless of `x`.
 
-The idiom `cond && t || f` does not work exactly the same as `if cond then t else f` since `t` could be `0` or `null`. The equivalent of "if-then-else" is `cond && t; !cond || f` or using conditional pair caller and macros `cond ? [ t ], [ f ]`.
+The idiom `cond && t || f` does not work exactly the same as `if cond then t else f` since `t` could be `0` or `null`. The equivalent of "if-then-else" is `cond && t; !cond || f` or using conditional pair caller and macros `cond ?? [ t ], [ f ]`.
 
 ### Expression connector
 
@@ -137,11 +137,11 @@ The argument binder `x => func` binds *one* argument identifier to a function. A
 
 Like the function, the macro maker `[ ... ]` turns the wrapped expression into a macro. Macro do not use argument.
 
-Another different between macro and function is that function has it own stack and macro does not. Therefore, its body expression executes in the context of its caller.
+A importance different between macro and function is that function has it own stack and macro does not. Therefore, its body expression executes in the context of its caller.
 
 ### Callers
 
-The callers operation is done by putting caller (function/macro) before the callee: `foo expr` calls `foo` with argument `expr`. If the callable `foo` is macro, it simply ignores the argument.
+The callers operation is done by putting caller (function/macro) before the callee: `foo expr` calls `foo` with argument `expr`. If the callable `foo` is a macro, it simply takes and ignores the argument.
 
 You can also use `$`. The syntax is `foo $ expr`.  The `$` is right-associative, just like in Haskell, designed to apply multiple callables on a value without too much parenthese. The expressions: `f3 $ f2 $ f1 $ val` and `f3 (f2 (f1 val)))` are equivalent.
 
@@ -155,7 +155,7 @@ The `cond ? pair` operator returns `<pair` when `cond` is true and `>pair` when 
 
 ### Conditional pair caller
 
-The `??` operator is an useful short hand of `` `(cond ? pair) `` for proper conditional expression evaluation. The syntax is `cond ? callable_pair`. If `cond` is true, the `<callable_pair` is called, otherwise, the `>callable_pair` is called. The passed argument is always null.
+The `??` operator is an useful short hand of `` `(cond ? pair) `` for proper conditional expression evaluation. The syntax is `cond ?? maybe_callable_pair`.
 
 <!--
 ### Map, filter, and reduce
