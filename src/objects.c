@@ -81,7 +81,7 @@ object_deref(object_t* obj)
         if (obj->as.callable.builtin_name == NOT_BUILTIN_FUNC) {
             if (obj->as.callable.init_frame != NULL) {
                 frame_free(obj->as.callable.init_frame);
-                free(obj->as.callable.init_frame);
+                obj->as.callable.init_frame = NULL;
             }
         }
     }

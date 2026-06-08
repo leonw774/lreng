@@ -20,7 +20,7 @@ typedef struct registers {
 
 typedef struct context {
     const syntax_tree_t* tree;
-    dynarr_frame_t* frame_stack;
+    dynarr_frameptr_t* frame_stack;
     dynarr_registers_t* regs_stack;
     dynarr_object_ptr_t* object_stack;
 } context_t;

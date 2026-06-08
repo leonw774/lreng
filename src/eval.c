@@ -81,7 +81,7 @@ void
 eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
 {
     dynarr_object_ptr_t* stack = context.object_stack;
-    frame_t* cur_frame = dynarr_frame_back(context.frame_stack);
+    frame_t* cur_frame = *dynarr_frameptr_back(context.frame_stack);
     registers_t* regs = dynarr_registers_back(regs_stack);
     object_t* left;
     object_t* right;
@@ -134,13 +134,14 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         dynarr_registers_pop(context.regs_stack);
         regs = dynarr_registers_back(regs_stack);
         frame_free(cur_frame);
-        dynarr_frame_pop(context.frame_stack);
+        dynarr_frameptr_pop(context.frame_stack);
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
             int caller_entry_index = context.tree->root_index;
             if (context.frame_stack->size > 0) {
                 /* if not root */
-                frame_t* caller_frame = dynarr_frame_back(context.frame_stack);
+                frame_t* caller_frame
+                    = *dynarr_frameptr_back(context.frame_stack);
                 int* index_ptr = dynarr_int_back(&caller_frame->entry_indexs);
                 if (index_ptr) {
                     caller_entry_index = *index_ptr;
@@ -182,8 +183,6 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
     case BOP_MAKE_FUNCT:
         regs->arg = regs->arg | bc.arg;
         {
-            frame_t* init_frame = malloc(sizeof(frame_t));
-            *init_frame = frame_copy(cur_frame);
             tmp = object_create(
                 TYPE_CALL,
                 (object_data_union)(callable_t) {
@@ -192,7 +191,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
                     .arg_code = -1,
                     .index = regs->arg,
                     /* function owns a deep copy of frame it created under */
-                    .init_frame = init_frame,
+                    .init_frame = frame_copy(cur_frame),
                 }
             );
         }
@@ -702,8 +701,8 @@ eval(context_t context)
 void
 eval_root(const syntax_tree_t* syntax_tree)
 {
-    frame_t root_frame = frame_new(NULL);
-    dynarr_frame_t frame_stack = dynarr_frame_new();
+    frame_t* root_frame = frame_new(NULL);
+    dynarr_frameptr_t frame_stack = dynarr_frameptr_new();
 
     registers_t regs = {
         .arg = 0,
@@ -725,7 +724,7 @@ eval_root(const syntax_tree_t* syntax_tree)
     object_t* final_result = NULL;
 
     dynarr_registers_append(&regs_stack, &regs);
-    dynarr_frame_append(&frame_stack, &root_frame);
+    dynarr_frameptr_append(&frame_stack, &root_frame);
 
     eval(root_context);
 
@@ -744,5 +743,5 @@ eval_root(const syntax_tree_t* syntax_tree)
     dynarr_registers_free(&regs_stack);
     /* don't need to free frame because callee free it in RET */
     /* frame_free(root_frame); */
-    dynarr_frame_free(&frame_stack);
+    dynarr_frameptr_free(&frame_stack);
 }

@@ -7,8 +7,8 @@ void
 exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
 {
     object_t* result;
-    frame_t* caller_frame = dynarr_frame_back(context.frame_stack);
-    frame_t callee_frame;
+    frame_t* caller_frame = *dynarr_frameptr_back(context.frame_stack);
+    frame_t* callee_frame;
     callable_t callable = call->as.callable;
     registers_t new_registers = { .arg = 0, .insp = 0, .errf = 0 };
 
@@ -40,12 +40,12 @@ exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
 #endif
 
     if (callable.is_macro) {
-        callee_frame = frame_copy(caller_frame);
+        callee_frame = frame_ref(caller_frame);
     } else {
         int arg_code = callable.arg_code;
         callee_frame = frame_get_callee_frame(caller_frame, call);
-        /* set argument to call-frame */
-        if (arg_code != -1 && frame_set(&callee_frame, arg_code, arg) == NULL) {
+        /* set argument to callee frame */
+        if (arg_code != -1 && frame_set(callee_frame, arg_code, arg) == NULL) {
             int arg_index = context.tree->lefts[callable.index];
             const char* arg_str = context.tree->tokens.data[arg_index].str;
             const char* err_msg = "Failed initialization of argument '%s'";
@@ -57,7 +57,7 @@ exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf("exec_call:\n callee_frame=");
-        frame_print(&callee_frame);
+        frame_print(callee_frame);
         printf("\n func_obj=");
         object_print(call, '\n');
         printf(" arg=");
@@ -68,7 +68,7 @@ exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
     new_registers.insp
         = syntax_tree_get_bytecode_start_index(context.tree, callable.index);
     new_registers.insp--;
-    dynarr_frame_append(context.frame_stack, &callee_frame);
+    dynarr_frameptr_append(context.frame_stack, &callee_frame);
     dynarr_registers_append(context.regs_stack, &new_registers);
 
 #ifdef ENABLE_DEBUG_LOG

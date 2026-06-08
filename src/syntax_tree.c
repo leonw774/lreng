@@ -256,7 +256,7 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
         id_usage[i] = (uint8_t)1;
     }
 
-    frame_t cur_frame = frame_new(NULL);
+    frame_t* cur_frame = frame_new(NULL);
 
     tree_preorder_iterator_t tree_iter = syntax_tree_iter_init(tree, -1);
     token_t* cur_token = syntax_tree_iter_get(&tree_iter);
@@ -278,13 +278,13 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
             /* if we left a function */
             if (cur_depth <= cur_func_depth) {
                 dynarr_int_pop(&func_depth_stack);
-                frame_pop_stack(&cur_frame);
+                frame_pop_stack(cur_frame);
             }
             /* check assign rule */
             if (cur_token->code == OP_ASSIGN) {
                 token_t* left_token
                     = dynarr_token_at(&tree->tokens, tree->lefts[cur_index]);
-                is_passed = check_assign_rule(tree, &cur_frame, cur_index);
+                is_passed = check_assign_rule(tree, cur_frame, cur_index);
                 id_usage[left_token->code] = (uint8_t)1;
             }
             /* check bind argument rule */
@@ -293,7 +293,7 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
             }
             /* walk into a function */
             else if (cur_token->code == OP_MAKE_FUNCT) {
-                frame_push_stack(&cur_frame, cur_index);
+                frame_push_stack(cur_frame, cur_index);
                 dynarr_int_append(&func_depth_stack, &cur_depth);
             }
         } else if (cur_token->type == TOK_ID) {
@@ -316,7 +316,7 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
 
     syntax_tree_iter_free(&tree_iter);
     dynarr_int_free(&func_depth_stack);
-    frame_free(&cur_frame);
+    frame_free(cur_frame);
     free(id_usage);
     return is_passed;
 }
