@@ -1,0 +1,43 @@
+list_append = list_elem => {
+    list = <list_elem;
+    elem = >list_elem;
+    list == null
+        && (elem, null)
+        || (
+            >list == null
+                && (<list, elem, null)
+                || (<list, list_append (>list, elem))
+        )
+};
+format_int = i => {
+    i < 10 && ((i + '0'), null) || (
+        list_append (
+            format_int (\(i / 10)),
+            ((i % 10) + '0')
+        )
+    )
+};
+print = string => {
+    string != null && (output (<string); print (>string))
+};
+print_tree = tree => {
+    (tree == null && (
+        print ('n', 'u', 'l', 'l', null);
+        1
+    )) || (is_callable tree && (
+        print ('c', 'a', 'l', 'l', null);
+        1
+    )) || (is_number tree && (
+        print $ format_int $ \tree;
+        1
+    )) || (is_pair tree && (
+        print ('(', null);
+        print_tree $ <tree;
+        print (',', ' ', null);
+        print_tree $ >tree;
+        print (')', null);
+        1
+    ))
+};
+print_tree $ (1, 2, print), (3, 4), (5, 6);
+output '\n'

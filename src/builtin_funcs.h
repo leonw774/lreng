@@ -37,7 +37,7 @@ builtin_func_output(const object_t* obj)
         = "built-in function 'output': failed to write to stdout.";
     /* check if obj is number */
     if (obj->type != TYPE_NUM) {
-        sprintf(ERR_MSG_BUF, err_msg_not_number, OBJ_TYPE_STR[obj->type]);
+        sprintf(ERR_MSG_BUF, err_msg_not_number, OBJ_TYPE_SIG_STR[obj->type]);
         return (object_t*)ERR_OBJECT_PTR;
     }
     /* if is not zero: check conditions */
@@ -84,7 +84,7 @@ builtin_func_error(const object_t* obj)
         = "built-in function 'error': failed to write to stdout.";
     /* check if obj is number */
     if (obj->type != TYPE_NUM) {
-        sprintf(ERR_MSG_BUF, err_msg_not_number, OBJ_TYPE_STR[obj->type]);
+        sprintf(ERR_MSG_BUF, err_msg_not_number, OBJ_TYPE_SIG_STR[obj->type]);
         return (object_t*)ERR_OBJECT_PTR;
     }
     /* if is not zero: check conditions */

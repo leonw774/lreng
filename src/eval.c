@@ -8,9 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define NO_OPERAND -1
-#define ANY_TYPE -2
-
 static inline int
 is_bad_type(
     bytecode_t bytecode, int left_good_type, int right_good_type,
@@ -39,10 +36,10 @@ is_bad_type(
         ERR_MSG_BUF,
         "Bad type for operator \"%s\": expect (%s, %s), get (%s, %s)",
         BYTECODE_OP_NAMES[bytecode.op],
-        left_good_type == NO_OPERAND ? "" : OBJ_TYPE_STR[left_good_type],
-        right_good_type == NO_OPERAND ? "" : OBJ_TYPE_STR[right_good_type],
-        left == NULL ? "" : OBJ_TYPE_STR[left->type],
-        right == NULL ? "" : OBJ_TYPE_STR[right->type]
+        left_good_type < 0 ? "" : OBJ_TYPE_SIG_STR[left_good_type],
+        right_good_type < 0 ? "" : OBJ_TYPE_SIG_STR[right_good_type],
+        left == NULL ? "" : OBJ_TYPE_SIG_STR[left->type],
+        right == NULL ? "" : OBJ_TYPE_SIG_STR[right->type]
     );
     print_runtime_error(bytecode.pos, ERR_MSG_BUF);
     return 1;

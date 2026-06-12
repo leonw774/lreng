@@ -10,10 +10,15 @@ typedef enum object_type {
     TYPE_NUM,
     TYPE_PAIR,
     TYPE_CALL,
-    TYPE_ANY
+    TYPE_END_OF_ENUM
 } object_type_enum;
 
-#define OBJECT_TYPE_NUM TYPE_ANY
+#define OBJECT_TYPE_NUM TYPE_END_OF_ENUM
+
+/* for operator signaturing*/
+#define ANY_TYPE OBJECT_TYPE_NUM
+#define NO_OPERAND OBJECT_TYPE_NUM + 1
+#define OBJ_TYPE_SIG_STR_LEN OBJECT_TYPE_NUM + 2
 
 typedef struct object object_t;
 
@@ -67,7 +72,7 @@ typedef struct object {
 extern const object_t* ERR_OBJECT_PTR;
 extern const object_t ERR_OBJECT;
 
-extern const char* OBJ_TYPE_STR[OBJECT_TYPE_NUM + 1];
+extern const char* OBJ_TYPE_SIG_STR[OBJ_TYPE_SIG_STR_LEN];
 
 extern object_t* object_create(object_type_enum type, object_data_union data);
 extern object_t* object_ref(object_t* obj);

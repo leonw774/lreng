@@ -13,10 +13,12 @@ typedef enum op_code {
     OP_RPAREN,
     /* ******** call ******** */
     OP_CALL,
+#if DEPRECATED
     /* ******** map filter reduce ******** */
-    // OP_MAP,
-    // OP_FILTER,
-    // OP_REDUCE,
+    OP_MAP,
+    OP_FILTER,
+    OP_REDUCE,
+#endif
     /* ******** unary ******** */
     OP_POS,
     OP_NEG,

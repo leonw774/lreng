@@ -19,12 +19,12 @@ typedef struct frame {
     int ref_count;
 
     /* do we own the globals? if true, we can free it */
-    unsigned int is_own_globals;
+    int is_own_globals;
 
     /* the reference to the global stack that stores shared code-object pairs */
     dynarr_frame_entry_t* globals;
 
-    /* stores the functions that own each stack section */
+    /* stores the functions that growed each stack section */
     dynarr_int_t entry_indexs;
 
     /* store the start index of each stack section */

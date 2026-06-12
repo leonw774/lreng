@@ -24,9 +24,11 @@ typedef enum bytecode_op_code {
     BOP_MAKE_FUNCT,
     BOP_MAKE_MACRO,
     BOP_CALL,
-    // BOP_MAP,
-    // BOP_FILTER,
-    // BOP_REDUCE,
+#if DEPRECATED
+    BOP_MAP,
+    BOP_FILTER,
+    BOP_REDUCE,
+#endif
     BOP_NEG,
     BOP_NOT,
     BOP_CEIL,
@@ -71,9 +73,11 @@ static const char* const BYTECODE_OP_NAMES[BOP_END_Of_ENUM] = {
     "MAKE_FUNCT",
     "MAKE_MACRO",
     "CALL",
-    // "MAP",
-    // "FILTER",
-    // "REDUCE",
+#if DEPRECATED
+    "MAP",
+    "FILTER",
+    "REDUCE",
+#endif
     "NEG",
     "NOT",
     "CEIL",
@@ -106,9 +110,11 @@ static const int OP_TO_BOP_MAPPING[][2] = {
     { OP_MAKE_FUNCT, BOP_MAKE_FUNCT },
     { OP_MAKE_MACRO, BOP_MAKE_MACRO },
     { OP_CALL, BOP_CALL },
-    // { OP_MAP, BOP_MAP },
-    // { OP_FILTER, BOP_FILTER },
-    // { OP_REDUCE, BOP_REDUCE },
+#if DEPRECATED
+    { OP_MAP, BOP_MAP },
+    { OP_FILTER, BOP_FILTER },
+    { OP_REDUCE, BOP_REDUCE },
+#endif
     { OP_POS, BOP_NOP },
     { OP_NEG, BOP_NEG },
     { OP_NOT, BOP_NOT },

@@ -194,7 +194,7 @@ frame_print(frame_t* f)
         return printf("[Frame NULL]");
     }
     printed_bytes_count = printf(
-        "[Frame addr=%p", PTR_L20BITS(f)
+        "[Frame addr=%p ", PTR_L20BITS(f)
     );
     /* global */
     printed_bytes_count += printf("globals(%d)=[", f->globals->size);
@@ -205,7 +205,7 @@ frame_print(frame_t* f)
         }
         printed_bytes_count += printf(
             "(id_code=%d addr=%p type=%s)", pair->code,
-            PTR_L20BITS(pair->object), OBJ_TYPE_STR[pair->object->type]
+            PTR_L20BITS(pair->object), OBJ_TYPE_SIG_STR[pair->object->type]
         );
     }
     printed_bytes_count += printf("], ");
@@ -238,7 +238,7 @@ frame_print(frame_t* f)
         }
         printed_bytes_count += printf(
             "(id_code=%d addr=%p type=%s)", pair->code,
-            PTR_L20BITS(pair->object), OBJ_TYPE_STR[pair->object->type]
+            PTR_L20BITS(pair->object), OBJ_TYPE_SIG_STR[pair->object->type]
         );
     }
     printed_bytes_count += printf("]]");

@@ -91,6 +91,27 @@ nud(pratt_parser_context_t* context)
     }
 #endif
 
+    if (!is_expression_starter(token)) {
+        if (!token) {
+            printf("tree_parser nud: token is null\n");
+            exit(OTHER_ERR_CODE);
+        } else if (token->type == TOK_OP) {
+            sprintf(
+                ERR_MSG_BUF,
+                "Expect unary operator but get binary operator: '%s'",
+                OP_NAMES[token->code]
+            );
+            throw_syntax_error(token->pos, ERR_MSG_BUF);
+        } else {
+            sprintf(
+                ERR_MSG_BUF,
+                "Unexpected token type at beginning of expression: %s",
+                OP_NAMES[token->code]
+            );
+            throw_syntax_error(token->pos, ERR_MSG_BUF);
+        }
+    }
+
     if (token->type == TOK_ID) {
         /* is identifier */
         pp_context_push(context, token);
@@ -99,14 +120,7 @@ nud(pratt_parser_context_t* context)
         pp_context_push(context, token);
     } else if (token->type == TOK_OP) {
         /* is unary operator */
-        if (!is_unary_op(token->code)) {
-            sprintf(
-                ERR_MSG_BUF,
-                "Expect unary operator but get binary operator: '%s'",
-                OP_NAMES[token->code]
-            );
-            throw_syntax_error(token->pos, ERR_MSG_BUF);
-        }
+        if (!is_unary_op(token->code)) { }
         parse_expr(context, bp);
         pp_context_push(context, token);
     } else if (token->type == TOK_LB) {
@@ -114,10 +128,13 @@ nud(pratt_parser_context_t* context)
         parse_expr(context, bp);
         token_t* closing = pp_context_peek(context);
         if (closing->type != TOK_RB) {
-            throw_syntax_error(
-                closing->pos,
-                "Unmatched open bracket: Cannot find matching closing bracket"
+            sprintf(
+                ERR_MSG_BUF,
+                "Unmatched open bracket: Cannot find matching closing bracket "
+                "for '%s'",
+                OP_NAMES[token->code]
             );
+            throw_syntax_error(closing->pos, ERR_MSG_BUF);
         }
         if (token->code == OP_LPAREN && closing->code == OP_RPAREN) {
             /* do nothing */
@@ -129,22 +146,8 @@ nud(pratt_parser_context_t* context)
             /* function maker */
             token_t fmake = { NULL, OP_MAKE_FUNCT, TOK_OP, token->pos };
             pp_context_push(context, &fmake);
-        } else {
-            sprintf(
-                ERR_MSG_BUF,
-                "Unmatched open bracket: Cannot find matching closing bracket "
-                "for '%s'",
-                OP_NAMES[token->code]
-            );
-            throw_syntax_error(closing->pos, ERR_MSG_BUF);
         }
         pp_context_advance(context);
-    } else {
-        sprintf(
-            ERR_MSG_BUF, "Unexpected token type at beginning of expression: %s",
-            OP_NAMES[token->code]
-        );
-        throw_syntax_error(token->pos, ERR_MSG_BUF);
     }
 }
 
