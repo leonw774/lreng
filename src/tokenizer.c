@@ -24,8 +24,15 @@
 #define IS_NUM(c) (isdigit(c) || c == '.')
 #define IS_ID_HEAD(c) (isalpha(c) || c == '_')
 #define IS_ID_BODY(c) (isalnum(c) || c == '_')
-#define IS_HEX(c)                                                              \
-    ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
+
+static inline int
+is_hex(char c)
+{
+    return (
+        (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')
+        || (c >= 'A' && c <= 'F')
+    );
+}
 
 static inline char*
 invalid_char_msg(int c)
@@ -65,10 +72,10 @@ get_op_tok_type(char* op_str)
     if (op_str[1] != '\0') {
         return TOK_OP;
     }
-    is_left_bracket = c == OP_NAMES[OP_LCURLY][0] || c == OP_NAMES[OP_LSQUARE][0]
-        || c == OP_NAMES[OP_LPAREN][0];
-    is_right_bracket = c == OP_NAMES[OP_RCURLY][0] || c == OP_NAMES[OP_RSQUARE][0]
-        || c == OP_NAMES[OP_RPAREN][0];
+    is_left_bracket = c == OP_NAMES[OP_LCURLY][0]
+        || c == OP_NAMES[OP_LSQUARE][0] || c == OP_NAMES[OP_LPAREN][0];
+    is_right_bracket = c == OP_NAMES[OP_RCURLY][0]
+        || c == OP_NAMES[OP_RSQUARE][0] || c == OP_NAMES[OP_RPAREN][0];
     if (is_left_bracket) {
         return TOK_LB;
     } else if (is_right_bracket) {
@@ -396,7 +403,7 @@ hex_state(linecol_iterator_t* pos_iter, cargo cur_cargo)
     } else if (c == COMMENT_CHAR) {
         harvest(&cur_cargo, TOK_NUM, pos);
         return (state_ret) { &comment_state, cur_cargo };
-    } else if (IS_HEX(c)) {
+    } else if (is_hex(c)) {
         dynarr_char_append(&cur_cargo.tmp_str, &c);
         return (state_ret) { &hex_state, cur_cargo };
     } else if (is_op_char(c)) {

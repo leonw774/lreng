@@ -1,7 +1,9 @@
 #include "syntax_tree.h"
 #include "frame.h"
+#include "optimize.h"
 #include "reserved.h"
 #include "semantic.h"
+#include "syntax_tree_iter.h"
 #include "token.h"
 #include "tree_parser.h"
 #include "utils/arena.h"
@@ -52,7 +54,6 @@ syntax_tree_create(dynarr_token_t tokens)
         .root_index = -1,
         .lefts = NULL,
         .rights = NULL,
-        .sizes = NULL,
         .max_id_code = -1,
     };
     dynarr_int_t index_stack = dynarr_int_new();
@@ -76,12 +77,11 @@ syntax_tree_create(dynarr_token_t tokens)
     }
 
     /* root, lefts, rights and sizes */
+
     tree.lefts = tree_data;
     tree.rights = tree.lefts + token_size;
-    tree.sizes = tree.rights + token_size;
     memset(tree.lefts, -1, token_size * sizeof(int));
     memset(tree.rights, -1, token_size * sizeof(int));
-    memset(tree.sizes, 0, token_size * sizeof(int));
     for (i = 0; i < token_size; i++) {
         token_t* cur_token = dynarr_token_at(&postfix_tokens, i);
 #ifdef ENABLE_DEBUG_LOG_MORE
@@ -114,10 +114,6 @@ syntax_tree_create(dynarr_token_t tokens)
         } else {
             dynarr_int_append(&index_stack, &i);
         }
-
-        tree.sizes[i]
-            = (1 + ((tree.lefts[i] == -1) ? 0 : tree.sizes[tree.lefts[i]])
-               + ((tree.rights[i] == -1) ? 0 : tree.sizes[tree.rights[i]]));
 #ifdef ENABLE_DEBUG_LOG_MORE
         putchar('\n');
 #endif
@@ -145,6 +141,28 @@ syntax_tree_create(dynarr_token_t tokens)
     }
     dynarr_int_free(&index_stack);
 
+    /* check semantic */
+
+    if (!syntax_tree_check_semantic(&tree)) {
+        exit(SEMANTIC_ERR_CODE);
+    }
+
+#ifdef ENABLE_DEBUG_LOG
+    if (global_is_enable_debug_log) {
+        printf("check semantic done\n");
+    }
+#endif
+
+    /* optimization */
+
+    syntax_tree_optimatize(&tree);
+
+#ifdef ENABLE_DEBUG_LOG
+    if (global_is_enable_debug_log) {
+        printf("optimatization done\n");
+    }
+#endif
+
     /* eval literal */
 
     tree.literals = calloc(token_size, sizeof(object_t*));
@@ -162,21 +180,16 @@ syntax_tree_create(dynarr_token_t tokens)
                 }
             );
         } else if (cur_token->type == TOK_OP && cur_token->code == OP_PAIR) {
-            if (tree.lefts[i] == -1 || tree.rights[i] == -1) {
-                throw_syntax_error(
-                    cur_token->pos, "Pair operator has too few operands"
-                );
-            } else if (
-                tree.literals[tree.lefts[i]] != NULL
-                && tree.literals[tree.rights[i]] != NULL
-            ) {
+            object_t* left = tree.literals[tree.lefts[i]];
+            object_t* right = tree.literals[tree.rights[i]];
+            /* if left and right are all literal, pair can become literal too */
+            if (left && right) {
                 tree.literals[i] = object_create(
                     TYPE_PAIR,
-                    (object_data_union) {
-                        .pair = (pair_t) {
-                            .left = object_ref(tree.literals[tree.lefts[i]]),
-                            .right = object_ref(tree.literals[tree.rights[i]]),
-                        } }
+                    (object_data_union) { .pair = (pair_t) {
+                                              .left = object_ref(left),
+                                              .right = object_ref(right),
+                                          } }
                 );
             }
         }
@@ -189,18 +202,6 @@ syntax_tree_create(dynarr_token_t tokens)
 #endif
     }
 
-    /* check semantic */
-
-    if (!syntax_tree_check_semantic(&tree)) {
-        exit(SEMANTIC_ERR_CODE);
-    }
-
-#ifdef ENABLE_DEBUG_LOG
-    if (global_is_enable_debug_log) {
-        printf("check semantic done\n");
-    }
-#endif
-
     /* compile bytecodes for root and all functions and macros */
 
     for (i = 0; i < postfix_tokens.size; i++) {
@@ -212,7 +213,7 @@ syntax_tree_create(dynarr_token_t tokens)
         }
     }
     dynarr_int_append(&tree.entry_indexs, &tree.root_index);
-    /* sort the array */
+    /* sort the array (should be already sorted but just to be sure) */
     qsort(tree.entry_indexs.data, tree.entry_indexs.size, sizeof(int), int_cmp);
 
 #ifdef ENABLE_DEBUG_LOG
@@ -271,6 +272,7 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
 
     dynarr_int_append(&func_depth_stack, &cur_depth);
     while (cur_token != NULL) {
+        int is_checking = 0;
         cur_index = *dynarr_int_back(&tree_iter.index_stack);
         cur_depth = *dynarr_int_back(&tree_iter.depth_stack);
         cur_func_depth = *dynarr_int_back(&func_depth_stack);
@@ -285,11 +287,13 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
                 token_t* left_token
                     = dynarr_token_at(&tree->tokens, tree->lefts[cur_index]);
                 is_passed = check_assign_rule(tree, cur_frame, cur_index);
+                is_checking = 1;
                 id_usage[left_token->code] = (uint8_t)1;
             }
             /* check bind argument rule */
             else if (cur_token->code == OP_BIND_ARG) {
                 is_passed = check_bind_arg_rule(tree, cur_index);
+                is_checking = 1;
             }
             /* walk into a function */
             else if (cur_token->code == OP_MAKE_FUNCT) {
@@ -297,10 +301,12 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
                 dynarr_int_append(&func_depth_stack, &cur_depth);
             }
         } else if (cur_token->type == TOK_ID) {
+            is_passed = id_usage[cur_token->code] == 1;
+            is_checking = 1;
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
                 printf(
-                    "Line %d, col %d, checking identifier usage: ",
+                    "Line %d, col %d, check identifier usage: ",
                     cur_token->pos.line, cur_token->pos.col
                 );
                 token_print(cur_token);
@@ -308,8 +314,15 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
                 fflush(stdout);
             }
 #endif
-            id_usage[cur_token->code] = (uint8_t)1;
         }
+#ifdef ENABLE_DEBUG_LOG
+        if (global_is_enable_debug_log) {
+            if (is_checking) {
+                printf("- %s\n", is_passed ? "passed" : "not pass");
+                fflush(stdout);
+            }
+        }
+#endif
         syntax_tree_iter_next(&tree_iter);
         cur_token = syntax_tree_iter_get(&tree_iter);
     }
@@ -319,6 +332,13 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
     frame_free(cur_frame);
     free(id_usage);
     return is_passed;
+}
+
+void
+syntax_tree_optimatize(syntax_tree_t* tree)
+{
+    optimize_remove_op_pos(tree);
+    optimize_remove_no_side_effect_expr(tree);
 }
 
 dynarr_bytecode_t
@@ -332,7 +352,7 @@ syntax_tree_compile(const syntax_tree_t* tree, const int root_index)
     bytecode_op_code_enum bop_code;
     int left_index, right_index;
 
-#ifdef ENABLE_DEBUG_LOG
+#ifdef ENABLE_DEBUG_LOG_MORE
     if (global_is_enable_debug_log) {
         printf("Compile at token index %d: ", root_index);
         token_print(&cur_token);
@@ -477,70 +497,6 @@ syntax_tree_free(syntax_tree_t* tree)
     dynarr_int_free(&tree->bytecode_start_index);
 }
 
-/* set entry_index to -1 to use tree's root index */
-inline tree_preorder_iterator_t
-syntax_tree_iter_init(const syntax_tree_t* tree, int entry_index)
-{
-    static int one = 1;
-    tree_preorder_iterator_t iter = {
-        .tree = tree,
-        .index_stack = dynarr_int_new(),
-        .depth_stack = dynarr_int_new(),
-    };
-    dynarr_int_append(
-        &iter.index_stack,
-        (entry_index == -1) ? (int*)&tree->root_index : &entry_index
-    );
-    dynarr_int_append(&iter.depth_stack, &one);
-    return iter;
-}
-
-inline token_t*
-syntax_tree_iter_get(tree_preorder_iterator_t* iter)
-{
-    if (iter->index_stack.size == 0) {
-        return NULL;
-    }
-    return dynarr_token_at(
-        &iter->tree->tokens, *dynarr_int_back(&iter->index_stack)
-    );
-}
-
-inline void
-syntax_tree_iter_next(tree_preorder_iterator_t* iter)
-{
-    if (iter->index_stack.size == 0) {
-        return;
-    }
-    /* get */
-    int cur_index = *dynarr_int_back(&iter->index_stack),
-        next_depth = *dynarr_int_back(&iter->depth_stack) + 1;
-    dynarr_int_pop(&iter->index_stack);
-    dynarr_int_pop(&iter->depth_stack);
-    /* update */
-    if (cur_index != -1) {
-        if (iter->tree->rights[cur_index] != -1) {
-            dynarr_int_append(
-                &iter->index_stack, &iter->tree->rights[cur_index]
-            );
-            dynarr_int_append(&iter->depth_stack, &next_depth);
-        }
-        if (iter->tree->lefts[cur_index] != -1) {
-            dynarr_int_append(
-                &iter->index_stack, &iter->tree->lefts[cur_index]
-            );
-            dynarr_int_append(&iter->depth_stack, &next_depth);
-        }
-    }
-}
-
-inline void
-syntax_tree_iter_free(tree_preorder_iterator_t* tree_iter)
-{
-    dynarr_int_free(&tree_iter->index_stack);
-    dynarr_int_free(&tree_iter->depth_stack);
-}
-
 void
 syntax_tree_print(const syntax_tree_t* tree)
 {
@@ -588,7 +544,7 @@ syntax_tree_print(const syntax_tree_t* tree)
         int j = 0;
         int bc_start = tree->bytecode_start_index.data[i];
         int bc_end = tree->bytecode_start_index.data[i + 1];
-        printf("Bytecode of node %d\n", *dynarr_int_at(&tree->entry_indexs, i));
+        printf("Bytecode of node %d\n", tree->entry_indexs.data[i]);
         for (j = bc_start; j < bc_end; j++) {
             bytecode_t bc = tree->bytecodes.data[j];
             printf("%4u: ", j);

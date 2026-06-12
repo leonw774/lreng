@@ -18,7 +18,7 @@ check_assign_rule(
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf(
-            "Line %d, col %d, checking assign rule: ", cur_token->pos.line,
+            "Line %d, col %d, check assign rule: ", cur_token->pos.line,
             cur_token->pos.col
         );
         token_print(left_token);
@@ -54,7 +54,7 @@ check_bind_arg_rule(const syntax_tree_t* tree, const int index)
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf(
-            "Line %d, col %d, checking argument binder: ", cur_token->pos.line,
+            "Line %d, col %d, check argument binder: ", cur_token->pos.line,
             cur_token->pos.col
         );
         token_print(left_token);
