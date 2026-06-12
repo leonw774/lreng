@@ -6,6 +6,8 @@ for filename in ./scripts/*.txt; do
         echo '!@' | ./lreng "$filename" $args
     elif [[ "$filename" == "./scripts/reverse.txt" ]]; then
         echo '12345' | ./lreng "$filename" $args
+    elif [[ "$filename" == "./scripts/toupper.txt" ]]; then
+        echo 'atcg' | ./lreng "$filename" $args
     else
         ./lreng "$filename" $args
     fi

@@ -1,0 +1,12 @@
+toupper = {
+  c = input();
+  c != null && (
+    (c >= 'a' && c <= 'z') ?? [
+      output ((c - 'a') + 'A')
+    ], [
+      output c
+    ];
+    toupper()
+  ) || null
+};
+toupper ()

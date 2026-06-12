@@ -1,0 +1,43 @@
+list_append = list_elem => {
+    list = <list_elem;
+    elem = >list_elem;
+    list == null
+        && (elem, null)
+        || (
+            >list == null
+                && (<list, elem, null)
+                || (<list, list_append (>list, elem))
+        )
+};
+format_int = i => {
+    i < 10 && ((i + '0'), null) || (
+        list_append (
+            format_int (\(i / 10)),
+            ((i % 10) + '0')
+        )
+    )
+};
+print = string => {
+    string != null && (output (<string); print (>string))
+};
+
+is_divisible = nd => {
+  n = <nd;
+  d = >nd;
+  (d * d > n) ?? 0 , [
+    (n % d == 0) && 1 || is_divisible (n, d + 1)
+  ]
+};
+is_prime = n => {
+  (n > 1) && (is_divisible (n, 2) == 0)
+};
+print_primes = n_limit => {
+  n = <n_limit;
+  limit = >n_limit;
+  n <= limit ?? [
+    (is_prime n) && ( print (format_int n); output ' ' );
+    print_primes (n + 1, limit)
+   ], null
+};
+print_primes (2, 100);
+output '\n'
