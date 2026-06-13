@@ -53,6 +53,8 @@ web:
 		-I include/ -D IS_WASM -O3 -sSTACK_SIZE=5MB -o $(WEB_TARGET) \
 		-s "EXPORTED_RUNTIME_METHODS=['FS','callMain']"
 	cp README.md webplayground/README.md
+	cp scripts/*.txt webplayground/scripts
+	ls -1 scripts/*.txt > webplayground/scripts/index.html
 
 clean_web:
 	rm -r webplayground/lreng.* || true
