@@ -51,6 +51,7 @@ exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
             const char* err_msg = "Failed initialization of argument '%s'";
             sprintf(ERR_MSG_BUF, err_msg, arg_str);
             print_runtime_error(pos, ERR_MSG_BUF);
+            dynarr_registers_back(context.regs_stack)->errf = 1;
         }
     }
 
@@ -79,6 +80,60 @@ exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
         );
     }
 #endif
+}
+
+void
+exec_frame_set_from_pair(
+    context_t context, linecol_t pos, const int assignee_index,
+    const object_t* pair
+)
+{
+    frame_t* cur_frame = *dynarr_frameptr_back(context.frame_stack);
+    const syntax_tree_t* tree = context.tree;
+    const token_t left_token = tree->tokens.data[tree->lefts[assignee_index]];
+    const token_t right_token = tree->tokens.data[tree->rights[assignee_index]];
+    if (left_token.type == TOK_ID) {
+        if (!frame_set(cur_frame, left_token.code, pair->as.pair.left)) {
+            const char* err_msg = "Repeated initialization of identifier '%s'";
+            sprintf(
+                ERR_MSG_BUF, err_msg,
+                context.tree->id_code_str_map[left_token.code]
+            );
+            print_runtime_error(pos, ERR_MSG_BUF);
+            dynarr_registers_back(context.regs_stack)->errf = 1;
+        };
+    } else {
+        /* else: it can only be a pair */
+        if (pair->as.pair.left->type != TYPE_PAIR) {
+            print_runtime_error(pos, "Cannot unpack non-pair object");
+            dynarr_registers_back(context.regs_stack)->errf = 1;
+        } else {
+            exec_frame_set_from_pair(
+                context, pos, tree->lefts[assignee_index], pair->as.pair.left
+            );
+        }
+    }
+    if (right_token.type == TOK_ID) {
+        if (!frame_set(cur_frame, right_token.code, pair->as.pair.right)) {
+            const char* err_msg = "Repeated initialization of identifier '%s'";
+            sprintf(
+                ERR_MSG_BUF, err_msg,
+                context.tree->id_code_str_map[right_token.code]
+            );
+            print_runtime_error(pos, ERR_MSG_BUF);
+            dynarr_registers_back(context.regs_stack)->errf = 1;
+        };
+    } else {
+        /* else: it can only be a pair */
+        if (pair->as.pair.right->type != TYPE_PAIR) {
+            print_runtime_error(pos, "Cannot unpack non-pair object");
+            dynarr_registers_back(context.regs_stack)->errf = 1;
+        } else {
+            exec_frame_set_from_pair(
+                context, pos, tree->rights[assignee_index], pair->as.pair.right
+            );
+        }
+    }
 }
 
 /* DEPRECATED MAP/FILTER/REDUCE */
@@ -129,8 +184,7 @@ map_process_node(
 
 /* apply callable recursively in postfix order and return a new pair */
 object_t*
-exec_map(context_t context, linecol_t pos, const object_t* call, object_t*
-pair)
+exec_map(context_t context, linecol_t pos, const object_t* call, object_t* pair)
 {
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
@@ -454,8 +508,7 @@ reduce_process_node(object_t* arg, object_t** res)
  */
 object_t*
 exec_reduce(
-    context_t context, linecol_t token_pos, const object_t* call, object_t*
-    pair
+    context_t context, linecol_t token_pos, const object_t* call, object_t* pair
 )
 {
 #ifdef ENABLE_DEBUG_LOG
@@ -478,16 +531,15 @@ exec_reduce(
     dynarr_object_ptr_ptr_append(&arg_pair_stack, &input_pair_ptr);
     dynarr_object_ptr_ptr_append(&res_pair_stack, &result_ptr);
     while (arg_pair_stack.size > 0) {
-        object_t** arg_pair_ptr =
-        *dynarr_object_ptr_ptr_back(&arg_pair_stack); object_t** arg_left_ptr
-        = &((*arg_pair_ptr)->as.pair.left); object_t** arg_right_ptr =
-        &((*arg_pair_ptr)->as.pair.right); object_t* arg_left =
-        *arg_left_ptr; object_t* arg_right = *arg_right_ptr;
+        object_t** arg_pair_ptr = *dynarr_object_ptr_ptr_back(&arg_pair_stack);
+        object_t** arg_left_ptr = &((*arg_pair_ptr)->as.pair.left);
+        object_t** arg_right_ptr = &((*arg_pair_ptr)->as.pair.right);
+        object_t* arg_left = *arg_left_ptr;
+        object_t* arg_right = *arg_right_ptr;
 
-        object_t** res_pair_ptr =
-        *dynarr_object_ptr_ptr_back(&res_pair_stack); object_t** res_left_ptr
-        = &((*res_pair_ptr)->as.pair.left); object_t** res_right_ptr =
-        &((*res_pair_ptr)->as.pair.right);
+        object_t** res_pair_ptr = *dynarr_object_ptr_ptr_back(&res_pair_stack);
+        object_t** res_left_ptr = &((*res_pair_ptr)->as.pair.left);
+        object_t** res_right_ptr = &((*res_pair_ptr)->as.pair.right);
 
         int process_result_enum;
 
@@ -571,4 +623,4 @@ exec_reduce(
     return result;
 }
 
-#endif 
+#endif

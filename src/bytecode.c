@@ -82,7 +82,8 @@ is_arg_bop(bytecode_op_code_enum bop)
 {
     return (
         bop == BOP_BIND_ARG || bop == BOP_MAKE_FUNCT || bop == BOP_MAKE_MACRO
-        || bop == BOP_FRAME_GET || bop == BOP_FRAME_SET || bop == BOP_EXTEND_ARG
+        || bop == BOP_FRAME_GET || bop == BOP_FRAME_SET
+        || bop == BOP_FRAME_SET_FROM_PAIR || bop == BOP_EXTEND_ARG
         || bop == BOP_PUSH_LITERAL || bop == BOP_JUMP
         || bop == BOP_JUMP_FALSE_OR_POP || bop == BOP_JUMP_TRUE_OR_POP
     );

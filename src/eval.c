@@ -121,6 +121,15 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
             regs->errf = 1;
         }
         break;
+    case BOP_FRAME_SET_FROM_PAIR:
+        regs->arg = regs->arg | bc.arg;
+        tmp = *dynarr_object_ptr_back(stack);
+        if (tmp->type != TYPE_PAIR) {
+            regs->errf = 1;
+            break;
+        }
+        exec_frame_set_from_pair(context, bc.pos, regs->arg, tmp);
+        break;
     case BOP_POP:
         tmp = *dynarr_object_ptr_back(stack);
         dynarr_object_ptr_pop(stack);
@@ -151,8 +160,8 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         }
 #endif
         break;
-    /* not implemented */
     case BOP_JUMP:
+        /* not implemented */
         print_runtime_error(bc.pos, "BOP_JUMP is not implemented");
         break;
     case BOP_JUMP_FALSE_OR_POP:
@@ -224,42 +233,38 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(left);
         object_deref(right);
         break;
-    // case BOP_MAP:
-    //     if (pop_lr_check(object_stack, bc, &left, &right, TYPE_CALL,
-    //     TYPE_PAIR))
-    //     {
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     tmp = exec_map(context, bc.pos, left, right);
-    //     // dynarr_object_ptr_append(object_stack, &tmp);
-    //     object_deref(left);
-    //     object_deref(right);
-    //     break;
-    // case BOP_FILTER:
-    //     if (pop_lr_check(object_stack, bc, &left, &right, TYPE_CALL,
-    //     TYPE_PAIR))
-    //     {
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     tmp = exec_filter(context, bc.pos, left, right);
-    //     // dynarr_object_ptr_append(object_stack, &tmp);
-    //     object_deref(left);
-    //     object_deref(right);
-    //     break;
-    // case BOP_REDUCE:
-    //     if (pop_lr_check(object_stack, bc, &left, &right, TYPE_CALL,
-    //     TYPE_PAIR))
-    //     {
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     tmp = exec_reduce(context, bc.pos, left, right);
-    //     // dynarr_object_ptr_append(object_stack, &tmp);
-    //     object_deref(left);
-    //     object_deref(right);
-    //     break;
+#if DEPRECATED
+    case BOP_MAP:
+        if (pop_lr_check(stack, bc, &left, &right, TYPE_CALL, TYPE_PAIR)) {
+            regs->errf = 1;
+            break;
+        }
+        tmp = exec_map(context, bc.pos, left, right);
+        // dynarr_object_ptr_append(stack, &tmp);
+        object_deref(left);
+        object_deref(right);
+        break;
+    case BOP_FILTER:
+        if (pop_lr_check(stack, bc, &left, &right, TYPE_CALL, TYPE_PAIR)) {
+            regs->errf = 1;
+            break;
+        }
+        tmp = exec_filter(context, bc.pos, left, right);
+        // dynarr_object_ptr_append(stack, &tmp);
+        object_deref(left);
+        object_deref(right);
+        break;
+    case BOP_REDUCE:
+        if (pop_lr_check(stack, bc, &left, &right, TYPE_CALL, TYPE_PAIR)) {
+            regs->errf = 1;
+            break;
+        }
+        tmp = exec_reduce(context, bc.pos, left, right);
+        // dynarr_object_ptr_append(stack, &tmp);
+        object_deref(left);
+        object_deref(right);
+        break;
+#endif
     case BOP_NEG:
         if (pop_l_check(stack, bc, &left, TYPE_NUM)) {
             regs->errf = 1;
@@ -590,7 +595,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         regs->arg = regs->arg | bc.arg;
         tmp->as.callable.arg_code = regs->arg;
         break;
-    case OP_COND_PAIR_GET:
+    case BOP_COND_PAIR_GET:
         if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, TYPE_PAIR)) {
             regs->errf = 1;
             break;
@@ -601,7 +606,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         object_deref(left);
         object_deref(right);
         break;
-    case OP_COND_PAIR_CALL:
+    case BOP_COND_PAIR_CALL:
         if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, TYPE_PAIR)) {
             regs->errf = 1;
             break;

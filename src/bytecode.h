@@ -9,18 +9,34 @@
 typedef enum bytecode_op_code {
     BOP_NOP,
     BOP_EXTEND_ARG,
+
     /* frame & stack manipulation */
-    BOP_PUSH_LITERAL, /* push a literal object to stack */
-    BOP_FRAME_GET, /* get object from frame and push to stack */
-    BOP_FRAME_SET, /* set object from top of stack to frame */
-    BOP_FRAME_SET_LITERAL, /* set literal object to frame and push to stack */
-    BOP_POP, /* remove the top of stack */
-    BOP_RET, /* return the callable with top of stack and clear the stack */
+
+    /* push a literal object to object stack */
+    BOP_PUSH_LITERAL,
+    /* get object from frame and push to object stack */
+    BOP_FRAME_GET,
+    /* set object from top of stack to frame */
+    BOP_FRAME_SET,
+    /* set literal object to frame and push to object stack */
+    BOP_FRAME_SET_LITERAL,
+    /* use pair to recursively set object to frame and push to object stack */
+    BOP_FRAME_SET_FROM_PAIR,
+    /* remove the top of stack */
+    BOP_POP,
+    /* pop the frame stack */
+    BOP_RET,
+    
     /* branching and jumping */
+    
     BOP_JUMP,
-    BOP_JUMP_FALSE_OR_POP, /* jump if top of stack is false, otherwise, pop */
-    BOP_JUMP_TRUE_OR_POP, /* jump if top of stack is true, otherwise, pop */
+    /* jump if top of stack is false, otherwise, pop */
+    BOP_JUMP_FALSE_OR_POP,
+    /* jump if top of stack is true, otherwise, pop */
+    BOP_JUMP_TRUE_OR_POP,
+    
     /* normal operator */
+    
     BOP_MAKE_FUNCT,
     BOP_MAKE_MACRO,
     BOP_CALL,
@@ -65,6 +81,7 @@ static const char* const BYTECODE_OP_NAMES[BOP_END_Of_ENUM] = {
     "FRAME_GET",
     "FRAME_SET",
     "FRAME_SET_LITERAL",
+    "FRAME_SET_FROM_PAIR",
     "POP",
     "RET",
     "JUMP",
@@ -143,7 +160,6 @@ static const int OP_TO_BOP_MAPPING[][2] = {
     { OP_BIND_ARG, BOP_BIND_ARG },
     { OP_COND_AND, BOP_JUMP_TRUE_OR_POP },
     { OP_COND_OR, BOP_JUMP_FALSE_OR_POP },
-    { OP_ASSIGN, BOP_FRAME_SET },
     { OP_COND_PAIR_GET, BOP_COND_PAIR_GET },
     { OP_COND_PAIR_CALL, BOP_COND_PAIR_CALL },
 };

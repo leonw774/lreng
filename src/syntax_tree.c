@@ -250,19 +250,11 @@ syntax_tree_create(dynarr_token_t tokens)
 int
 syntax_tree_check_semantic(const syntax_tree_t* tree)
 {
-    int i, is_passed = 1;
-    uint8_t* id_usage = calloc(tree->max_id_code + 1, sizeof(uint8_t));
-    assert(id_usage != NULL);
-    for (i = 0; i < RESERVED_ID_COUNT; i++) {
-        id_usage[i] = (uint8_t)1;
-    }
-
     frame_t* cur_frame = frame_new(NULL);
-
     tree_preorder_iterator_t tree_iter = syntax_tree_iter_init(tree, -1);
     token_t* cur_token = syntax_tree_iter_get(&tree_iter);
-    int cur_depth = -1, cur_index = -1, cur_func_depth = -1;
     dynarr_int_t func_depth_stack = dynarr_int_new();
+    int is_passed = 1, cur_depth = -1, cur_index = -1, cur_func_depth = -1;
 
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
@@ -271,50 +263,35 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
 #endif
 
     dynarr_int_append(&func_depth_stack, &cur_depth);
-    while (cur_token != NULL) {
+    while (cur_token != NULL && is_passed) {
         int is_checking = 0;
         cur_index = *dynarr_int_back(&tree_iter.index_stack);
         cur_depth = *dynarr_int_back(&tree_iter.depth_stack);
         cur_func_depth = *dynarr_int_back(&func_depth_stack);
         if (cur_token->type == TOK_OP) {
-            /* if we left a function */
             if (cur_depth <= cur_func_depth) {
+                /* if we left a function */
                 dynarr_int_pop(&func_depth_stack);
                 frame_pop_stack(cur_frame);
             }
-            /* check assign rule */
             if (cur_token->code == OP_ASSIGN) {
-                token_t* left_token
-                    = dynarr_token_at(&tree->tokens, tree->lefts[cur_index]);
+                /* check assign rule */
+                is_checking = 1;
                 is_passed = check_assign_rule(tree, cur_frame, cur_index);
+            } else if (cur_token->code == OP_BIND_ARG) {
+                /* check bind argument rule */
                 is_checking = 1;
-                id_usage[left_token->code] = (uint8_t)1;
-            }
-            /* check bind argument rule */
-            else if (cur_token->code == OP_BIND_ARG) {
-                is_passed = check_bind_arg_rule(tree, cur_index);
-                is_checking = 1;
-            }
-            /* walk into a function */
-            else if (cur_token->code == OP_MAKE_FUNCT) {
+                is_passed = check_bind_arg_rule(tree, cur_frame, cur_index);
+            } else if (cur_token->code == OP_MAKE_FUNCT) {
+                /* walk into a function */
                 frame_push_stack(cur_frame, cur_index);
                 dynarr_int_append(&func_depth_stack, &cur_depth);
             }
-        } else if (cur_token->type == TOK_ID) {
-            is_passed = id_usage[cur_token->code] == 1;
-            is_checking = 1;
-#ifdef ENABLE_DEBUG_LOG
-            if (global_is_enable_debug_log) {
-                printf(
-                    "Line %d, col %d, check identifier usage: ",
-                    cur_token->pos.line, cur_token->pos.col
-                );
-                token_print(cur_token);
-                printf("\n");
-                fflush(stdout);
-            }
-#endif
         }
+        // } else if (cur_token->type == TOK_ID) {
+        //     is_checking = 1;
+        //     is_passed = check_id_init_rule(tree, cur_frame, cur_index);
+        // }
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
             if (is_checking) {
@@ -330,7 +307,6 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
     syntax_tree_iter_free(&tree_iter);
     dynarr_int_free(&func_depth_stack);
     frame_free(cur_frame);
-    free(id_usage);
     return is_passed;
 }
 
@@ -379,6 +355,21 @@ syntax_tree_compile(const syntax_tree_t* tree, const int root_index)
         bytecode_array_extend(&output, bop_code, left_index, cur_pos);
         break;
     case OP_ASSIGN:
+        right_code = syntax_tree_compile(tree, right_index);
+        dynarr_bytecode_concat(&output, &right_code);
+        dynarr_bytecode_free(&right_code);
+        if (tree->tokens.data[left_index].type == TOK_OP) {
+            /* is pair unpacking */
+            bytecode_array_extend(
+                &output, BOP_FRAME_SET_FROM_PAIR, left_index, cur_pos
+            );
+        } else {
+            bytecode_array_extend(
+                &output, BOP_FRAME_SET, tree->tokens.data[left_index].code,
+                cur_pos
+            );
+        }
+        break;
     case OP_BIND_ARG:
         right_code = syntax_tree_compile(tree, right_index);
         dynarr_bytecode_concat(&output, &right_code);
@@ -558,7 +549,7 @@ syntax_tree_print(const syntax_tree_t* tree)
                 printf(" (to %u)", j + bc.arg + 1);
             } else if (
                 bc.op == BOP_PUSH_LITERAL || bc.op == BOP_MAKE_FUNCT
-                || bc.op == BOP_MAKE_MACRO
+                || bc.op == BOP_MAKE_MACRO || bc.op == BOP_FRAME_SET_FROM_PAIR
             ) {
                 printf(" ((node %u) ", bc.arg);
                 token_print(&tree->tokens.data[bc.arg]);
