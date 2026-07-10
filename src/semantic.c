@@ -9,7 +9,10 @@
 #include <stdlib.h>
 
 int
-is_assignable_node(const syntax_tree_t* tree, frame_t* frame, const int index)
+is_assignable_node(
+    const syntax_tree_t* tree, frame_t* frame, const int index,
+    const int can_set_frame
+)
 {
     token_t* cur_token = dynarr_token_at(&tree->tokens, index);
     if (cur_token->type == TOK_ID) {
@@ -19,19 +22,23 @@ is_assignable_node(const syntax_tree_t* tree, frame_t* frame, const int index)
             print_semantic_error(cur_token->pos, ERR_MSG_BUF);
             return 0;
         }
-        frame_set(
-            frame, cur_token->code,
-            (object_t*)&RESERVED_OBJS[RESERVED_ID_CODE_NULL]
-        );
+        if (can_set_frame) {
+            frame_set(
+                frame, cur_token->code,
+                (object_t*)&RESERVED_OBJS[RESERVED_ID_CODE_NULL]
+            );
+        }
         return 1;
     } else if (cur_token->type == TOK_OP && cur_token->code == OP_PAIR) {
         /* pair unpacking assignment:
          * check recursively if all are uninitialized identifier
          */
-        int is_left_passed
-            = is_assignable_node(tree, frame, tree->lefts[index]);
-        int is_right_passed
-            = is_assignable_node(tree, frame, tree->rights[index]);
+        int is_left_passed = is_assignable_node(
+            tree, frame, tree->lefts[index], can_set_frame
+        );
+        int is_right_passed = is_assignable_node(
+            tree, frame, tree->rights[index], can_set_frame
+        );
         return is_left_passed && is_right_passed;
     } else {
         const char* err_msg = "Node at %d is not assignable: ";
@@ -59,7 +66,7 @@ check_assign_rule(const syntax_tree_t* tree, frame_t* frame, const int index)
         printf(")\n");
     }
 #endif
-    if (!is_assignable_node(tree, frame, tree->lefts[index])) {
+    if (!is_assignable_node(tree, frame, tree->lefts[index], 1)) {
         const char* err_msg = "Left side of %s is not assignable.";
         sprintf(ERR_MSG_BUF, err_msg, OP_NAMES[left_token->code]);
         print_semantic_error(left_token->pos, ERR_MSG_BUF);
@@ -72,7 +79,7 @@ int
 check_bind_arg_rule(const syntax_tree_t* tree, frame_t* frame, const int index)
 {
     token_t* cur_token = dynarr_token_at(&tree->tokens, index);
-    token_t* left_token = dynarr_token_at(&tree->tokens, tree->lefts[index]);
+    const int left_index = tree->lefts[index];
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf(
@@ -81,16 +88,13 @@ check_bind_arg_rule(const syntax_tree_t* tree, frame_t* frame, const int index)
         );
     }
 #endif
-    if (left_token->type != TOK_ID) {
+    if (!is_assignable_node(tree, frame, left_index, 0)) {
+        token_t* left_token = dynarr_token_at(&tree->tokens, left_index);
         const char* err_msg = "Left side of %s is not identifier.";
         sprintf(ERR_MSG_BUF, err_msg, OP_NAMES[cur_token->code]);
         print_semantic_error(left_token->pos, ERR_MSG_BUF);
         return 0;
     }
-    frame_set(
-        frame, left_token->code,
-        (object_t*)&RESERVED_OBJS[RESERVED_ID_CODE_NULL]
-    );
     return 1;
 }
 

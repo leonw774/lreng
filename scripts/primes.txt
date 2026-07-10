@@ -1,5 +1,4 @@
-list_append = list_elem => {
-    list, elem = list_elem;
+list_append = list, elem => {
     list == null
         && (elem, null)
         || (
@@ -20,8 +19,7 @@ print = string => {
     string != null && (output (<string); print (>string))
 };
 
-is_divisible = nd => {
-  n, d = nd;
+is_divisible = n, d => {
   (d * d > n) ?? 0 , [
     (n % d == 0) && 1 || is_divisible (n, d + 1)
   ]

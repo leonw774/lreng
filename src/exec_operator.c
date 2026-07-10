@@ -1,3 +1,4 @@
+#include "exec_operator.h"
 #include "builtin_funcs.h"
 #include "eval.h"
 #include "frame.h"
@@ -39,21 +40,19 @@ exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
     }
 #endif
 
-    if (callable.is_macro) {
-        callee_frame = frame_ref(caller_frame);
-    } else {
-        int arg_code = callable.arg_code;
-        callee_frame = frame_get_callee_frame(caller_frame, call);
-        /* set argument to callee frame */
-        if (arg_code != -1 && frame_set(callee_frame, arg_code, arg) == NULL) {
-            int arg_index = context.tree->lefts[callable.index];
-            const char* arg_str = context.tree->tokens.data[arg_index].str;
-            const char* err_msg = "Failed initialization of argument '%s'";
-            sprintf(ERR_MSG_BUF, err_msg, arg_str);
-            print_runtime_error(pos, ERR_MSG_BUF);
-            dynarr_registers_back(context.regs_stack)->errf = 1;
-        }
-    }
+    /* get callee frame */
+    callee_frame = callable.is_macro
+        ? frame_ref(caller_frame)
+        : frame_get_callee_frame(caller_frame, call);
+
+    /* push callee frame to context */
+    dynarr_frameptr_append(context.frame_stack, &callee_frame);
+
+    /* get callable's starting index */
+    new_registers.insp
+        = syntax_tree_get_bytecode_start_index(context.tree, callable.index);
+    /* push new register to context */
+    dynarr_registers_append(context.regs_stack, &new_registers);
 
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
@@ -65,12 +64,35 @@ exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
         object_print(arg, '\n');
     }
 #endif
-    /* because insp always increase after execute bytecode, so minus one */
-    new_registers.insp
-        = syntax_tree_get_bytecode_start_index(context.tree, callable.index);
-    new_registers.insp--;
-    dynarr_frameptr_append(context.frame_stack, &callee_frame);
-    dynarr_registers_append(context.regs_stack, &new_registers);
+
+    /* set argument to current frame/context */
+    if (!callable.is_macro && callable.arg_subtree_index != -1) {
+        int arg_subtree_index = callable.arg_subtree_index;
+        token_t arg_token = context.tree->tokens.data[arg_subtree_index];
+        if (arg_token.type == TOK_ID) {
+            /* if token at arg index is identifier, do normal frame_set */
+            if (frame_set(callee_frame, arg_token.code, arg) == NULL) {
+                sprintf(
+                    ERR_MSG_BUF, "Failed initialization of argument '%s'",
+                    arg_token.str
+                );
+                print_runtime_error(pos, ERR_MSG_BUF);
+                dynarr_registers_back(context.regs_stack)->errf = 1;
+            }
+        } else {
+            /* if token at arg index is pair op, do frame set from pair */
+            if (arg->type != TYPE_PAIR) {
+                print_runtime_error(
+                    pos,
+                    "Failed initialization of argument: Cannot unpack "
+                    "non-pair object"
+                );
+                dynarr_registers_back(context.regs_stack)->errf = 1;
+            } else {
+                exec_frame_set_from_pair(context, pos, arg_subtree_index, arg);
+            }
+        }
+    }
 
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {

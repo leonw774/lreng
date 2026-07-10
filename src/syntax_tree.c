@@ -374,9 +374,7 @@ syntax_tree_compile(const syntax_tree_t* tree, const int root_index)
         right_code = syntax_tree_compile(tree, right_index);
         dynarr_bytecode_concat(&output, &right_code);
         dynarr_bytecode_free(&right_code);
-        bytecode_array_extend(
-            &output, bop_code, tree->tokens.data[left_index].code, cur_pos
-        );
+        bytecode_array_extend(&output, bop_code, left_index, cur_pos);
         break;
     case OP_COND_AND:
         left_code = syntax_tree_compile(tree, left_index);
@@ -540,16 +538,16 @@ syntax_tree_print(const syntax_tree_t* tree)
             bytecode_t bc = tree->bytecodes.data[j];
             printf("%4u: ", j);
             bytecode_print(bc);
-            if (bc.op == BOP_BIND_ARG || bc.op == BOP_FRAME_GET
-                || bc.op == BOP_FRAME_SET) {
+            if (bc.op == BOP_FRAME_GET || bc.op == BOP_FRAME_SET) {
                 printf(" (\"%s\")", tree->id_code_str_map[bc.arg]);
             } else if (
                 bc.op == BOP_JUMP_FALSE_OR_POP || bc.op == BOP_JUMP_TRUE_OR_POP
             ) {
                 printf(" (to %u)", j + bc.arg + 1);
             } else if (
-                bc.op == BOP_PUSH_LITERAL || bc.op == BOP_MAKE_FUNCT
-                || bc.op == BOP_MAKE_MACRO || bc.op == BOP_FRAME_SET_FROM_PAIR
+                bc.op == BOP_MAKE_FUNCT || bc.op == BOP_MAKE_MACRO
+                || bc.op == BOP_BIND_ARG || bc.op == BOP_FRAME_SET_FROM_PAIR
+                || bc.op == BOP_PUSH_LITERAL
             ) {
                 printf(" ((node %u) ", bc.arg);
                 token_print(&tree->tokens.data[bc.arg]);

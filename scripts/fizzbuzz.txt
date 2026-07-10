@@ -1,5 +1,4 @@
-list_append = list_elem => {
-    list, elem = list_elem;
+list_append = list, elem => {
     list == null
         && (elem, null)
         || (

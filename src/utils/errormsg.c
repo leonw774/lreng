@@ -21,9 +21,9 @@ inline void
 print_semantic_error(const linecol_t pos, const char* msg)
 {
     if (pos.line == 0 && pos.col == 0) {
-        printf("[SyntaxError]: %s\n", msg);
+        printf("[SemanticError]: %s\n", msg);
     } else {
-        printf("[SyntaxError]: Line %d col %d: %s\n", pos.line, pos.col, msg);
+        printf("[SemanticError]: Line %d col %d: %s\n", pos.line, pos.col, msg);
     }
 }
 

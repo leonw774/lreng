@@ -1,6 +1,4 @@
-timetable = ab => {
-  a = <ab;
-  b = >ab;
+timetable = a, b => {
   output(a + '0');
   output('x');
   output(b + '0');

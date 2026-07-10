@@ -74,15 +74,24 @@ pop_lr_check(
     );
 }
 
-void
-eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
+registers_t*
+eval_bytecode(context_t context, bytecode_t bc)
 {
     dynarr_object_ptr_t* stack = context.object_stack;
     frame_t* cur_frame = *dynarr_frameptr_back(context.frame_stack);
-    registers_t* regs = dynarr_registers_back(regs_stack);
+    registers_t* regs = dynarr_registers_back(context.regs_stack);
+    int is_insp_jumped = 0;
     object_t* left;
     object_t* right;
     object_t* tmp = NULL;
+
+    /* increase insp before bytecode is execute so we don't need to worried
+     * about jump and call and ret
+     */
+    if (!is_insp_jumped) {
+        regs->insp++;
+    }
+
     switch (bc.op) {
     case BOP_NOP:
         break;
@@ -138,7 +147,6 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         break;
     case BOP_RET:
         dynarr_registers_pop(context.regs_stack);
-        regs = dynarr_registers_back(regs_stack);
         frame_free(cur_frame);
         dynarr_frameptr_pop(context.frame_stack);
 #ifdef ENABLE_DEBUG_LOG
@@ -172,6 +180,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
             tmp = NULL;
         } else {
             regs->arg = regs->arg | bc.arg;
+            /* already account for the +1 before exec */
             regs->insp += regs->arg;
         }
         break;
@@ -183,6 +192,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
             tmp = NULL;
         } else {
             regs->arg = regs->arg | bc.arg;
+            /* already account for the +1 before exec */
             regs->insp += regs->arg;
         }
         break;
@@ -194,7 +204,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
                 (object_data_union)(callable_t) {
                     .is_macro = 0,
                     .builtin_name = NOT_BUILTIN_FUNC,
-                    .arg_code = -1,
+                    .arg_subtree_index = -1,
                     .index = regs->arg,
                     /* function owns a deep copy of frame it created under */
                     .init_frame = frame_copy(cur_frame),
@@ -210,7 +220,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
             (object_data_union)(callable_t) {
                 .is_macro = 1,
                 .builtin_name = NOT_BUILTIN_FUNC,
-                .arg_code = -1,
+                .arg_subtree_index = -1,
                 .index = regs->arg,
                 /* macro does not have frame */
                 .init_frame = NULL,
@@ -585,7 +595,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
             regs->errf = 1;
             break;
         }
-        if (tmp->as.callable.arg_code != -1) {
+        if (tmp->as.callable.arg_subtree_index != -1) {
             const char* err_msg
                 = "Bind argument to a function that already has one";
             print_runtime_error(bc.pos, err_msg);
@@ -593,7 +603,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
             break;
         }
         regs->arg = regs->arg | bc.arg;
-        tmp->as.callable.arg_code = regs->arg;
+        tmp->as.callable.arg_subtree_index = regs->arg;
         break;
     case BOP_COND_PAIR_GET:
         if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, TYPE_PAIR)) {
@@ -620,6 +630,7 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
                     context, bc.pos, res_object,
                     (object_t*)&RESERVED_OBJS[RESERVED_ID_CODE_NULL]
                 );
+                is_insp_jumped = 1;
             } else {
                 object_ref(res_object);
                 dynarr_object_ptr_append(stack, &res_object);
@@ -636,12 +647,15 @@ eval_bytecode(context_t context, dynarr_registers_t* regs_stack, bytecode_t bc)
         print_runtime_error(bc.pos, ERR_MSG_BUF);
         exit(RUNTIME_ERR_CODE);
     }
+    /* re-getting the back because there can be a call */
+    regs = dynarr_registers_back(context.regs_stack);
     if (regs && tmp && tmp->is_error) {
         regs->errf = 1;
     }
     if (regs && bc.op != BOP_EXTEND_ARG) {
         regs->arg = 0;
     }
+    return regs;
 }
 
 void
@@ -670,9 +684,9 @@ eval(context_t context)
         }
 #endif
 
-        eval_bytecode(context, context.regs_stack, bc);
+        cur_regs = eval_bytecode(context, bc);
 
-        if (context.regs_stack->size == 0) {
+        if (cur_regs == NULL || context.regs_stack->size == 0) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
                 printf("eval returned ");
@@ -685,8 +699,6 @@ eval(context_t context)
             break;
         }
 
-        cur_regs = dynarr_registers_back(context.regs_stack);
-
         if (cur_regs->errf) {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
@@ -695,8 +707,6 @@ eval(context_t context)
 #endif
             break;
         }
-
-        cur_regs->insp++;
     }
 }
 
