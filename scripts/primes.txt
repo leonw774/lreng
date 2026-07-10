@@ -27,13 +27,11 @@ is_divisible = n, d => {
 is_prime = n => {
   (n > 1) && (is_divisible (n, 2) == 0)
 };
-print_primes = n => {
-  end => {
-    n <= end ?? [
-      (is_prime n) && ( print (format_int n); output ' ' );
-      print_primes (n + 1, end)
-    ], null
-  }
+print_primes = n, end => {
+  n <= end ?? [
+    (is_prime n) && ( print (format_int n); output ' ' );
+    print_primes (n + 1, end)
+   ], null
 };
-print_primes 2 100;
+print_primes (2, 100);
 output '\n'
