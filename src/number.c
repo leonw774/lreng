@@ -14,9 +14,10 @@ number_copy(number_t* dst, const number_t* src)
     } else if (src->numer.size == 0) {
         dst->numer = ZERO_BIGINT;
         dst->denom = BYTE_BIGINT(1);
+    } else {
+        bi_copy(&dst->numer, &src->numer);
+        bi_copy(&dst->denom, &src->denom);
     }
-    bi_copy(&dst->numer, &src->numer);
-    bi_copy(&dst->denom, &src->denom);
 }
 
 inline void
@@ -429,22 +430,30 @@ number_print_frac(const number_t* x, char end)
     return printed_bytes_count + 4;
 }
 
-int
-number_print_dec(const number_t* x, int precision, char end)
+dynarr_char_t
+number_to_dec_string(const number_t* x, int precision)
 {
-    int printed_bytes_count = 0;
     int i, n_exp, d_exp, m;
     dynarr_char_t res_str;
-    char* res_cstr = NULL;
     char dot = '.' - '0';
-    number_t _x, t = EMPTY_NUMBER, q = EMPTY_NUMBER, r = EMPTY_NUMBER,
-                 ten = number_from_i32(10), ten_to_e = EMPTY_NUMBER;
+    char zero = 0;
+    number_t _x = EMPTY_NUMBER;
+    number_t t = EMPTY_NUMBER, q = EMPTY_NUMBER, r = EMPTY_NUMBER;
+    number_t ten = number_from_i32(10), ten_to_e = EMPTY_NUMBER;
 
     if (x->numer.nan) {
-        return printf("[Number NaN]");
+        /* construct a fake dynarr */
+        const dynarr_char_t nan_str
+            = (dynarr_char_t) { .cap = 3, .data = "NaN", .size = 3 };
+        res_str = dynarr_char_copy(&nan_str);
+        return res_str;
     }
     if (x->numer.size == 0) {
-        return printf("[Number 0]");
+        /* construct a fake dynarr */
+        const dynarr_char_t zero_str
+            = (dynarr_char_t) { .cap = 1, .data = "0", .size = 1 };
+        res_str = dynarr_char_copy(&zero_str);
+        return res_str;
     }
 
     /* find the lowest m such that b^m >= abs(n/d) */
@@ -489,11 +498,15 @@ number_print_dec(const number_t* x, int precision, char end)
         r = number_mod(&_x, &ten_to_e);
         t = number_sub(&_x, &r);
         q = number_div(&t, &ten_to_e);
-        if (q.numer.size != 1 || q.numer.digit[0] >= 10) {
-            printf("number_print_dec: q's numer >= 10\n");
-            exit(OTHER_ERR_CODE);
+        if (q.numer.size == 0) {
+            dynarr_char_append(&res_str, &zero);
+        } else {
+            if (q.numer.size > 1 || q.numer.digit[0] >= 10) {
+                printf("number_print_dec: q's numer >= 10\n");
+                exit(OTHER_ERR_CODE);
+            }
+            dynarr_char_append(&res_str, (char*)&(q.numer.digit[0]));
         }
-        dynarr_char_append(&res_str, (char*)&(q.numer.digit[0]));
         i++;
         if (m - i == -1) {
             dynarr_char_append(&res_str, &dot);
@@ -515,13 +528,27 @@ number_print_dec(const number_t* x, int precision, char end)
         number_copy(&ten_to_e, &t);
     }
     number_free(&t);
-    res_cstr = dynarr_char_to_str(&res_str);
     for (i = 0; i < res_str.size; i++) {
-        res_cstr[i] += '0';
+        res_str.data[i] += '0';
     }
-    printed_bytes_count = printf("[Number (DEC) %s]", res_cstr);
+    return res_str;
+}
 
+int
+number_print_dec(const number_t* x, int precision, char end)
+{
+    int printed_bytes_count = 0;
+    dynarr_char_t res_str = number_to_dec_string(x, precision);
+    char* res_cstr = dynarr_char_to_str(&res_str);
+    if (strcmp(res_cstr, "0")) {
+        printed_bytes_count = printf("[Number 0]");
+    } else if (strcmp(res_cstr, "NaN") == 0) {
+        printed_bytes_count = printf("[Number NaN]");
+    } else {
+        printed_bytes_count = printf("[Number (DEC) %s]", res_cstr);
+    }
     free(res_cstr);
+    dynarr_char_free(&res_str);
     if (end != '\0') {
         printed_bytes_count += printf("%c", end);
     }

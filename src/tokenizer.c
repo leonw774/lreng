@@ -2,7 +2,7 @@
 #include "reserved.h"
 #include "token.h"
 #include "utils/arena.h"
-#include "utils/debug_flag.h"
+#include "utils/global_flags.h"
 #include "utils/errormsg.h"
 #include <ctype.h>
 #include <stdio.h>

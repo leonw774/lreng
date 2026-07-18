@@ -7,8 +7,8 @@
 #include "token.h"
 #include "tree_parser.h"
 #include "utils/arena.h"
-#include "utils/debug_flag.h"
 #include "utils/errormsg.h"
+#include "utils/global_flags.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -180,16 +180,21 @@ syntax_tree_create(dynarr_token_t tokens)
                 }
             );
         } else if (cur_token->type == TOK_OP && cur_token->code == OP_PAIR) {
+            if (global_is_transpile) {
+                continue;
+            }
             object_t* left = tree.literals[tree.lefts[i]];
             object_t* right = tree.literals[tree.rights[i]];
             /* if left and right are all literal, pair can become literal too */
             if (left && right) {
                 tree.literals[i] = object_create(
                     TYPE_PAIR,
-                    (object_data_union) { .pair = (pair_t) {
-                                              .left = object_ref(left),
-                                              .right = object_ref(right),
-                                          } }
+                    (object_data_union) {
+                        .pair = (pair_t) {
+                            .left = object_ref(left),
+                            .right = object_ref(right),
+                        },
+                    }
                 );
             }
         }

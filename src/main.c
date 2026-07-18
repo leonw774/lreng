@@ -3,8 +3,9 @@
 #include "reserved.h"
 #include "syntax_tree.h"
 #include "tokenizer.h"
+#include "transpile.h"
 #include "utils/arena.h"
-#include "utils/debug_flag.h"
+#include "utils/global_flags.h"
 #include "utils/errormsg.h"
 #include <getopt.h>
 #include <stdio.h>
@@ -90,12 +91,12 @@ main(int argc, char** argv)
     arena_init(&token_str_arena, fsize);
     dynarr_token_t tokens = tokenize(src, fsize);
     syntax_tree_t syntax_tree = syntax_tree_create(tokens);\
-    eval_root(&syntax_tree);
-    // if (global_is_transpile) {
-    //     transpile(&syntax_tree);
-    // } else {
-    //     eval_root(&syntax_tree);
-    // }
+    // eval_root(&syntax_tree);
+    if (global_is_transpile) {
+        transpile(&syntax_tree);
+    } else {
+        eval_root(&syntax_tree);
+    }
     syntax_tree_free(&syntax_tree);
     dynarr_token_free(&tokens);
     arena_free(&token_str_arena);

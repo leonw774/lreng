@@ -40,6 +40,8 @@ lreng.c
 lreng.asm
 *.out*
 debug.txt
+utils.meta.h
+debug_transpile.c
 memcheck_out.txt
 memcheck_result.txt
 webplayground/README.md

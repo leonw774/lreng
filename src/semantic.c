@@ -2,7 +2,7 @@
 #include "objects.h"
 #include "operators.h"
 #include "reserved.h"
-#include "utils/debug_flag.h"
+#include "utils/global_flags.h"
 #include "utils/errormsg.h"
 #include <assert.h>
 #include <stdio.h>

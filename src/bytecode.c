@@ -90,14 +90,12 @@ is_arg_bop(bytecode_op_code_enum bop)
 }
 
 int
-bytecode_print(const bytecode_t bytecode)
+bytecode_print(const bytecode_t bc)
 {
     int printed_bytes_count = 0;
-    if (is_arg_bop(bytecode.op)) {
-        printed_bytes_count
-            += printf("%24s %4u", BYTECODE_OP_NAMES[bytecode.op], bytecode.arg);
-    } else {
-        printed_bytes_count += printf("%24s", BYTECODE_OP_NAMES[bytecode.op]);
+    printed_bytes_count += printf("%16s (%2d)", BYTECODE_OP_NAMES[bc.op], bc.op);
+    if (is_arg_bop(bc.op)) {
+        printed_bytes_count += printf("  %4u",  bc.arg);
     }
     return printed_bytes_count;
 }

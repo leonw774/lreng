@@ -35,7 +35,8 @@ clean:
 
 # The rule for main target (./lreng)
 $(MAIN_TARGET): $(MAIN_SRC)
-	gcc $(CFLAGS) -o $@ $^
+	xxd -i src/transpile/utils.meta.c > src/transpile/utils.meta.h
+	gcc $(CFLAGS) -o $@ $(filter-out %.meta.c,$^)
 
 # The rules of test targets
 %.out: %.c $(TEST_DEP_SRC)

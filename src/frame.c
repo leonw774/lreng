@@ -303,7 +303,7 @@ frame_get_callee_frame(const frame_t* caller_frame, const object_t* func_obj)
             src_frame = callable_obj.init_frame;
             is_forked = 1;
         }
-        /* copy the i-th section of the source frameF's stack to callee */
+        /* copy the i-th section of the source frame's stack to callee */
         start = *dynarr_int_at(&src_frame->stack_pointers, i);
         end = (i + 1 < src_frame->stack_pointers.size)
             ? *dynarr_int_at(&src_frame->stack_pointers, i + 1)

@@ -1,7 +1,7 @@
 #include "tree_parser.h"
 #include "reserved.h"
 #include "syntax_tree.h"
-#include "utils/debug_flag.h"
+#include "utils/global_flags.h"
 #include "utils/errormsg.h"
 #include <stdio.h>
 #include <stdlib.h>

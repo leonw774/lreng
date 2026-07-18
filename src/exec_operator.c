@@ -2,7 +2,7 @@
 #include "builtin_funcs.h"
 #include "eval.h"
 #include "frame.h"
-#include "utils/debug_flag.h"
+#include "utils/global_flags.h"
 
 void
 exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)

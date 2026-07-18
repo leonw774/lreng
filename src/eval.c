@@ -2,7 +2,7 @@
 #include "exec_operator.h"
 #include "frame.h"
 #include "reserved.h"
-#include "utils/debug_flag.h"
+#include "utils/global_flags.h"
 #include "utils/errormsg.h"
 #include <stdio.h>
 #include <stdlib.h>

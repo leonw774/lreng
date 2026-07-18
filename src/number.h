@@ -51,6 +51,7 @@ extern number_t number_ceil(number_t* a);
 extern number_t number_floor(number_t* a);
 
 extern int number_print_frac(const number_t* x, char end);
+extern dynarr_char_t number_to_dec_string(const number_t* x, int precision);
 extern int number_print_dec(const number_t* x, int precision, char end);
 extern number_t number_from_str(const char* str);
 extern number_t number_from_i32(i32 n);
