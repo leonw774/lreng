@@ -264,7 +264,6 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
 
     dynarr_int_append(&func_depth_stack, &cur_depth);
     while (cur_token != NULL && is_passed) {
-        int is_checking = 0;
         cur_index = *dynarr_int_back(&tree_iter.index_stack);
         cur_depth = *dynarr_int_back(&tree_iter.depth_stack);
         cur_func_depth = *dynarr_int_back(&func_depth_stack);
@@ -276,11 +275,9 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
             }
             if (cur_token->code == OP_ASSIGN) {
                 /* check assign rule */
-                is_checking = 1;
                 is_passed = check_assign_rule(tree, cur_frame, cur_index);
             } else if (cur_token->code == OP_BIND_ARG) {
                 /* check bind argument rule */
-                is_checking = 1;
                 is_passed = check_bind_arg_rule(tree, cur_frame, cur_index);
             } else if (cur_token->code == OP_MAKE_FUNCT) {
                 /* walk into a function */
@@ -294,7 +291,8 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
         // }
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
-            if (is_checking) {
+            if (cur_token->code == OP_ASSIGN
+                || cur_token->code == OP_BIND_ARG) {
                 printf("- %s\n", is_passed ? "passed" : "not pass");
                 fflush(stdout);
             }

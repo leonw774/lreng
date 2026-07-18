@@ -1,11 +1,8 @@
 #include <stdint.h>
+#include "utils/dynarr_char.h"
 
 #ifndef BIGINT_H
 #define BIGINT_H
-
-#define TYPE char
-#include "utils/dynarr.tmpl.h"
-#undef TYPE
 
 #define BASE_SHIFT 31
 #define DIGIT_BASE ((u32)1 << BASE_SHIFT)

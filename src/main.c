@@ -14,11 +14,15 @@
 arena_t token_str_arena;
 
 int global_is_enable_debug_log;
+int global_is_transpile;
 
 int
 main(int argc, char** argv)
 {
-    const char* usage = "Usage: lreng [-d] {file_path}\n";
+    const char* usage = 
+        "Usage: lreng [-d|-c] {file_path}\n"
+        "-d: output debug info to stdout\n"
+        "-c: transpile program to C and output it to stdout\n";
     char* file_path = NULL;
     FILE* in_fp = NULL;
     unsigned long long fsize = 0;
@@ -31,12 +35,16 @@ main(int argc, char** argv)
         .ptr = NULL,
     };
     global_is_enable_debug_log = 0;
+    global_is_transpile = 0;
 
     /* parse arg */
     {
         int opt_c;
-        while ((opt_c = getopt(argc, argv, "d")) != -1) {
+        while ((opt_c = getopt(argc, argv, "cd")) != -1) {
             switch (opt_c) {
+            case 'c':
+                global_is_transpile = 1;
+                break;
             case 'd':
                 global_is_enable_debug_log = 1;
                 break;
@@ -81,8 +89,13 @@ main(int argc, char** argv)
 
     arena_init(&token_str_arena, fsize);
     dynarr_token_t tokens = tokenize(src, fsize);
-    syntax_tree_t syntax_tree = syntax_tree_create(tokens);
+    syntax_tree_t syntax_tree = syntax_tree_create(tokens);\
     eval_root(&syntax_tree);
+    // if (global_is_transpile) {
+    //     transpile(&syntax_tree);
+    // } else {
+    //     eval_root(&syntax_tree);
+    // }
     syntax_tree_free(&syntax_tree);
     dynarr_token_free(&tokens);
     arena_free(&token_str_arena);

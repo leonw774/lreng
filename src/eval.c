@@ -80,7 +80,6 @@ eval_bytecode(context_t context, bytecode_t bc)
     dynarr_object_ptr_t* stack = context.object_stack;
     frame_t* cur_frame = *dynarr_frameptr_back(context.frame_stack);
     registers_t* regs = dynarr_registers_back(context.regs_stack);
-    int is_insp_jumped = 0;
     object_t* left;
     object_t* right;
     object_t* tmp = NULL;
@@ -88,15 +87,13 @@ eval_bytecode(context_t context, bytecode_t bc)
     /* increase insp before bytecode is execute so we don't need to worried
      * about jump and call and ret
      */
-    if (!is_insp_jumped) {
-        regs->insp++;
-    }
+    regs->insp++;
 
     switch (bc.op) {
     case BOP_NOP:
         break;
     case BOP_EXTEND_ARG:
-        regs->arg = ((regs->arg << 8) | bc.arg) << 8;
+        regs->arg = (regs->arg | bc.arg) << 8;
         break;
     case BOP_PUSH_LITERAL:
         regs->arg = regs->arg | bc.arg;
@@ -630,7 +627,6 @@ eval_bytecode(context_t context, bytecode_t bc)
                     context, bc.pos, res_object,
                     (object_t*)&RESERVED_OBJS[RESERVED_ID_CODE_NULL]
                 );
-                is_insp_jumped = 1;
             } else {
                 object_ref(res_object);
                 dynarr_object_ptr_append(stack, &res_object);

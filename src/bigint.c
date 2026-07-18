@@ -937,7 +937,7 @@ bi_print(bigint_t* x, char end)
     return printed_bytes_count;
 }
 
-/* returned dynarr of char does not contains terminating character NULL */
+/* returned dynarr of char does not contains terminating NULL */
 dynarr_char_t
 bi_to_dec_str(const bigint_t* x)
 {
