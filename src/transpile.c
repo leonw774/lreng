@@ -1,5 +1,6 @@
 #include "transpile.h"
 #include "objects.h"
+#include "reserved.h"
 #include "syntax_tree_iter.h"
 #include "transpile/utils.meta.h"
 #include "utils/dynarr_char.h"
@@ -18,9 +19,58 @@ get_transpile_util_codes()
 }
 
 char*
+transpile_frame_set_unpack(
+    syntax_tree_t* tree, const int cur_obj_id, const int assignee_index
+)
+{
+    char* left_buffer = malloc(LITERAL_BUFFER_SIZE);
+    char* right_buffer = malloc(LITERAL_BUFFER_SIZE);
+    size_t left_size = LITERAL_BUFFER_SIZE;
+    size_t right_size = LITERAL_BUFFER_SIZE;
+    const token_t left_token = tree->tokens.data[tree->lefts[assignee_index]];
+    const token_t right_token = tree->tokens.data[tree->rights[assignee_index]];
+    snprintf(
+        left_buffer, LITERAL_BUFFER_SIZE,
+        "    object_t* var_%d_%d = "
+        "frame_set(FRAME, %d, as_pair(var_%d_%d).left);\n",
+        cur_obj_id, tree->lefts[assignee_index], left_token.code, cur_obj_id,
+        assignee_index
+    );
+    if (left_token.type != TOK_ID) {
+        char* left_child_buffer = transpile_frame_set_unpack(
+            tree, cur_obj_id, tree->lefts[assignee_index]
+        );
+        left_size += strlen(left_child_buffer) + 1;
+        left_buffer = realloc(left_buffer, left_size);
+        strcat(left_buffer, left_child_buffer);
+        free(left_child_buffer);
+    }
+    snprintf(
+        right_buffer, LITERAL_BUFFER_SIZE,
+        "    object_t* var_%d_%d = "
+        "frame_set(FRAME, %d, as_pair(var_%d_%d).left);\n",
+        cur_obj_id, tree->rights[assignee_index], right_token.code, cur_obj_id,
+        assignee_index
+    );
+    if (right_token.type != TOK_ID) {
+        char* right_child_buffer = transpile_frame_set_unpack(
+            tree, cur_obj_id, tree->rights[assignee_index]
+        );
+        right_size += strlen(right_child_buffer) + 1;
+        right_buffer = realloc(left_buffer, right_size);
+        strcat(right_buffer, right_child_buffer);
+        free(right_child_buffer);
+    }
+    left_buffer = realloc(left_buffer, left_size + right_size);
+    strcat(left_buffer, right_buffer);
+    free(right_buffer);
+    return left_buffer;
+}
+
+char*
 transpile_literal(object_t* literal_object)
 {
-    static char BUFFER[LITERAL_BUFFER_SIZE];
+    static char buffer[LITERAL_BUFFER_SIZE];
     char* tmp_cstr;
     dynarr_char_t tmp_str;
 
@@ -30,13 +80,13 @@ transpile_literal(object_t* literal_object)
         );
         tmp_cstr = dynarr_char_to_str(&tmp_str);
         assert(tmp_cstr);
-        snprintf(BUFFER, LITERAL_BUFFER_SIZE, "(from_number(%s))", tmp_cstr);
+        snprintf(buffer, LITERAL_BUFFER_SIZE, "(from_number(%s))", tmp_cstr);
         free(tmp_cstr);
         dynarr_char_free(&tmp_str);
     } else if (literal_object->type == TYPE_NULL) {
-        sprintf(BUFFER, "(NULL_OBJPTR)");
+        sprintf(buffer, "(NULL_OBJPTR)");
     }
-    return BUFFER;
+    return buffer;
 }
 
 char*
@@ -45,12 +95,12 @@ transpile_bytecode(
     int cur_obj_id, int reg_arg
 )
 {
-    static char BUFFER[BYTECODE_BUFFER_SIZE];
+    static char buffer[BYTECODE_BUFFER_SIZE];
     char* code_tmpl;
     int left_id, right_id;
     // char* tmp_cstr;
 
-    BUFFER[0] = '\0';
+    buffer[0] = '\0';
 
     switch (bc.op) {
     case BOP_NOP:
@@ -58,7 +108,7 @@ transpile_bytecode(
     case BOP_PUSH_LITERAL:
         reg_arg |= bc.arg;
         sprintf(
-            BUFFER, "object_t* var_%d = %s;\n", cur_obj_id,
+            buffer, "    object_t* var_%d = %s;\n", cur_obj_id,
             transpile_literal(tree->literals[reg_arg])
         );
         dynarr_int_append(obj_id_stack, &cur_obj_id);
@@ -66,38 +116,44 @@ transpile_bytecode(
     case BOP_FRAME_GET:
         reg_arg |= bc.arg;
         snprintf(
-            BUFFER, BYTECODE_BUFFER_SIZE,
-            "object_t* var_%d = frame_get(FRAME, %d);\n", cur_obj_id, reg_arg
+            buffer, BYTECODE_BUFFER_SIZE,
+            "    object_t* var_%d = frame_get(FRAME, %d);\n", cur_obj_id,
+            reg_arg
         );
         dynarr_int_append(obj_id_stack, &cur_obj_id);
         break;
     case BOP_FRAME_SET:
         reg_arg |= bc.arg;
         snprintf(
-            BUFFER, BYTECODE_BUFFER_SIZE,
-            "object_t* var_%d = frame_set(FRAME, %d, var_%d);\n", cur_obj_id,
-            reg_arg, *dynarr_int_back(obj_id_stack)
+            buffer, BYTECODE_BUFFER_SIZE,
+            "    object_t* var_%d = frame_set(FRAME, %d, var_%d);\n",
+            cur_obj_id, reg_arg, *dynarr_int_back(obj_id_stack)
         );
         dynarr_int_pop(obj_id_stack);
         dynarr_int_append(obj_id_stack, &cur_obj_id);
         break;
-        //     case BOP_FRAME_SET_FROM_PAIR:
-        //         reg_arg |= bc.arg;
-        //         tmp = *dynarr_object_ptr_back(stack);
-        //         if (tmp->type != TYPE_PAIR) {
-        //             regs->errf = 1;
-        //             break;
-        //         }
-        //         exec_frame_set_from_pair(context, bc.pos, regs->arg, tmp);
-        //         break;
-        //     case BOP_POP:
-        //         tmp = *dynarr_object_ptr_back(stack);
-        //         dynarr_object_ptr_pop(stack);
-        //         object_deref(tmp);
-        //         tmp = NULL;
-        //         break;
+    case BOP_FRAME_SET_UNPACK:
+        reg_arg |= bc.arg;
+        {
+            char* unpack_buffer
+                = transpile_frame_set_unpack(tree, cur_obj_id, reg_arg);
+            snprintf(
+                buffer, BYTECODE_BUFFER_SIZE,
+                "    object_t* var_%d_%d = var_%d;\n%s", cur_obj_id, reg_arg,
+                *dynarr_int_back(obj_id_stack), unpack_buffer
+            );
+            free(unpack_buffer);
+        }
+        break;
+    case BOP_POP:
+        dynarr_int_pop(obj_id_stack);
+        break;
     case BOP_RET:
-        snprintf(BUFFER, BYTECODE_BUFFER_SIZE, "frame_pop(FRAME);\nreturn;\n");
+        snprintf(
+            buffer, BYTECODE_BUFFER_SIZE,
+            "    frame_pop(FRAME);\n    return var_%d;\n",
+            *dynarr_int_back(obj_id_stack)
+        );
         break;
         // case BOP_JUMP:
         //     /* not implemented */
@@ -341,9 +397,9 @@ transpile_bytecode(
         dynarr_int_pop(obj_id_stack);
         right_id = *dynarr_int_back(obj_id_stack);
         dynarr_int_pop(obj_id_stack);
-        code_tmpl = "object_t* var_%d = from_number(as_number(var_%d) + "
+        code_tmpl = "    object_t* var_%d = from_number(as_number(var_%d) + "
                     "as_number(var_%d));\n";
-        sprintf(BUFFER, code_tmpl, cur_obj_id, left_id, right_id);
+        sprintf(buffer, code_tmpl, cur_obj_id, left_id, right_id);
         dynarr_int_append(obj_id_stack, &cur_obj_id);
         break;
     // case BOP_SUB:
@@ -476,22 +532,16 @@ transpile_bytecode(
     //     object_deref(left);
     //     object_deref(right);
     //     break;
-    // case BOP_PAIR:
-    //     if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, ANY_TYPE)) {
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     tmp = object_create(
-    //         TYPE_PAIR,
-    //         (object_data_union)(pair_t) {
-    //             .left = object_ref(left),
-    //             .right = object_ref(right),
-    //         }
-    //     );
-    //     dynarr_object_ptr_append(stack, &tmp);
-    //     object_deref(left);
-    //     object_deref(right);
-    //     break;
+    case BOP_PAIR:
+        left_id = *dynarr_int_back(obj_id_stack);
+        dynarr_int_pop(obj_id_stack);
+        right_id = *dynarr_int_back(obj_id_stack);
+        dynarr_int_pop(obj_id_stack);
+        code_tmpl = "    object_t* var_%d = from_pair((pair_t) {"
+                    " .left = var_%d, .right = var_%d });\n";
+        sprintf(buffer, code_tmpl, cur_obj_id, left_id, right_id);
+        dynarr_int_append(obj_id_stack, &cur_obj_id);
+        break;
     // case BOP_BIND_ARG:
     //     tmp = *dynarr_object_ptr_back(stack);
     //     if (is_bad_type(bc, NO_OPERAND, TYPE_CALL, NULL, tmp)) {
@@ -560,10 +610,10 @@ transpile_bytecode(
     }
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
-        printf(BUFFER);
+        printf(buffer);
     }
 #endif
-    return BUFFER;
+    return buffer;
 }
 
 char*
@@ -576,11 +626,13 @@ transpile_bytecode_section(
     size_t sect_code_cap = BYTECODE_BUFFER_SIZE * 8;
     char* sect_code_cstr = malloc(sect_code_cap);
 
-    const char* func_start = "void\nfunc_%d(frame_t* FRAME)\n{\n";
-    const char* top_start = "void\ntop(frame_t* FRAME)\n{\n";
-    const char* func_end = "}\n\n";
+    static const char* top_start
+        = "object_t*\ntop(frame_t* FRAME, object_t* arg)\n{\n";
+    static const char* func_start
+        = "object_t*\nfunc_%d(frame_t* FRAME, object_t* arg)\n{\n";
+    static const char* func_end = "}\n\n";
 
-    int cur_obj_id = 1;
+    int cur_obj_id = RESERVED_ID_COUNT;
     dynarr_int_t obj_id_stack = dynarr_int_new();
     size_t reg_arg = 0;
 
@@ -597,8 +649,9 @@ transpile_bytecode_section(
     }
 #endif
 
+    /* render function start */
     if (tree->root_index == entry_index) {
-        sprintf(sect_code_cstr, top_start);
+        sprintf(sect_code_cstr, "%s", top_start);
     } else {
         sprintf(sect_code_cstr, func_start, entry_index);
     }
@@ -628,25 +681,26 @@ transpile_bytecode_section(
         sect_code_cap += strlen(func_end);
         sect_code_cstr = realloc(sect_code_cstr, sect_code_cap);
     }
+
     strcat(sect_code_cstr, func_end);
 
     return sect_code_cstr;
 }
 
-void
+const char*
 transpile(syntax_tree_t* tree)
 {
     const int bytecode_section_count = tree->bytecode_start_index.size - 1;
-    char** transpiled_codes = calloc(tree->bytecodes.size, sizeof(char*));
+    char** transpiled_sect_codes = calloc(tree->bytecodes.size, sizeof(char*));
+    char* transpiled_code = NULL;
     int i;
 
     // transpile bytecodes
     for (i = 0; i < bytecode_section_count; i++) {
         int start_index = tree->bytecode_start_index.data[i];
         int end_index = tree->bytecode_start_index.data[i + 1];
-        transpiled_codes[i] = transpile_bytecode_section(
-            tree,
-            tree->entry_indexs.data[i],
+        transpiled_sect_codes[i] = transpile_bytecode_section(
+            tree, tree->entry_indexs.data[i],
             dynarr_bytecode_at(&tree->bytecodes, start_index),
             dynarr_bytecode_at(&tree->bytecodes, end_index)
         );
@@ -659,25 +713,36 @@ transpile(syntax_tree_t* tree)
 #endif
 
     {
-        const char* util_codes = get_transpile_util_codes(tree);
-        char* concated_codes = NULL;
-        size_t total_code_len = strlen(util_codes) + 1; // add 1 for ending NULL
+        const char* util_codes = get_transpile_util_codes();
+        // add 2 for one extra new line and ending NULL
+        size_t total_code_len = strlen(util_codes) + 2;
         for (i = 0; i < bytecode_section_count; i++) {
-            total_code_len += strlen(transpiled_codes[i]);
+            total_code_len += strlen(transpiled_sect_codes[i]);
         }
 
-        concated_codes = calloc(total_code_len, 1);
-        strcat(concated_codes, util_codes);
+        transpiled_code = calloc(total_code_len, 1);
+        strcat(transpiled_code, util_codes);
+        strcat(transpiled_code, "\n"); // the one extra new line
         for (i = 0; i < bytecode_section_count; i++) {
-            strcat(concated_codes, transpiled_codes[i]);
+            strcat(transpiled_code, transpiled_sect_codes[i]);
         }
 
-        printf(concated_codes);
-
-        free(concated_codes);
+#ifdef ENABLE_DEBUG_LOG
+        if (global_is_enable_debug_log) {
+            printf(transpiled_code);
+        }
+#endif
     }
+
+#ifdef ENABLE_DEBUG_LOG
+    if (global_is_enable_debug_log) {
+        printf("====================\n");
+    }
+#endif
 
     for (i = 0; i < bytecode_section_count; i++) {
-        free(transpiled_codes[i]);
+        free(transpiled_sect_codes[i]);
     }
+
+    return transpiled_code;
 }

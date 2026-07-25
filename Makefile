@@ -50,7 +50,8 @@ WEB_TARGET = webplayground/lreng.js
 
 web:
 	rm -r webplayground/lreng.* || true
-	emcc $(MAIN_SRC) \
+	xxd -i src/transpile/utils.meta.c > src/transpile/utils.meta.h
+	emcc $(filter-out %.meta.c,$(wildcard $(MAIN_SRC))) \
 		-I include/ -D IS_WASM -O3 -sSTACK_SIZE=5MB -o $(WEB_TARGET) \
 		-s "EXPORTED_RUNTIME_METHODS=['FS','callMain']"
 	cp README.md webplayground/README.md

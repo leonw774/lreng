@@ -127,14 +127,14 @@ eval_bytecode(context_t context, bytecode_t bc)
             regs->errf = 1;
         }
         break;
-    case BOP_FRAME_SET_FROM_PAIR:
+    case BOP_FRAME_SET_UNPACK:
         regs->arg = regs->arg | bc.arg;
         tmp = *dynarr_object_ptr_back(stack);
         if (tmp->type != TYPE_PAIR) {
             regs->errf = 1;
             break;
         }
-        exec_frame_set_from_pair(context, bc.pos, regs->arg, tmp);
+        exec_frame_set_unpack(context, bc.pos, regs->arg, tmp);
         break;
     case BOP_POP:
         tmp = *dynarr_object_ptr_back(stack);

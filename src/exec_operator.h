@@ -4,7 +4,7 @@ extern void exec_call(
     context_t context, linecol_t pos, const object_t* call, object_t* arg
 );
 
-extern void exec_frame_set_from_pair(
+extern void exec_frame_set_unpack(
     context_t context, linecol_t pos, const int assignee_index,
     const object_t* pair
 );

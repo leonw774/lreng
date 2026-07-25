@@ -21,7 +21,7 @@ typedef enum bytecode_op_code {
     /* set literal object to frame and push to object stack */
     BOP_FRAME_SET_LITERAL,
     /* use pair to recursively set object to frame and push to object stack */
-    BOP_FRAME_SET_FROM_PAIR,
+    BOP_FRAME_SET_UNPACK,
     /* remove the top of stack */
     BOP_POP,
     /* pop the frame stack */

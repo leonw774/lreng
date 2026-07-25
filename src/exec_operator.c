@@ -89,7 +89,7 @@ exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
                 );
                 dynarr_registers_back(context.regs_stack)->errf = 1;
             } else {
-                exec_frame_set_from_pair(context, pos, arg_subtree_index, arg);
+                exec_frame_set_unpack(context, pos, arg_subtree_index, arg);
             }
         }
     }
@@ -105,7 +105,7 @@ exec_call(context_t context, linecol_t pos, const object_t* call, object_t* arg)
 }
 
 void
-exec_frame_set_from_pair(
+exec_frame_set_unpack(
     context_t context, linecol_t pos, const int assignee_index,
     const object_t* pair
 )
@@ -130,7 +130,7 @@ exec_frame_set_from_pair(
             print_runtime_error(pos, "Cannot unpack non-pair object");
             dynarr_registers_back(context.regs_stack)->errf = 1;
         } else {
-            exec_frame_set_from_pair(
+            exec_frame_set_unpack(
                 context, pos, tree->lefts[assignee_index], pair->as.pair.left
             );
         }
@@ -151,7 +151,7 @@ exec_frame_set_from_pair(
             print_runtime_error(pos, "Cannot unpack non-pair object");
             dynarr_registers_back(context.regs_stack)->errf = 1;
         } else {
-            exec_frame_set_from_pair(
+            exec_frame_set_unpack(
                 context, pos, tree->rights[assignee_index], pair->as.pair.right
             );
         }

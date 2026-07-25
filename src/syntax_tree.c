@@ -364,7 +364,7 @@ syntax_tree_compile(const syntax_tree_t* tree, const int root_index)
         if (tree->tokens.data[left_index].type == TOK_OP) {
             /* is pair unpacking */
             bytecode_array_extend(
-                &output, BOP_FRAME_SET_FROM_PAIR, left_index, cur_pos
+                &output, BOP_FRAME_SET_UNPACK, left_index, cur_pos
             );
         } else {
             bytecode_array_extend(
@@ -549,7 +549,7 @@ syntax_tree_print(const syntax_tree_t* tree)
                 printf(" (to %u)", j + bc.arg + 1);
             } else if (
                 bc.op == BOP_MAKE_FUNCT || bc.op == BOP_MAKE_MACRO
-                || bc.op == BOP_BIND_ARG || bc.op == BOP_FRAME_SET_FROM_PAIR
+                || bc.op == BOP_BIND_ARG || bc.op == BOP_FRAME_SET_UNPACK
                 || bc.op == BOP_PUSH_LITERAL
             ) {
                 printf(" ((node %u) ", bc.arg);

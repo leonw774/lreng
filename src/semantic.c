@@ -2,8 +2,8 @@
 #include "objects.h"
 #include "operators.h"
 #include "reserved.h"
-#include "utils/global_flags.h"
 #include "utils/errormsg.h"
+#include "utils/global_flags.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -88,9 +88,10 @@ check_bind_arg_rule(const syntax_tree_t* tree, frame_t* frame, const int index)
         );
     }
 #endif
-    if (!is_assignable_node(tree, frame, left_index, 0)) {
+    if ((global_is_transpile && tree->tokens.data[left_index].type == TOK_ID)
+        || !is_assignable_node(tree, frame, left_index, 0)) {
         token_t* left_token = dynarr_token_at(&tree->tokens, left_index);
-        const char* err_msg = "Left side of %s is not identifier.";
+        const char* err_msg = "Left side of %s is not assignable.";
         sprintf(ERR_MSG_BUF, err_msg, OP_NAMES[cur_token->code]);
         print_semantic_error(left_token->pos, ERR_MSG_BUF);
         return 0;
