@@ -266,11 +266,10 @@ frame_get_callee_frame(const frame_t* caller_frame, const object_t* func_obj)
         return callee_frame;
     }
 
-    /* otherwise, starting from i = 0, if the i-th entry index of the
-     * function's init-time frame and the i-th entry index of the caller frame
-     * is the same, then the i-th section of callee frame equals caller frame's
-     * i-th section. but once the entry_index is different, they are in
-     * different closure path, the rest of init-time frame stack is used */
+    /* starting from i = 0, if the i-th func_ptr of the init-frame and caller
+     * frame is the same, the i-th frame of callee frame is caller's i-th frame.
+     * otherwise, they are in different closure path, the rest of init-time
+     * frame stack is used */
     callee_frame = frame_new(callable_obj.init_frame);
 
     /* for every function's init-time frame */

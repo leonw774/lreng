@@ -180,7 +180,7 @@ syntax_tree_create(dynarr_token_t tokens)
                 }
             );
         } else if (cur_token->type == TOK_OP && cur_token->code == OP_PAIR) {
-            if (global_is_transpile) {
+            if (global_is_compile) {
                 continue;
             }
             object_t* left = tree.literals[tree.lefts[i]];

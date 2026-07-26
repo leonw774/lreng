@@ -1,0 +1,10 @@
+x1 = 3 + 1;
+debug(x1);
+x2 = x1 - 3;
+debug(x2);
+x10 = 4, 5;
+debug(x10);
+x11, x12 = x10;
+debug(x11);
+debug(x12);
+output('e'); output('n'); output('d'); output('\n')

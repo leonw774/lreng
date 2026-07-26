@@ -29,14 +29,15 @@ transpile_frame_set_unpack(
     size_t right_size = LITERAL_BUFFER_SIZE;
     const token_t left_token = tree->tokens.data[tree->lefts[assignee_index]];
     const token_t right_token = tree->tokens.data[tree->rights[assignee_index]];
-    snprintf(
-        left_buffer, LITERAL_BUFFER_SIZE,
-        "    object_t* var_%d_%d = "
-        "frame_set(FRAME, %d, as_pair(var_%d_%d).left);\n",
-        cur_obj_id, tree->lefts[assignee_index], left_token.code, cur_obj_id,
-        assignee_index
-    );
+
     if (left_token.type != TOK_ID) {
+        snprintf(
+            left_buffer, LITERAL_BUFFER_SIZE,
+            "    object_t* var_%d_%d = frame_set(FRAME, %d, "
+            "as_pair(var_%d_%d).left ); // unpack branch\n",
+            cur_obj_id, tree->lefts[assignee_index], left_token.code,
+            cur_obj_id, assignee_index
+        );
         char* left_child_buffer = transpile_frame_set_unpack(
             tree, cur_obj_id, tree->lefts[assignee_index]
         );
@@ -44,15 +45,22 @@ transpile_frame_set_unpack(
         left_buffer = realloc(left_buffer, left_size);
         strcat(left_buffer, left_child_buffer);
         free(left_child_buffer);
+    } else {
+        snprintf(
+            left_buffer, LITERAL_BUFFER_SIZE,
+            "    frame_set(FRAME, %d, as_pair(var_%d_%d).left); // unpack "
+            "leaf\n",
+            left_token.code, cur_obj_id, assignee_index
+        );
     }
-    snprintf(
-        right_buffer, LITERAL_BUFFER_SIZE,
-        "    object_t* var_%d_%d = "
-        "frame_set(FRAME, %d, as_pair(var_%d_%d).left);\n",
-        cur_obj_id, tree->rights[assignee_index], right_token.code, cur_obj_id,
-        assignee_index
-    );
     if (right_token.type != TOK_ID) {
+        snprintf(
+            right_buffer, LITERAL_BUFFER_SIZE,
+            "    object_t* var_%d_%d = frame_set(FRAME, %d, "
+            "as_pair(var_%d_%d).right); // unpack branch\n",
+            cur_obj_id, tree->rights[assignee_index], right_token.code,
+            cur_obj_id, assignee_index
+        );
         char* right_child_buffer = transpile_frame_set_unpack(
             tree, cur_obj_id, tree->rights[assignee_index]
         );
@@ -60,6 +68,13 @@ transpile_frame_set_unpack(
         right_buffer = realloc(left_buffer, right_size);
         strcat(right_buffer, right_child_buffer);
         free(right_child_buffer);
+    } else {
+        snprintf(
+            right_buffer, LITERAL_BUFFER_SIZE,
+            "    frame_set(FRAME, %d, as_pair(var_%d_%d).right); // unpack "
+            "leaf\n",
+            right_token.code, cur_obj_id, assignee_index
+        );
     }
     left_buffer = realloc(left_buffer, left_size + right_size);
     strcat(left_buffer, right_buffer);
@@ -70,7 +85,7 @@ transpile_frame_set_unpack(
 char*
 transpile_literal(object_t* literal_object)
 {
-    static char buffer[LITERAL_BUFFER_SIZE];
+    char* buffer = malloc(LITERAL_BUFFER_SIZE);
     char* tmp_cstr;
     dynarr_char_t tmp_str;
 
@@ -84,9 +99,34 @@ transpile_literal(object_t* literal_object)
         free(tmp_cstr);
         dynarr_char_free(&tmp_str);
     } else if (literal_object->type == TYPE_NULL) {
-        sprintf(buffer, "(NULL_OBJPTR)");
+        snprintf(buffer, LITERAL_BUFFER_SIZE, "(NULL_OBJPTR)");
+    } else if (literal_object->type == TYPE_CALL) {
+        snprintf(
+            buffer, LITERAL_BUFFER_SIZE,
+            "(from_callable((callable_t){ .func_ptr = %s, .init_frame = NULL, "
+            ".arg_code = -1 }))",
+            RESERVED_IDS[literal_object->as.callable.builtin_name]
+        );
+    } else {
+        print_runtime_error((linecol_t) { 0, 0 }, "un-compilable literal");
     }
     return buffer;
+}
+
+void
+pop_rl_obj_id(dynarr_int_t* obj_id_stack, int* left_id, int* right_id)
+{
+    *right_id = *dynarr_int_back(obj_id_stack);
+    dynarr_int_pop(obj_id_stack);
+    *left_id = *dynarr_int_back(obj_id_stack);
+    dynarr_int_pop(obj_id_stack);
+}
+
+void
+pop_l_obj_id(dynarr_int_t* obj_id_stack, int* left_id)
+{
+    *left_id = *dynarr_int_back(obj_id_stack);
+    dynarr_int_pop(obj_id_stack);
 }
 
 char*
@@ -96,326 +136,298 @@ transpile_bytecode(
 )
 {
     static char buffer[BYTECODE_BUFFER_SIZE];
+    char* tmp_buffer;
     char* code_tmpl;
     int left_id, right_id;
-    // char* tmp_cstr;
-
     buffer[0] = '\0';
+
+#ifdef ENABLE_DEBUG_LOG
+    if (global_is_enable_debug_log) {
+        int i;
+        printf("cur_obj_id  : %d\n", cur_obj_id);
+        bytecode_print(bc);
+        printf("\n");
+        printf("obj_id_stack: ");
+        for (i = 0; i < obj_id_stack->size; i++) {
+            printf("%d ", obj_id_stack->data[i]);
+        }
+        printf("\n");
+    }
+#endif
 
     switch (bc.op) {
     case BOP_NOP:
         break;
     case BOP_PUSH_LITERAL:
         reg_arg |= bc.arg;
-        sprintf(
-            buffer, "    object_t* var_%d = %s;\n", cur_obj_id,
-            transpile_literal(tree->literals[reg_arg])
-        );
+        code_tmpl = "    object_t* var_%d = %s; // PUSH_LITERAL\n";
+        tmp_buffer = transpile_literal(tree->literals[reg_arg]);
+        sprintf(buffer, code_tmpl, cur_obj_id, tmp_buffer);
+        free(tmp_buffer);
+        tmp_buffer = NULL;
         dynarr_int_append(obj_id_stack, &cur_obj_id);
         break;
     case BOP_FRAME_GET:
         reg_arg |= bc.arg;
-        snprintf(
-            buffer, BYTECODE_BUFFER_SIZE,
-            "    object_t* var_%d = frame_get(FRAME, %d);\n", cur_obj_id,
-            reg_arg
-        );
+        code_tmpl
+            = "    object_t* var_%d = frame_get(FRAME, %d); // FRAME_GET\n";
+        snprintf(buffer, BYTECODE_BUFFER_SIZE, code_tmpl, cur_obj_id, reg_arg);
         dynarr_int_append(obj_id_stack, &cur_obj_id);
         break;
     case BOP_FRAME_SET:
         reg_arg |= bc.arg;
+        code_tmpl = "    object_t* var_%d = frame_set(FRAME, %d, var_%d); // "
+                    "// FRAME_SET\n";
+        pop_l_obj_id(obj_id_stack, &left_id);
         snprintf(
-            buffer, BYTECODE_BUFFER_SIZE,
-            "    object_t* var_%d = frame_set(FRAME, %d, var_%d);\n",
-            cur_obj_id, reg_arg, *dynarr_int_back(obj_id_stack)
+            buffer, BYTECODE_BUFFER_SIZE, code_tmpl, cur_obj_id, reg_arg,
+            left_id
         );
-        dynarr_int_pop(obj_id_stack);
         dynarr_int_append(obj_id_stack, &cur_obj_id);
         break;
     case BOP_FRAME_SET_UNPACK:
         reg_arg |= bc.arg;
-        {
-            char* unpack_buffer
-                = transpile_frame_set_unpack(tree, cur_obj_id, reg_arg);
-            snprintf(
-                buffer, BYTECODE_BUFFER_SIZE,
-                "    object_t* var_%d_%d = var_%d;\n%s", cur_obj_id, reg_arg,
-                *dynarr_int_back(obj_id_stack), unpack_buffer
-            );
-            free(unpack_buffer);
-        }
+        code_tmpl = "    object_t* var_%d = var_%d; // FRAME_SET_UNPACK\n"
+                    "    object_t* var_%d_%d = var_%d; // FRAME_SET_UNPACK\n%s";
+        tmp_buffer = transpile_frame_set_unpack(tree, cur_obj_id, reg_arg);
+        pop_l_obj_id(obj_id_stack, &left_id);
+        snprintf(
+            buffer, BYTECODE_BUFFER_SIZE, code_tmpl, cur_obj_id, left_id,
+            cur_obj_id, reg_arg, left_id, tmp_buffer
+        );
+        dynarr_int_append(obj_id_stack, &cur_obj_id);
+        free(tmp_buffer);
+        tmp_buffer = NULL;
         break;
     case BOP_POP:
-        dynarr_int_pop(obj_id_stack);
+        pop_l_obj_id(obj_id_stack, &left_id);
+        code_tmpl = "    (void)var_%d; // POP\n";
+        snprintf(buffer, BYTECODE_BUFFER_SIZE, code_tmpl, left_id);
         break;
     case BOP_RET:
-        snprintf(
-            buffer, BYTECODE_BUFFER_SIZE,
-            "    frame_pop(FRAME);\n    return var_%d;\n",
-            *dynarr_int_back(obj_id_stack)
-        );
+        code_tmpl = "    frame_pop(FRAME); // RET\n    return var_%d; // RET\n";
+        pop_l_obj_id(obj_id_stack, &left_id);
+        snprintf(buffer, BYTECODE_BUFFER_SIZE, code_tmpl, left_id);
         break;
-        // case BOP_JUMP:
-        //     /* not implemented */
-        //     print_runtime_error(bc.pos, "BOP_JUMP is not implemented");
-        //     break;
-        // case BOP_JUMP_FALSE_OR_POP:
-        //     tmp = *dynarr_object_ptr_back(stack);
-        //     if (object_to_bool(tmp)) {
-        //         dynarr_object_ptr_pop(stack);
-        //         object_deref(tmp);
-        //         tmp = NULL;
-        //     } else {
-        //         reg_arg |= bc.arg;
-        //         /* already account for the +1 before exec */
-        //         regs->insp += regs->arg;
-        //     }
-        //     break;
-        // case BOP_JUMP_TRUE_OR_POP:
-        //     tmp = *dynarr_object_ptr_back(stack);
-        //     if (!object_to_bool(tmp)) {
-        //         dynarr_object_ptr_pop(stack);
-        //         object_deref(tmp);
-        //         tmp = NULL;
-        //     } else {
-        //         reg_arg |= bc.arg;
-        //         /* already account for the +1 before exec */
-        //         regs->insp += regs->arg;
-        //     }
-        //     break;
-        // case BOP_MAKE_FUNCT:
-        //     reg_arg |= bc.arg;
-        //     {
-        //         tmp = object_create(
-        //             TYPE_CALL,
-        //             (object_data_union)(callable_t) {
-        //                 .is_macro = 0,
-        //                 .builtin_name = NOT_BUILTIN_FUNC,
-        //                 .arg_subtree_index = -1,
-        //                 .index = regs->arg,
-        //                 /* function owns a deep copy of frame it created
-        //                 under */ .init_frame = frame_copy(cur_frame),
-        //             }
-        //         );
-        //     }
-        //     dynarr_object_ptr_append(stack, &tmp);
-        //     break;
-        // case BOP_MAKE_MACRO:
-        //     reg_arg |= bc.arg;
-        //     tmp = object_create(
-        //         TYPE_CALL,
-        //         (object_data_union)(callable_t) {
-        //             .is_macro = 1,
-        //             .builtin_name = NOT_BUILTIN_FUNC,
-        //             .arg_subtree_index = -1,
-        //             .index = regs->arg,
-        //             /* macro does not have frame */
-        //             .init_frame = NULL,
-        //         }
-        //     );
-        //     dynarr_object_ptr_append(stack, &tmp);
-        //     break;
-        // case BOP_CALL:
-        //     if (pop_lr_check(stack, bc, &left, &right, TYPE_CALL, ANY_TYPE))
-        //     {
-        //         regs->errf = 1;
-        //         break;
-        //     }
-        //     exec_call(context, bc.pos, left, right);
-        //     /* check call depth */
-        //     if (context.frame_stack->size > 1000) {
-        //         print_runtime_error(bc.pos, "Call stack too deep (> 1000)");
-        //         regs->errf = 1;
-        //     }
-        //     // dynarr_object_ptr_append(object_stack, &tmp);
-        //     object_deref(left);
-        //     object_deref(right);
-        //     break;
-        // case BOP_NEG:
-        //     if (pop_l_check(stack, bc, &left, TYPE_NUM)) {
-        //         regs->errf = 1;
-        //         break;
-        //     }
-        //     tmp = object_create(
-        //         left->type, (object_data_union)number_neg(&left->as.number)
-        //     );
-        //     dynarr_object_ptr_append(stack, &tmp);
-        //     object_deref(left);
-        //     break;
-        // case BOP_NOT:
-        //     if (pop_l_check(stack, bc, &left, ANY_TYPE)) {
-        //         regs->errf = 1;
-        //         break;
-        //     }
-        //     tmp = object_create(
-        //         TYPE_NUM,
-        //         (object_data_union)(object_to_bool(left) ? ONE_NUMBER :
-        //         ZERO_NUMBER)
-        //     );
-        //     dynarr_object_ptr_append(stack, &tmp);
-        //     object_deref(left);
-        //     break;
-        // case BOP_CEIL:
-        //     if (pop_l_check(stack, bc, &left, TYPE_NUM)) {
-        //         regs->errf = 1;
-        //         break;
-        //     }
-        //     tmp = object_create(
-        //         TYPE_NUM, (object_data_union)number_ceil(&left->as.number)
-        //     );
-        //     dynarr_object_ptr_append(stack, &tmp);
-        //     object_deref(left);
-        //     break;
-        // case BOP_FLOOR:
-        //     if (pop_l_check(stack, bc, &left, TYPE_NUM)) {
-        //         regs->errf = 1;
-        //         break;
-        //     }
-        //     tmp = object_create(
-        //         TYPE_NUM, (object_data_union)number_floor(&left->as.number)
-        //     );
-        //     dynarr_object_ptr_append(stack, &tmp);
-        //     object_deref(left);
-        //     break;
-        // case BOP_GETL:
-        //     if (pop_l_check(stack, bc, &left, TYPE_PAIR)) {
-        //         regs->errf = 1;
-        //         break;
-        //     }
-        //     tmp = object_ref(left->as.pair.left);
-        //     dynarr_object_ptr_append(stack, &tmp);
-        //     object_deref(left);
-        //     break;
-        // case BOP_GETR:
-        //     if (pop_l_check(stack, bc, &left, TYPE_PAIR)) {
-        //         regs->errf = 1;
-        //         break;
-        //     }
-        //     tmp = object_ref(left->as.pair.right);
-        //     dynarr_object_ptr_append(stack, &tmp);
-        //     object_deref(left);
-        //     break;
-        // case BOP_COND_CALL:
-        //     if (pop_l_check(stack, bc, &left, ANY_TYPE)) {
-        //         regs->errf = 1;
-        //         break;
-        //     }
-        //     if (left->type == TYPE_CALL) {
-        //         exec_call(
-        //             context, bc.pos, left,
-        //             (object_t*)&RESERVED_OBJS[RESERVED_ID_CODE_NULL]
-        //         );
-        //         object_deref(left);
-        //     } else {
-        //         dynarr_object_ptr_append(stack, &tmp);
-        //     }
-        //     break;
-        // case BOP_SWAP:
-        //     if (pop_l_check(stack, bc, &left, TYPE_PAIR)) {
-        //         regs->errf = 1;
-        //         break;
-        //     }
-        //     tmp = object_create(
-        //         TYPE_PAIR,
-        //         (object_data_union)(pair_t) {
-        //             .left = object_ref(left->as.pair.right),
-        //             .right = object_ref(left->as.pair.left),
-        //         }
-        //     );
-        //     dynarr_object_ptr_append(stack, &tmp);
-        //     object_deref(left);
-        //     break;
-        // case BOP_EXP:
-        //     if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
-        //         regs->errf = 1;
-        //         break;
-        //     }
-        //     if (right->as.number.denom.size != 1
-        //         || right->as.number.denom.digit[0] != 1) {
-        //         print_runtime_error(bc.pos, "Exponent must be integer");
-        //         regs->errf = 1;
-        //         break;
-        //     }
-        //     tmp = object_create(
-        //         TYPE_NUM,
-        //         (object_data_union)number_exp(&left->as.number,
-        //         &right->as.number)
-        //     );
-        //     dynarr_object_ptr_append(stack, &tmp);
-        //     object_deref(left);
-        //     object_deref(right);
-        //     break;
-        // case BOP_MUL:
-        //     if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
-        //         regs->errf = 1;
-        //         break;
-        //     }
-        //     tmp = object_create(
-        //         TYPE_NUM,
-        //         (object_data_union)number_mul(&left->as.number,
-        //         &right->as.number)
-        //     );
-        //     dynarr_object_ptr_append(stack, &tmp);
-        //     object_deref(left);
-        //     object_deref(right);
-        //     break;
-        // case BOP_DIV:
-        //     if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
-        //         regs->errf = 1;
-        //         break;
-        //     }
-        //     if (right->as.number.numer.size == 0) {
-        //         print_runtime_error(bc.pos, "Divided by zero");
-        //         regs->errf = 1;
-        //         break;
-        //     }
-        //     tmp = object_create(
-        //         TYPE_NUM,
-        //         (object_data_union)number_div(&left->as.number,
-        //         &right->as.number)
-        //     );
-        //     dynarr_object_ptr_append(stack, &tmp);
-        //     object_deref(left);
-        //     object_deref(right);
-        //     break;
-        // case BOP_MOD:
-        //     if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
-        //         regs->errf = 1;
-        //         break;
-        //     }
-        //     tmp = object_create(
-        //         TYPE_NUM,
-        //         (object_data_union)number_mod(&left->as.number,
-        //         &right->as.number)
-        //     );
-        //     dynarr_object_ptr_append(stack, &tmp);
-        //     object_deref(left);
-        //     object_deref(right);
-        //     break;
-    case BOP_ADD:
-        left_id = *dynarr_int_back(obj_id_stack);
-        dynarr_int_pop(obj_id_stack);
-        right_id = *dynarr_int_back(obj_id_stack);
-        dynarr_int_pop(obj_id_stack);
-        code_tmpl = "    object_t* var_%d = from_number(as_number(var_%d) + "
-                    "as_number(var_%d));\n";
-        sprintf(buffer, code_tmpl, cur_obj_id, left_id, right_id);
+    // case BOP_JUMP:
+    //     /* not implemented */
+    //     print_runtime_error(bc.pos, "BOP_JUMP is not implemented");
+    //     break;
+    // case BOP_JUMP_FALSE_OR_POP:
+    //     tmp = *dynarr_object_ptr_back(stack);
+    //     if (object_to_bool(tmp)) {
+    //         dynarr_object_ptr_pop(stack);
+    //         object_deref(tmp);
+    //         tmp = NULL;
+    //     } else {
+    //         reg_arg |= bc.arg;
+    //         /* already account for the +1 before exec */
+    //         regs->insp += regs->arg;
+    //     }
+    //     break;
+    // case BOP_JUMP_TRUE_OR_POP:
+    //     tmp = *dynarr_object_ptr_back(stack);
+    //     if (!object_to_bool(tmp)) {
+    //         dynarr_object_ptr_pop(stack);
+    //         object_deref(tmp);
+    //         tmp = NULL;
+    //     } else {
+    //         reg_arg |= bc.arg;
+    //         /* already account for the +1 before exec */
+    //         regs->insp += regs->arg;
+    //     }
+    //     break;
+    // case BOP_MAKE_FUNCT:
+    //     reg_arg |= bc.arg;
+    //     {
+    //         tmp = object_create(
+    //             TYPE_CALL,
+    //             (object_data_union)(callable_t) {
+    //                 .is_macro = 0,
+    //                 .builtin_name = NOT_BUILTIN_FUNC,
+    //                 .arg_subtree_index = -1,
+    //                 .index = regs->arg,
+    //                 /* function owns a deep copy of frame it created
+    //                 under */ .init_frame = frame_copy(cur_frame),
+    //             }
+    //         );
+    //     }
+    //     dynarr_object_ptr_append(stack, &tmp);
+    //     break;
+    // case BOP_MAKE_MACRO:
+    //     reg_arg |= bc.arg;
+    //     tmp = object_create(
+    //         TYPE_CALL,
+    //         (object_data_union)(callable_t) {
+    //             .is_macro = 1,
+    //             .builtin_name = NOT_BUILTIN_FUNC,
+    //             .arg_subtree_index = -1,
+    //             .index = regs->arg,
+    //             /* macro does not have frame */
+    //             .init_frame = NULL,
+    //         }
+    //     );
+    //     dynarr_object_ptr_append(stack, &tmp);
+    //     break;
+    case BOP_CALL:
+        pop_rl_obj_id(obj_id_stack, &left_id, &right_id);
+        code_tmpl = "    object_t* var_%d = exec_call(FRAME, var_%d, var_%d); "
+                    "// CALL\n";
+        snprintf(
+            buffer, BYTECODE_BUFFER_SIZE, code_tmpl, cur_obj_id, left_id,
+            right_id
+        );
         dynarr_int_append(obj_id_stack, &cur_obj_id);
         break;
-    // case BOP_SUB:
-    //     if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
+    // case BOP_NEG:
+    //     if (pop_l_check(stack, bc, &left, TYPE_NUM)) {
+    //         regs->errf = 1;
+    //         break;
+    //     }
+    //     tmp = object_create(
+    //         left->type, (object_data_union)number_neg(&left->as.number)
+    //     );
+    //     dynarr_object_ptr_append(stack, &tmp);
+    //     object_deref(left);
+    //     break;
+    // case BOP_NOT:
+    //     if (pop_l_check(stack, bc, &left, ANY_TYPE)) {
     //         regs->errf = 1;
     //         break;
     //     }
     //     tmp = object_create(
     //         TYPE_NUM,
-    //         (object_data_union)number_sub(&left->as.number,
+    //         (object_data_union)(object_to_bool(left) ? ONE_NUMBER :
+    //         ZERO_NUMBER)
+    //     );
+    //     dynarr_object_ptr_append(stack, &tmp);
+    //     object_deref(left);
+    //     break;
+    // case BOP_CEIL:
+    //     if (pop_l_check(stack, bc, &left, TYPE_NUM)) {
+    //         regs->errf = 1;
+    //         break;
+    //     }
+    //     tmp = object_create(
+    //         TYPE_NUM, (object_data_union)number_ceil(&left->as.number)
+    //     );
+    //     dynarr_object_ptr_append(stack, &tmp);
+    //     object_deref(left);
+    //     break;
+    // case BOP_FLOOR:
+    //     if (pop_l_check(stack, bc, &left, TYPE_NUM)) {
+    //         regs->errf = 1;
+    //         break;
+    //     }
+    //     tmp = object_create(
+    //         TYPE_NUM, (object_data_union)number_floor(&left->as.number)
+    //     );
+    //     dynarr_object_ptr_append(stack, &tmp);
+    //     object_deref(left);
+    //     break;
+    // case BOP_GETL:
+    //     if (pop_l_check(stack, bc, &left, TYPE_PAIR)) {
+    //         regs->errf = 1;
+    //         break;
+    //     }
+    //     tmp = object_ref(left->as.pair.left);
+    //     dynarr_object_ptr_append(stack, &tmp);
+    //     object_deref(left);
+    //     break;
+    // case BOP_GETR:
+    //     if (pop_l_check(stack, bc, &left, TYPE_PAIR)) {
+    //         regs->errf = 1;
+    //         break;
+    //     }
+    //     tmp = object_ref(left->as.pair.right);
+    //     dynarr_object_ptr_append(stack, &tmp);
+    //     object_deref(left);
+    //     break;
+    // case BOP_COND_CALL:
+    //     if (pop_l_check(stack, bc, &left, ANY_TYPE)) {
+    //         regs->errf = 1;
+    //         break;
+    //     }
+    //     if (left->type == TYPE_CALL) {
+    //         exec_call(
+    //             context, bc.pos, left,
+    //             (object_t*)&RESERVED_OBJS[RESERVED_ID_CODE_NULL]
+    //         );
+    //         object_deref(left);
+    //     } else {
+    //         dynarr_object_ptr_append(stack, &tmp);
+    //     }
+    //     break;
+    // case BOP_SWAP:
+    //     if (pop_l_check(stack, bc, &left, TYPE_PAIR)) {
+    //         regs->errf = 1;
+    //         break;
+    //     }
+    //     tmp = object_create(
+    //         TYPE_PAIR,
+    //         (object_data_union)(pair_t) {
+    //             .left = object_ref(left->as.pair.right),
+    //             .right = object_ref(left->as.pair.left),
+    //         }
+    //     );
+    //     dynarr_object_ptr_append(stack, &tmp);
+    //     object_deref(left);
+    //     break;
+    // case BOP_EXP:
+    //     if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
+    //         regs->errf = 1;
+    //         break;
+    //     }
+    //     if (right->as.number.denom.size != 1
+    //         || right->as.number.denom.digit[0] != 1) {
+    //         print_runtime_error(bc.pos, "Exponent must be integer");
+    //         regs->errf = 1;
+    //         break;
+    //     }
+    //     tmp = object_create(
+    //         TYPE_NUM,
+    //         (object_data_union)number_exp(&left->as.number,
     //         &right->as.number)
     //     );
     //     dynarr_object_ptr_append(stack, &tmp);
     //     object_deref(left);
     //     object_deref(right);
     //     break;
+    case BOP_MUL:
+        pop_rl_obj_id(obj_id_stack, &left_id, &right_id);
+        code_tmpl = "    object_t* var_%d = from_number(as_number(var_%d) * "
+                    "as_number(var_%d)); // MUL\n";
+        sprintf(buffer, code_tmpl, cur_obj_id, left_id, right_id);
+        dynarr_int_append(obj_id_stack, &cur_obj_id);
+        break;
+    case BOP_DIV:
+        pop_rl_obj_id(obj_id_stack, &left_id, &right_id);
+        code_tmpl = "    object_t* var_%d = from_number(as_number(var_%d) * "
+                    "as_number(var_%d)); // DIV\n";
+        sprintf(buffer, code_tmpl, cur_obj_id, left_id, right_id);
+        dynarr_int_append(obj_id_stack, &cur_obj_id);
+        break;
+    case BOP_MOD:
+        pop_rl_obj_id(obj_id_stack, &left_id, &right_id);
+        code_tmpl = "    object_t* var_%d = from_number(fmod("
+                    "as_number(var_%d), as_number(var_%d)); // MOD\n";
+        sprintf(buffer, code_tmpl, cur_obj_id, left_id, right_id);
+        dynarr_int_append(obj_id_stack, &cur_obj_id);
+        break;
+    case BOP_ADD:
+        pop_rl_obj_id(obj_id_stack, &left_id, &right_id);
+        code_tmpl = "    object_t* var_%d = from_number(as_number(var_%d) + "
+                    "as_number(var_%d)); // ADD\n";
+        sprintf(buffer, code_tmpl, cur_obj_id, left_id, right_id);
+        dynarr_int_append(obj_id_stack, &cur_obj_id);
+        break;
+    case BOP_SUB:
+        pop_rl_obj_id(obj_id_stack, &left_id, &right_id);
+        code_tmpl = "    object_t* var_%d = from_number(as_number(var_%d) - "
+                    "as_number(var_%d)); // SUB\n";
+        sprintf(buffer, code_tmpl, cur_obj_id, left_id, right_id);
+        dynarr_int_append(obj_id_stack, &cur_obj_id);
+        break;
     // case BOP_LT:
     //     if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
     //         regs->errf = 1;
@@ -533,12 +545,9 @@ transpile_bytecode(
     //     object_deref(right);
     //     break;
     case BOP_PAIR:
-        left_id = *dynarr_int_back(obj_id_stack);
-        dynarr_int_pop(obj_id_stack);
-        right_id = *dynarr_int_back(obj_id_stack);
-        dynarr_int_pop(obj_id_stack);
+        pop_rl_obj_id(obj_id_stack, &left_id, &right_id);
         code_tmpl = "    object_t* var_%d = from_pair((pair_t) {"
-                    " .left = var_%d, .right = var_%d });\n";
+                    " .left = var_%d, .right = var_%d }); // PAIR\n";
         sprintf(buffer, code_tmpl, cur_obj_id, left_id, right_id);
         dynarr_int_append(obj_id_stack, &cur_obj_id);
         break;
@@ -611,6 +620,7 @@ transpile_bytecode(
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf(buffer);
+        printf("--------\n");
     }
 #endif
     return buffer;
@@ -632,7 +642,7 @@ transpile_bytecode_section(
         = "object_t*\nfunc_%d(frame_t* FRAME, object_t* arg)\n{\n";
     static const char* func_end = "}\n\n";
 
-    int cur_obj_id = RESERVED_ID_COUNT;
+    int cur_obj_id = 1;
     dynarr_int_t obj_id_stack = dynarr_int_new();
     size_t reg_arg = 0;
 
@@ -656,7 +666,6 @@ transpile_bytecode_section(
         sprintf(sect_code_cstr, func_start, entry_index);
     }
 
-    dynarr_int_append(&obj_id_stack, &cur_obj_id);
     for (i = 0; i < bc_count; i++) {
         bytecode_t bc = bc_start[i];
         if (bc.op == BOP_EXTEND_ARG) {
@@ -729,6 +738,7 @@ transpile(syntax_tree_t* tree)
 
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
+            printf("transpiled_code size=%lu\n", strlen(transpiled_code));
             printf(transpiled_code);
         }
 #endif

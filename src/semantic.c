@@ -88,7 +88,7 @@ check_bind_arg_rule(const syntax_tree_t* tree, frame_t* frame, const int index)
         );
     }
 #endif
-    if ((global_is_transpile && tree->tokens.data[left_index].type == TOK_ID)
+    if ((global_is_compile && tree->tokens.data[left_index].type == TOK_ID)
         || !is_assignable_node(tree, frame, left_index, 0)) {
         token_t* left_token = dynarr_token_at(&tree->tokens, left_index);
         const char* err_msg = "Left side of %s is not assignable.";

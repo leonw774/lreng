@@ -11,23 +11,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 arena_t token_str_arena;
 
 int global_is_enable_debug_log;
-int global_is_transpile;
+int global_is_compile;
 
-struct buf_size {
-    char* buf;
+struct fam_str {
     size_t size;
+    char data[]; /* flexible array member */
 };
 
-struct buf_size
+struct fam_str*
 read_from_file(const char* file_path)
 {
     FILE* fp = fopen(file_path, "r");
     size_t fsize;
-    char* buffer;
+    struct fam_str* str;
     if (fp == NULL) {
         printf("Cannot open file: %s\n", file_path);
         exit(OS_ERR_CODE);
@@ -39,18 +40,15 @@ read_from_file(const char* file_path)
         exit(0);
     }
     rewind(fp);
-    buffer = (char*)malloc(fsize + 1);
-    if (buffer == NULL) {
+    str = malloc(sizeof(struct fam_str) + fsize + 1);
+    if (str == NULL) {
         fputs("memory error\n", stderr);
         exit(OS_ERR_CODE);
     }
-    fsize = fread(buffer, 1, fsize, fp);
-    buffer[fsize] = '\0';
+    str->size = fread(str->data, 1, fsize, fp);
+    str->data[fsize] = '\0';
     fclose(fp);
-    return (struct buf_size) {
-        .buf = buffer,
-        .size = fsize,
-    };
+    return str;
 }
 
 void
@@ -62,36 +60,90 @@ write_to_file(const char* file_path, const char* out)
         exit(OS_ERR_CODE);
     }
     fwrite(out, 1, strlen(out), fp);
+    fflush(fp);
     return;
 }
+
+#define COMPILE_ARGS_LIMIT 128
+
+void
+compile(
+    syntax_tree_t* syntax_tree, const char* out_file_name,
+    char* const addl_cc_args[COMPILE_ARGS_LIMIT], const int addl_cc_args_count
+)
+{
+    const char* codes;
+    size_t out_file_name_size = strlen(out_file_name);
+    char* transpile_out_file_path;
+    char* compile_out_file_path;
+    char* cc_args[COMPILE_ARGS_LIMIT + 10];
+    int i, j, k;
+
+    /* transpile */
+    codes = transpile(syntax_tree);
+    transpile_out_file_path = malloc(out_file_name_size + 3);
+    strcpy(transpile_out_file_path, out_file_name);
+    strcat(transpile_out_file_path, ".c");
+    write_to_file(transpile_out_file_path, codes);
+
+    /* compile */
+    compile_out_file_path = malloc(out_file_name_size + 5);
+    strcpy(compile_out_file_path, out_file_name);
+    strcat(compile_out_file_path, ".out");
+    i = 0;
+    cc_args[i++] = "gcc";
+    cc_args[i++] = transpile_out_file_path;
+    cc_args[i++] = "-Wall";
+    for (j = 0; j < addl_cc_args_count; j++) {
+        cc_args[i++] = addl_cc_args[j];
+    }
+    cc_args[i++] = "-o";
+    cc_args[i++] = compile_out_file_path;
+    cc_args[i++] = NULL;
+
+#ifdef ENABLE_DEBUG_LOG
+    if (global_is_enable_debug_log) {
+        printf("gcc command:\n");
+        for (j = 0; cc_args[j] != NULL; j++) {
+            printf("\t%s\n", cc_args[j]);
+        }
+    }
+#endif
+    fflush(stdout);
+
+    k = execvp("gcc", cc_args);
+    if (k != 0) {
+        printf("C compile filed\n");
+    }
+    free(transpile_out_file_path);
+    free(compile_out_file_path);
+}
+
+const char* usage
+    = "Usage: lreng [OPTION] {file_path}\n"
+      "OPTION:\n"
+      "\t-d, --debug: output debug to stdout\n"
+      "\t-C, --compile[={FILE}]: transpile program to C, output to {FILE}.c, "
+      "and compile it to {FILE}.out ({FILE} default is 'a'.)\n"
+      "\t-A, --args[={CC ARGUMENT}]: The additional C compiler arguments "
+      "other than -Wall.\n";
 
 int
 main(int argc, char** argv)
 {
-    const char* usage
-        = "Usage: lreng [OPTION] {file_path}\n"
-          "OPTION:\n"
-          "-d: output debug info to stdout\n"
-          "-C, --compile[={FILE}]: compile program to C and output it to "
-          "{FILE} (default: \"out.c\")\n";
+
     char* in_file_path = NULL;
-    char* out_file_path = NULL;
-    struct buf_size in_buf_size;
+    char* out_file_name = NULL;
+    char* addl_cc_args[COMPILE_ARGS_LIMIT];
+    int addl_cc_args_count = 0;
+    struct fam_str* input_str;
 
     int opt;
-    struct option long_options[] = {
-        {
-            "compile",
-            optional_argument,
-            NULL,
-            'C',
-        },
-        {
-            NULL,
-            0,
-            NULL,
-            0,
-        },
+    struct option long_opts[] = {
+        { "debug", no_argument, NULL, 'd' },
+        { "compile", optional_argument, NULL, 'C' },
+        { "args", required_argument, NULL, 'A' },
+        { NULL, 0, NULL, 0 },
     };
 
     /* init global variables*/
@@ -101,24 +153,30 @@ main(int argc, char** argv)
         .ptr = NULL,
     };
     global_is_enable_debug_log = 0;
-    global_is_transpile = 0;
+    global_is_compile = 0;
 
     /* parse arg */
-    while ((opt = getopt_long(argc, argv, "C::d", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "dC::A:", long_opts, NULL)) != -1) {
         switch (opt) {
-        case 'C':
-            global_is_transpile = 1;
-            if (optarg) {
-                out_file_path = optarg;
-            } else {
-                out_file_path = "out.c";
-            }
-            break;
         case 'd':
+            printf("debug flag is set\n");
             global_is_enable_debug_log = 1;
             break;
+        case 'C':
+            global_is_compile = 1;
+            if (optarg) {
+                out_file_name = optarg;
+            } else {
+                out_file_name = "a";
+            }
+            break;
+        case 'A':
+            /* because optind points to next position after the current argv */
+            addl_cc_args[addl_cc_args_count] = optarg;
+            addl_cc_args_count++;
+            addl_cc_args[addl_cc_args_count] = NULL;
+            break;
         case '?':
-            printf("Unknown option: '-%c'(%d)\n", optopt, optopt);
             puts(usage);
             return 1;
         default:
@@ -136,16 +194,15 @@ main(int argc, char** argv)
     }
 
     /* read from input */
-    in_buf_size = read_from_file(in_file_path);
+    input_str = read_from_file(in_file_path);
 
     /* start process */
-    arena_init(&token_str_arena, in_buf_size.size);
-    dynarr_token_t tokens = tokenize(in_buf_size.buf, in_buf_size.size);
+    arena_init(&token_str_arena, input_str->size);
+    dynarr_token_t tokens = tokenize(input_str->data, input_str->size);
     syntax_tree_t syntax_tree = syntax_tree_create(tokens);
     /* eval_root(&syntax_tree); */
-    if (global_is_transpile) {
-        const char* codes = transpile(&syntax_tree);
-        write_to_file(out_file_path, codes);
+    if (global_is_compile) {
+        compile(&syntax_tree, out_file_name, addl_cc_args, addl_cc_args_count);
     } else {
         eval_root(&syntax_tree);
     }
@@ -153,7 +210,7 @@ main(int argc, char** argv)
     dynarr_token_free(&tokens);
     arena_free(&token_str_arena);
 
-    free(in_buf_size.buf);
+    free(input_str);
 #ifdef IS_WASM
     putchar('\n');
 #endif
