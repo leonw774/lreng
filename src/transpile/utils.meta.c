@@ -73,7 +73,25 @@ object_print(object_t* o)
         printf("]");
         break;
     default:
-        fprintf(stderr, "built-in function 'debug' bad type: %d\n", o->type);
+        fprintf(stderr, "object_print bad type: %d\n", o->type);
+        exit(EXIT_FAILURE);
+    }
+}
+
+double
+object_to_bool(object_t* o)
+{
+    switch (o->type) {
+    case TYPE_NULL:
+        return 0.f;
+    case TYPE_NUM:
+        return o->as.number ? 1.f : 0.f;
+    case TYPE_CALL:
+        return 1.f;
+    case TYPE_PAIR:
+        return 1.f;
+    default:
+        fprintf(stderr, "object_to_bool bad type: %d\n", o->type);
         exit(EXIT_FAILURE);
     }
 }
@@ -86,10 +104,10 @@ object_equal(object_t* x, object_t* y)
         case TYPE_NULL:
             return 1.f;
         case TYPE_NUM:
-            return x->as.number == y->as.number ? 1.f : 0.f;
+            return x->as.number == y->as.number;
         case TYPE_PAIR:
-            return object_equal(x->as.pair.left, y->as.pair.left) == 1.f
-                && object_equal(x->as.pair.right, y->as.pair.right) == 1.f;
+            return object_equal(x->as.pair.left, y->as.pair.left)
+                && object_equal(x->as.pair.right, y->as.pair.right);
         case TYPE_CALL:
             return x->as.callable.func_ptr == y->as.callable.func_ptr
                 && x->as.callable.arg_code == y->as.callable.arg_code

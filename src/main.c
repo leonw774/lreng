@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 arena_t token_str_arena;
@@ -68,38 +69,28 @@ write_to_file(const char* file_path, const char* out)
 
 void
 compile(
-    syntax_tree_t* syntax_tree, const char* out_file_name,
+    char* const c_codes, const char* out_file_name,
     char* const addl_cc_args[COMPILE_ARGS_LIMIT], const int addl_cc_args_count
 )
 {
-    const char* codes;
-    size_t out_file_name_size = strlen(out_file_name);
-    char* transpile_out_file_path;
-    char* compile_out_file_path;
     char* cc_args[COMPILE_ARGS_LIMIT + 10];
-    int i, j, k;
+    int i, j;
+    int pipefd[2];
+    int compile_proc_status;
 
-    /* transpile */
-    codes = transpile(syntax_tree);
-    transpile_out_file_path = malloc(out_file_name_size + 3);
-    strcpy(transpile_out_file_path, out_file_name);
-    strcat(transpile_out_file_path, ".c");
-    write_to_file(transpile_out_file_path, codes);
-
-    /* compile */
-    compile_out_file_path = malloc(out_file_name_size + 5);
-    strcpy(compile_out_file_path, out_file_name);
-    strcat(compile_out_file_path, ".out");
     i = 0;
     cc_args[i++] = "gcc";
-    cc_args[i++] = transpile_out_file_path;
+    cc_args[i++] = "-x";
+    cc_args[i++] = "c";
     cc_args[i++] = "-Wall";
+    cc_args[i++] = "-Wno-unused-label";
     cc_args[i++] = "-lm"; /* for include math.h */
     for (j = 0; j < addl_cc_args_count; j++) {
         cc_args[i++] = addl_cc_args[j];
     }
+    cc_args[i++] = "-"; /* read file from stdin */
     cc_args[i++] = "-o";
-    cc_args[i++] = compile_out_file_path;
+    cc_args[i++] = (char*)out_file_name;
     cc_args[i++] = NULL;
 
 #ifdef ENABLE_DEBUG_LOG
@@ -112,20 +103,50 @@ compile(
 #endif
     fflush(stdout);
 
-    k = execvp("gcc", cc_args);
-    if (k != 0) {
-        printf("C compile filed\n");
+    /* create pipe */
+    if (pipe(pipefd) == -1) {
+        perror("pipe failed");
+        return;
     }
-    free(transpile_out_file_path);
-    free(compile_out_file_path);
+
+    pid_t pid = fork();
+    if (pid == -1) {
+        perror("fork failed");
+        return;
+    }
+
+    /* child */
+    if (pid == 0) {
+        close(pipefd[1]); /* close writing pipe */
+        dup2(pipefd[0], STDIN_FILENO); // clone reading pipe to replace stdin
+        close(pipefd[0]); /* close old reading pipeline */
+
+        execvp("gcc", cc_args);
+        /* because execvp only return if failed */
+        perror("gcc filed\n");
+        _exit(127);
+    }
+
+    /* parent */
+    close(pipefd[0]); /* close reading pipeline */
+    write(pipefd[1], c_codes, strlen(c_codes)); /* write code to writing pipe */
+    close(pipefd[1]); /* close writing pipe */
+
+    /* wait for child end */
+    waitpid(pid, &compile_proc_status, 0);
+    if (WIFEXITED(compile_proc_status)) {
+        fprintf(
+            stderr, "gcc exited with %d\n", WEXITSTATUS(compile_proc_status)
+        );
+    }
 }
 
 const char* usage
     = "Usage: lreng [OPTION] {file_path}\n"
       "OPTION:\n"
       "\t-d, --debug: output debug to stdout\n"
-      "\t-C, --compile[={FILE}]: transpile program to C, output to {FILE}.c, "
-      "and compile it to {FILE}.out ({FILE} default is 'a'.)\n"
+      "\t-C, --compile[={FILE}]: transpile program to C and compile it to "
+      "{FILE} ({FILE} default is 'a.out')\n"
       "\t-A, --args[={CC ARGUMENT}]: The additional C compiler arguments "
       "other than -Wall.\n";
 
@@ -173,6 +194,9 @@ main(int argc, char** argv)
             break;
         case 'A':
             /* because optind points to next position after the current argv */
+            if (addl_cc_args_count >= COMPILE_ARGS_LIMIT) {
+                printf("too many compiler args (>%d)\n", COMPILE_ARGS_LIMIT);
+            }
             addl_cc_args[addl_cc_args_count] = optarg;
             addl_cc_args_count++;
             addl_cc_args[addl_cc_args_count] = NULL;
@@ -203,7 +227,9 @@ main(int argc, char** argv)
     syntax_tree_t syntax_tree = syntax_tree_create(tokens);
     /* eval_root(&syntax_tree); */
     if (global_is_compile) {
-        compile(&syntax_tree, out_file_name, addl_cc_args, addl_cc_args_count);
+        char* c_codes = transpile(&syntax_tree);
+        compile(c_codes, out_file_name, addl_cc_args, addl_cc_args_count);
+        free(c_codes);
     } else {
         eval_root(&syntax_tree);
     }

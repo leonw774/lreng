@@ -476,36 +476,22 @@ transpile_bytecode(
         sprintf(buffer, code_tmpl, bc_index, cur_obj_id, left_id, right_id);
         dynarr_int_append(obj_id_stack, &cur_obj_id);
         break;
-    // case BOP_AND:
-    //     if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, ANY_TYPE)) {
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     tmp = object_create(
-    //         TYPE_NUM,
-    //         (object_data_union)
-    //             number_from_i32(object_to_bool(left) &&
-    //             object_to_bool(right))
-    //     );
-    //     dynarr_object_ptr_append(stack, &tmp);
-    //     object_deref(left);
-    //     object_deref(right);
-    //     break;
-    // case BOP_OR:
-    //     if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, ANY_TYPE)) {
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     tmp = object_create(
-    //         TYPE_NUM,
-    //         (object_data_union)
-    //             number_from_i32(object_to_bool(left) ||
-    //             object_to_bool(right))
-    //     );
-    //     dynarr_object_ptr_append(stack, &tmp);
-    //     object_deref(left);
-    //     object_deref(right);
-    //     break;
+    case BOP_AND:
+        pop_rl_obj_id(obj_id_stack, &left_id, &right_id);
+        code_tmpl = "inst_%d:\n"
+                    "    object_t* var_%d = from_number(object_to_bool(var_%d) "
+                    "&& object_to_bool(var_%d)); // AND\n";
+        sprintf(buffer, code_tmpl, bc_index, cur_obj_id, left_id, right_id);
+        dynarr_int_append(obj_id_stack, &cur_obj_id);
+        break;
+    case BOP_OR:
+        pop_rl_obj_id(obj_id_stack, &left_id, &right_id);
+        code_tmpl = "inst_%d:\n"
+                    "    object_t* var_%d = from_number(object_to_bool(var_%d) "
+                    "|| object_to_bool(var_%d)); // OR\n";
+        sprintf(buffer, code_tmpl, bc_index, cur_obj_id, left_id, right_id);
+        dynarr_int_append(obj_id_stack, &cur_obj_id);
+        break;
     case BOP_PAIR:
         pop_rl_obj_id(obj_id_stack, &left_id, &right_id);
         code_tmpl = "inst_%d:\n    object_t* var_%d = from_pair((pair_t) {"
@@ -660,7 +646,7 @@ transpile_bytecode_section(
     return sect_code_cstr;
 }
 
-const char*
+char*
 transpile(syntax_tree_t* tree)
 {
     const int bytecode_section_count = tree->bytecode_start_index.size - 1;
