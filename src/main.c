@@ -94,6 +94,7 @@ compile(
     cc_args[i++] = "gcc";
     cc_args[i++] = transpile_out_file_path;
     cc_args[i++] = "-Wall";
+    cc_args[i++] = "-lm"; /* for include math.h */
     for (j = 0; j < addl_cc_args_count; j++) {
         cc_args[i++] = addl_cc_args[j];
     }

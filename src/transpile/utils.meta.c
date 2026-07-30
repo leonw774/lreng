@@ -4,6 +4,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+double
+floor_modulo(double x, double y)
+{
+    return x - y * floor(x / y);
+}
+
 #define TYPE_NULL 0
 #define TYPE_NUM 1
 #define TYPE_PAIR 2
@@ -70,6 +76,30 @@ object_print(object_t* o)
         fprintf(stderr, "built-in function 'debug' bad type: %d\n", o->type);
         exit(EXIT_FAILURE);
     }
+}
+
+double
+object_equal(object_t* x, object_t* y)
+{
+    if (x->type == y->type) {
+        switch (x->type) {
+        case TYPE_NULL:
+            return 1.f;
+        case TYPE_NUM:
+            return x->as.number == y->as.number ? 1.f : 0.f;
+        case TYPE_PAIR:
+            return object_equal(x->as.pair.left, y->as.pair.left) == 1.f
+                && object_equal(x->as.pair.right, y->as.pair.right) == 1.f;
+        case TYPE_CALL:
+            return x->as.callable.func_ptr == y->as.callable.func_ptr
+                && x->as.callable.arg_code == y->as.callable.arg_code
+                && x->as.callable.init_frame == y->as.callable.init_frame;
+        default:
+            fprintf(stderr, "object_equal bad type: %d\n", x->type);
+            exit(EXIT_FAILURE);
+        }
+    }
+    return 0.f;
 }
 
 object_t*
@@ -329,6 +359,7 @@ output(frame_t* FRAME, object_t* arg)
         fprintf(stderr, err_msg_failed_to_write);
         exit(EXIT_FAILURE);
     }
+    fflush(stdout);
     return (object_t*)NULL_OBJPTR;
 }
 
@@ -348,6 +379,7 @@ error(frame_t* FRAME, object_t* arg)
         fprintf(stderr, err_msg_failed_to_write);
         exit(EXIT_FAILURE);
     }
+    fflush(stderr);
     return (object_t*)NULL_OBJPTR;
 }
 
@@ -374,6 +406,7 @@ debug(frame_t* FRAME, object_t* arg)
 {
     object_print(arg);
     printf("\n");
+    fflush(stdout);
     return (object_t*)NULL_OBJPTR;
 }
 
@@ -390,3 +423,5 @@ main()
     top(top_frame, NULL);
     return 0;
 }
+
+/* transpiled code below */
