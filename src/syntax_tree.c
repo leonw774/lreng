@@ -337,10 +337,10 @@ syntax_tree_compile(const syntax_tree_t* tree, const int root_index)
 #endif
 
     if (tree->literals[root_index] != NULL) {
-        bytecode_array_extend(&output, BOP_PUSH_LITERAL, root_index, cur_pos);
+        bytecode_array_extend(&output, BOP_PUSH_LIT, root_index, cur_pos);
         return output;
     } else if (cur_token.type == TOK_ID) {
-        bytecode_array_extend(&output, BOP_FRAME_GET, cur_token.code, cur_pos);
+        bytecode_array_extend(&output, BOP_FGET, cur_token.code, cur_pos);
         return output;
     }
 
@@ -360,11 +360,11 @@ syntax_tree_compile(const syntax_tree_t* tree, const int root_index)
         if (tree->tokens.data[left_index].type == TOK_OP) {
             /* is pair unpacking */
             bytecode_array_extend(
-                &output, BOP_FRAME_SET_UNPACK, left_index, cur_pos
+                &output, BOP_FSET_UNPACK, left_index, cur_pos
             );
         } else {
             bytecode_array_extend(
-                &output, BOP_FRAME_SET, tree->tokens.data[left_index].code,
+                &output, BOP_FSET, tree->tokens.data[left_index].code,
                 cur_pos
             );
         }
@@ -380,7 +380,7 @@ syntax_tree_compile(const syntax_tree_t* tree, const int root_index)
         right_code = syntax_tree_compile(tree, right_index);
         dynarr_bytecode_concat(&output, &left_code);
         bytecode_array_extend(
-            &output, BOP_JUMP_FALSE_OR_POP, right_code.size, cur_pos
+            &output, BOP_BF_OR_POP, right_code.size, cur_pos
         );
         dynarr_bytecode_concat(&output, &right_code);
         dynarr_bytecode_free(&left_code);
@@ -391,7 +391,7 @@ syntax_tree_compile(const syntax_tree_t* tree, const int root_index)
         right_code = syntax_tree_compile(tree, right_index);
         dynarr_bytecode_concat(&output, &left_code);
         bytecode_array_extend(
-            &output, BOP_JUMP_TRUE_OR_POP, right_code.size, cur_pos
+            &output, BOP_BT_OR_POP, right_code.size, cur_pos
         );
         dynarr_bytecode_concat(&output, &right_code);
         dynarr_bytecode_free(&left_code);
@@ -537,16 +537,16 @@ syntax_tree_print(const syntax_tree_t* tree)
             bytecode_t bc = tree->bytecodes.data[j];
             printf("%4u: ", j);
             bytecode_print(bc);
-            if (bc.op == BOP_FRAME_GET || bc.op == BOP_FRAME_SET) {
+            if (bc.op == BOP_FGET || bc.op == BOP_FSET) {
                 printf(" (\"%s\")", tree->id_code_str_map[bc.arg]);
             } else if (
-                bc.op == BOP_JUMP_FALSE_OR_POP || bc.op == BOP_JUMP_TRUE_OR_POP
+                bc.op == BOP_BF_OR_POP || bc.op == BOP_BT_OR_POP
             ) {
                 printf(" (to %u)", j + bc.arg + 1);
             } else if (
                 bc.op == BOP_MAKE_FUNCT || bc.op == BOP_MAKE_MACRO
-                || bc.op == BOP_BIND_ARG || bc.op == BOP_FRAME_SET_UNPACK
-                || bc.op == BOP_PUSH_LITERAL
+                || bc.op == BOP_BIND_ARG || bc.op == BOP_FSET_UNPACK
+                || bc.op == BOP_PUSH_LIT
             ) {
                 printf(" ((node %u) ", bc.arg);
                 token_print(&tree->tokens.data[bc.arg]);

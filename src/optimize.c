@@ -36,7 +36,7 @@ is_side_effect_op(op_code_enum code)
 {
     return (
         code == OP_ASSIGN || code == OP_BIND_ARG || code == OP_CALL
-        || code == OP_CALLR || code == OP_COND_CALL || code == OP_COND_PAIR_CALL
+        || code == OP_CALLR || code == OP_COND_CALL || code == OP_COND_PCALL
     );
 }
 

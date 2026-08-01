@@ -25,8 +25,8 @@ typedef enum op_code {
     OP_NOT,
     OP_CEIL,
     OP_FLOOR,
-    OP_GETL,
-    OP_GETR,
+    OP_PGETL,
+    OP_PGETR,
     OP_COND_CALL,
     OP_SWAP,
     /* ******** arithmetic ******** */
@@ -54,8 +54,8 @@ typedef enum op_code {
     OP_COND_AND,
     OP_COND_OR,
     OP_ASSIGN,
-    OP_COND_PAIR_GET,
-    OP_COND_PAIR_CALL,
+    OP_COND_PGET,
+    OP_COND_PCALL,
     /* ******** expression separator ******** */
     OP_EXPRSEP,
     /* ******** end of enum ******** */
@@ -68,14 +68,14 @@ static const int UNARY_OPS[] = {
     /* callable makers are also unary operators */
     OP_MAKE_FUNCT, OP_MAKE_MACRO,
     /* other unary operators */
-    OP_POS, OP_NEG, OP_NOT, OP_CEIL, OP_FLOOR, OP_GETL, OP_GETR, OP_COND_CALL,
+    OP_POS, OP_NEG, OP_NOT, OP_CEIL, OP_FLOOR, OP_PGETL, OP_PGETR, OP_COND_CALL,
     OP_SWAP
 };
 
 static const int BINARY_RIGHT_ASSOCIATIVE_OPS[] = {
     /* exponent, pair, conditional pair call operations, and assignment */
     OP_EXP,           OP_PAIR,           OP_CALLR,  OP_BIND_ARG,
-    OP_COND_PAIR_GET, OP_COND_PAIR_CALL, OP_ASSIGN,
+    OP_COND_PGET, OP_COND_PCALL, OP_ASSIGN,
 };
 
 /* OP_STR must be aligned with op_code_enum */
@@ -115,7 +115,7 @@ static const int OP_TIER_LIST[][MAX_OPS_IN_TIER] = {
     // /* ******** map filter reduce ******** */
     // { OP_MAP, OP_FILTER, OP_REDUCE, -1 },
     /* ******** unary ******** */
-    { OP_POS, OP_NEG, OP_NOT, OP_CEIL, OP_FLOOR, OP_GETL, OP_GETR, OP_COND_CALL,
+    { OP_POS, OP_NEG, OP_NOT, OP_CEIL, OP_FLOOR, OP_PGETL, OP_PGETR, OP_COND_CALL,
       OP_SWAP, -1 },
     /* ******** arithmetic ******** */
     { OP_EXP, -1 },
@@ -134,7 +134,7 @@ static const int OP_TIER_LIST[][MAX_OPS_IN_TIER] = {
     /* ******** conditional and assignment ******** */
     { OP_COND_AND, -1 },
     { OP_COND_OR, -1 },
-    { OP_ASSIGN, OP_COND_PAIR_GET, OP_COND_PAIR_CALL, -1 },
+    { OP_ASSIGN, OP_COND_PGET, OP_COND_PCALL, -1 },
     /* ******** expression separator ******** */
     { OP_EXPRSEP, -1 }
 };

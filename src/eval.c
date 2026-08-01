@@ -95,12 +95,12 @@ eval_bytecode(context_t context, bytecode_t bc)
     case BOP_EXTEND_ARG:
         regs->arg = (regs->arg | bc.arg) << 8;
         break;
-    case BOP_PUSH_LITERAL:
+    case BOP_PUSH_LIT:
         regs->arg = regs->arg | bc.arg;
         tmp = object_ref(context.tree->literals[regs->arg]);
         dynarr_object_ptr_append(stack, &tmp);
         break;
-    case BOP_FRAME_GET:
+    case BOP_FGET:
         regs->arg = regs->arg | bc.arg;
         tmp = frame_get(cur_frame, regs->arg);
         if (tmp == NULL) {
@@ -115,7 +115,7 @@ eval_bytecode(context_t context, bytecode_t bc)
             dynarr_object_ptr_append(stack, &tmp);
         }
         break;
-    case BOP_FRAME_SET:
+    case BOP_FSET:
         regs->arg = regs->arg | bc.arg;
         tmp = *dynarr_object_ptr_back(stack);
         if (!tmp || !frame_set(cur_frame, regs->arg, tmp)) {
@@ -127,7 +127,7 @@ eval_bytecode(context_t context, bytecode_t bc)
             regs->errf = 1;
         }
         break;
-    case BOP_FRAME_SET_UNPACK:
+    case BOP_FSET_UNPACK:
         regs->arg = regs->arg | bc.arg;
         tmp = *dynarr_object_ptr_back(stack);
         if (tmp->type != TYPE_PAIR) {
@@ -165,11 +165,7 @@ eval_bytecode(context_t context, bytecode_t bc)
         }
 #endif
         break;
-    case BOP_JUMP:
-        /* not implemented */
-        print_runtime_error(bc.pos, "BOP_JUMP is not implemented");
-        break;
-    case BOP_JUMP_FALSE_OR_POP:
+    case BOP_BF_OR_POP:
         tmp = *dynarr_object_ptr_back(stack);
         if (object_to_bool(tmp)) {
             dynarr_object_ptr_pop(stack);
@@ -181,7 +177,7 @@ eval_bytecode(context_t context, bytecode_t bc)
             regs->insp += regs->arg;
         }
         break;
-    case BOP_JUMP_TRUE_OR_POP:
+    case BOP_BT_OR_POP:
         tmp = *dynarr_object_ptr_back(stack);
         if (!object_to_bool(tmp)) {
             dynarr_object_ptr_pop(stack);
@@ -314,7 +310,7 @@ eval_bytecode(context_t context, bytecode_t bc)
         dynarr_object_ptr_append(stack, &tmp);
         object_deref(left);
         break;
-    case BOP_GETL:
+    case BOP_PGETL:
         if (pop_l_check(stack, bc, &left, TYPE_PAIR)) {
             regs->errf = 1;
             break;
@@ -323,7 +319,7 @@ eval_bytecode(context_t context, bytecode_t bc)
         dynarr_object_ptr_append(stack, &tmp);
         object_deref(left);
         break;
-    case BOP_GETR:
+    case BOP_PGETR:
         if (pop_l_check(stack, bc, &left, TYPE_PAIR)) {
             regs->errf = 1;
             break;
@@ -599,7 +595,7 @@ eval_bytecode(context_t context, bytecode_t bc)
         regs->arg = regs->arg | bc.arg;
         tmp->as.callable.arg_subtree_index = regs->arg;
         break;
-    case BOP_COND_PAIR_GET:
+    case BOP_COND_PGET:
         if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, TYPE_PAIR)) {
             regs->errf = 1;
             break;
@@ -610,7 +606,7 @@ eval_bytecode(context_t context, bytecode_t bc)
         object_deref(left);
         object_deref(right);
         break;
-    case BOP_COND_PAIR_CALL:
+    case BOP_COND_PCALL:
         if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, TYPE_PAIR)) {
             regs->errf = 1;
             break;

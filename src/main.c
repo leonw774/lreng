@@ -69,7 +69,7 @@ write_to_file(const char* file_path, const char* out)
 
 void
 compile(
-    char* const c_codes, const char* out_file_name,
+    syntax_tree_t* syntax_tree, const char* out_file_name,
     char* const addl_cc_args[COMPILE_ARGS_LIMIT], const int addl_cc_args_count
 )
 {
@@ -78,6 +78,7 @@ compile(
     int pipefd[2];
     int compile_proc_status;
 
+    /* prepare compiler command */
     i = 0;
     cc_args[i++] = "gcc";
     cc_args[i++] = "-x";
@@ -117,20 +118,20 @@ compile(
 
     /* child */
     if (pid == 0) {
-        close(pipefd[1]); /* close writing pipe */
-        dup2(pipefd[0], STDIN_FILENO); // clone reading pipe to replace stdin
-        close(pipefd[0]); /* close old reading pipeline */
+        close(pipefd[1]); /* close writing end */
+        dup2(pipefd[0], STDIN_FILENO); // clone reading end to replace stdin
+        close(pipefd[0]); /* close old reading end */
 
         execvp("gcc", cc_args);
-        /* because execvp only return if failed */
+        /* because execvp exits if success and only return if failed */
         perror("gcc filed\n");
         _exit(127);
     }
 
     /* parent */
-    close(pipefd[0]); /* close reading pipeline */
-    write(pipefd[1], c_codes, strlen(c_codes)); /* write code to writing pipe */
-    close(pipefd[1]); /* close writing pipe */
+    close(pipefd[0]); /* close reading end */
+    transpile(syntax_tree, pipefd[1]); /* write codes to writing end */
+    close(pipefd[1]); /* close writing end */
 
     /* wait for child end */
     waitpid(pid, &compile_proc_status, 0);
@@ -227,9 +228,7 @@ main(int argc, char** argv)
     syntax_tree_t syntax_tree = syntax_tree_create(tokens);
     /* eval_root(&syntax_tree); */
     if (global_is_compile) {
-        char* c_codes = transpile(&syntax_tree);
-        compile(c_codes, out_file_name, addl_cc_args, addl_cc_args_count);
-        free(c_codes);
+        compile(&syntax_tree, out_file_name, addl_cc_args, addl_cc_args_count);
     } else {
         eval_root(&syntax_tree);
     }

@@ -15,6 +15,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 /* declaration */
 
@@ -79,7 +80,7 @@ RENDER(_NAME, _to_str)(RENDER(_NAME, _t) * x)
     int arr_sz = sizeof(TYPE) * x->size;
     arr = malloc(arr_sz + 1);
     if (arr == NULL) {
-        perrer("dynarr to_str: malloc failed");
+        perror("dynarr to_str: malloc failed\n");
         exit(EXIT_FAILURE);
     }
     ((char*)arr)[arr_sz] = '\0';

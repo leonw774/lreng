@@ -10,32 +10,37 @@ typedef enum bytecode_op_code {
     BOP_NOP,
     BOP_EXTEND_ARG,
 
-    /* frame & stack manipulation */
+    /**
+     * frame & stack manipulation
+     */
 
     /* push a literal object to object stack */
-    BOP_PUSH_LITERAL,
+    BOP_PUSH_LIT,
     /* get object from frame and push to object stack */
-    BOP_FRAME_GET,
+    BOP_FGET,
     /* set object from top of stack to frame */
-    BOP_FRAME_SET,
+    BOP_FSET,
     /* set literal object to frame and push to object stack */
-    BOP_FRAME_SET_LITERAL,
+    BOP_FSET_LIT,
     /* use pair to recursively set object to frame and push to object stack */
-    BOP_FRAME_SET_UNPACK,
+    BOP_FSET_UNPACK,
     /* remove the top of stack */
     BOP_POP,
     /* pop the frame stack */
     BOP_RET,
     
-    /* branching and jumping */
+    /**
+     * branching and jumping
+     */
     
-    BOP_JUMP,
-    /* jump if top of stack is false, otherwise, pop */
-    BOP_JUMP_FALSE_OR_POP,
-    /* jump if top of stack is true, otherwise, pop */
-    BOP_JUMP_TRUE_OR_POP,
+    /* branch if top of stack is false, otherwise, pop */
+    BOP_BF_OR_POP,
+    /* branch if top of stack is true, otherwise, pop */
+    BOP_BT_OR_POP,
     
-    /* normal operator */
+    /**
+     *  normal operators
+     */
     
     BOP_MAKE_FUNCT,
     BOP_MAKE_MACRO,
@@ -49,8 +54,8 @@ typedef enum bytecode_op_code {
     BOP_NOT,
     BOP_CEIL,
     BOP_FLOOR,
-    BOP_GETL,
-    BOP_GETR,
+    BOP_PGETL,
+    BOP_PGETR,
     BOP_COND_CALL,
     BOP_SWAP,
     BOP_EXP,
@@ -69,24 +74,23 @@ typedef enum bytecode_op_code {
     BOP_OR,
     BOP_PAIR,
     BOP_BIND_ARG,
-    BOP_COND_PAIR_GET,
-    BOP_COND_PAIR_CALL,
+    BOP_COND_PGET,
+    BOP_COND_PCALL,
     BOP_END_Of_ENUM,
 } bytecode_op_code_enum;
 
 static const char* const BYTECODE_OP_NAMES[BOP_END_Of_ENUM] = {
     "NOP",
     "EXTEND_ARG",
-    "PUSH_LITERAL",
-    "FRAME_GET",
-    "FRAME_SET",
-    "FRAME_SET_LITERAL",
-    "FRAME_SET_FROM_PAIR",
+    "PUSH_LIT",
+    "FGET",
+    "FSET",
+    "FSET_LIT",
+    "FSET_UNPACK",
     "POP",
     "RET",
-    "JUMP",
-    "JUMP_TRUE_OR_POP",
-    "JUMP_FALSE_OR_POP",
+    "BT_OR_POP",
+    "BF_OR_POP",
     "MAKE_FUNCT",
     "MAKE_MACRO",
     "CALL",
@@ -99,8 +103,8 @@ static const char* const BYTECODE_OP_NAMES[BOP_END_Of_ENUM] = {
     "NOT",
     "CEIL",
     "FLOOR",
-    "GETL",
-    "GETR",
+    "PGETL",
+    "PGETR",
     "COND_CALL",
     "SWAP",
     "EXP",
@@ -119,26 +123,21 @@ static const char* const BYTECODE_OP_NAMES[BOP_END_Of_ENUM] = {
     "OR",
     "PAIR",
     "BIND_ARG",
-    "COND_PAIR_GET",
-    "COND_PAIR_CALL",
+    "COND_PGET",
+    "COND_PCALL",
 };
 
 static const int OP_TO_BOP_MAPPING[][2] = {
     { OP_MAKE_FUNCT, BOP_MAKE_FUNCT },
     { OP_MAKE_MACRO, BOP_MAKE_MACRO },
     { OP_CALL, BOP_CALL },
-#if DEPRECATED
-    { OP_MAP, BOP_MAP },
-    { OP_FILTER, BOP_FILTER },
-    { OP_REDUCE, BOP_REDUCE },
-#endif
     { OP_POS, BOP_NOP },
     { OP_NEG, BOP_NEG },
     { OP_NOT, BOP_NOT },
     { OP_CEIL, BOP_CEIL },
     { OP_FLOOR, BOP_FLOOR },
-    { OP_GETL, BOP_GETL },
-    { OP_GETR, BOP_GETR },
+    { OP_PGETL, BOP_PGETL },
+    { OP_PGETR, BOP_PGETR },
     { OP_COND_CALL, BOP_COND_CALL },
     { OP_SWAP, BOP_SWAP },
     { OP_EXP, BOP_EXP },
@@ -158,10 +157,10 @@ static const int OP_TO_BOP_MAPPING[][2] = {
     { OP_PAIR, BOP_PAIR },
     { OP_CALLR, BOP_CALL },
     { OP_BIND_ARG, BOP_BIND_ARG },
-    { OP_COND_AND, BOP_JUMP_TRUE_OR_POP },
-    { OP_COND_OR, BOP_JUMP_FALSE_OR_POP },
-    { OP_COND_PAIR_GET, BOP_COND_PAIR_GET },
-    { OP_COND_PAIR_CALL, BOP_COND_PAIR_CALL },
+    { OP_COND_AND, BOP_BT_OR_POP },
+    { OP_COND_OR, BOP_BF_OR_POP },
+    { OP_COND_PGET, BOP_COND_PGET },
+    { OP_COND_PCALL, BOP_COND_PCALL },
 };
 
 typedef struct bytecode {

@@ -6,17 +6,11 @@
 #include "utils/dynarr_char.h"
 #include "utils/global_flags.h"
 #include <assert.h>
+#include <unistd.h>
 
 #define NUMBER_PRECISION 16
 #define LITERAL_BUFFER_SIZE 255
 #define BYTECODE_BUFFER_SIZE 4095
-
-char*
-get_transpile_util_codes()
-{
-    src_transpile_utils_meta_c[src_transpile_utils_meta_c_len] = '\0';
-    return (char*)src_transpile_utils_meta_c;
-}
 
 char*
 transpile_frame_set_unpack(
@@ -141,24 +135,10 @@ transpile_bytecode(
     int left_id, right_id;
     buffer[0] = '\0';
 
-#ifdef ENABLE_DEBUG_LOG
-    if (global_is_enable_debug_log) {
-        int i;
-        printf("cur_obj_id  : %d\n", cur_obj_id);
-        bytecode_print(bc);
-        printf("\n");
-        printf("obj_id_stack: ");
-        for (i = 0; i < obj_id_stack->size; i++) {
-            printf("%d ", obj_id_stack->data[i]);
-        }
-        printf("\n");
-    }
-#endif
-
     switch (bc.op) {
     case BOP_NOP:
         break;
-    case BOP_PUSH_LITERAL:
+    case BOP_PUSH_LIT:
         reg_arg |= bc.arg;
         code_tmpl = "inst_%d:\n    object_t* var_%d = %s; // PUSH_LITERAL\n";
         tmp_buffer = transpile_literal(tree->literals[reg_arg]);
@@ -167,7 +147,7 @@ transpile_bytecode(
         tmp_buffer = NULL;
         dynarr_int_append(obj_id_stack, &cur_obj_id);
         break;
-    case BOP_FRAME_GET:
+    case BOP_FGET:
         reg_arg |= bc.arg;
         code_tmpl
             = "inst_%d:\n"
@@ -180,7 +160,7 @@ transpile_bytecode(
         );
         dynarr_int_append(obj_id_stack, &cur_obj_id);
         break;
-    case BOP_FRAME_SET:
+    case BOP_FSET:
         reg_arg |= bc.arg;
         code_tmpl = "inst_%d:\n"
                     "    object_t* var_%d = frame_set(FRAME, %d, var_%d); "
@@ -192,7 +172,7 @@ transpile_bytecode(
         );
         dynarr_int_append(obj_id_stack, &cur_obj_id);
         break;
-    case BOP_FRAME_SET_UNPACK:
+    case BOP_FSET_UNPACK:
         reg_arg |= bc.arg;
         code_tmpl = "inst_%d:\n"
                     "    object_t* var_%d = var_%d; // FRAME_SET_UNPACK\n"
@@ -222,7 +202,7 @@ transpile_bytecode(
     //     /* not implemented */
     //     print_runtime_error(bc.pos, "BOP_JUMP is not implemented");
     //     break;
-    // case BOP_JUMP_FALSE_OR_POP:
+    // case BOP_BF_OR_POP:
     //     tmp = *dynarr_object_ptr_back(stack);
     //     if (object_to_bool(tmp)) {
     //         dynarr_object_ptr_pop(stack);
@@ -234,7 +214,7 @@ transpile_bytecode(
     //         regs->insp += regs->arg;
     //     }
     //     break;
-    // case BOP_JUMP_TRUE_OR_POP:
+    // case BOP_BT_OR_POP:
     //     tmp = *dynarr_object_ptr_back(stack);
     //     if (!object_to_bool(tmp)) {
     //         dynarr_object_ptr_pop(stack);
@@ -331,7 +311,7 @@ transpile_bytecode(
     //     dynarr_object_ptr_append(stack, &tmp);
     //     object_deref(left);
     //     break;
-    // case BOP_GETL:
+    // case BOP_PGETL:
     //     if (pop_l_check(stack, bc, &left, TYPE_PAIR)) {
     //         regs->errf = 1;
     //         break;
@@ -340,7 +320,7 @@ transpile_bytecode(
     //     dynarr_object_ptr_append(stack, &tmp);
     //     object_deref(left);
     //     break;
-    // case BOP_GETR:
+    // case BOP_PGETR:
     //     if (pop_l_check(stack, bc, &left, TYPE_PAIR)) {
     //         regs->errf = 1;
     //         break;
@@ -522,7 +502,7 @@ transpile_bytecode(
     //     reg_arg |= bc.arg;
     //     tmp->as.callable.arg_subtree_index = regs->arg;
     //     break;
-    // case BOP_COND_PAIR_GET:
+    // case BOP_COND_PGET:
     //     if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, TYPE_PAIR)) {
     //         regs->errf = 1;
     //         break;
@@ -533,7 +513,7 @@ transpile_bytecode(
     //     object_deref(left);
     //     object_deref(right);
     //     break;
-    // case BOP_COND_PAIR_CALL:
+    // case BOP_COND_PCALL:
     //     if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, TYPE_PAIR)) {
     //         regs->errf = 1;
     //         break;
@@ -565,24 +545,15 @@ transpile_bytecode(
         print_runtime_error(bc.pos, ERR_MSG_BUF);
         exit(RUNTIME_ERR_CODE);
     }
-#ifdef ENABLE_DEBUG_LOG
-    if (global_is_enable_debug_log) {
-        printf(buffer);
-        printf("--------\n");
-    }
-#endif
     return buffer;
 }
 
-char*
+void
 transpile_bytecode_section(
-    syntax_tree_t* tree, int entry_index, int bc_start, int bc_end
+    syntax_tree_t* tree, int out_fd, int entry_index, int bc_start, int bc_end
 )
 {
-    size_t sect_code_len = 1;
-    size_t sect_code_cap;
-    char* sect_code_cstr;
-
+    char sect_code_cstr[128];
     static const char* top_start
         = "object_t*\ntop(frame_t* FRAME, object_t* arg)\n{\n";
     static const char* func_start
@@ -597,69 +568,90 @@ transpile_bytecode_section(
     int bc_count = bc_end - bc_start;
     assert(bc_count > 0);
 
-    sect_code_cap = BYTECODE_BUFFER_SIZE * bc_count / 2;
-    sect_code_cstr = malloc(sect_code_cap + 1);
-
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf(
-            "transpile_bytecode_section: %d ~ %d (%d)\n", bc_start, bc_end,
+            "// transpile_bytecode_section: %d ~ %d (%d)\n", bc_start, bc_end,
             bc_count
         );
     }
 #endif
 
-    /* render function start */
+    /* render function */
     if (tree->root_index == entry_index) {
         sprintf(sect_code_cstr, "%s", top_start);
     } else {
         sprintf(sect_code_cstr, func_start, entry_index);
     }
+#ifdef ENABLE_DEBUG_LOG
+    if (global_is_enable_debug_log) {
+        printf(sect_code_cstr);
+    }
+#endif
+    write(out_fd, sect_code_cstr, strlen(sect_code_cstr));
 
     for (i = 0; i < bc_count; i++) {
         bytecode_t bc = tree->bytecodes.data[bc_start + i];
         if (bc.op == BOP_EXTEND_ARG) {
             reg_arg += (bc.arg << 8 | bc.arg) << 8;
         } else {
+#ifdef ENABLE_DEBUG_LOG
+            if (global_is_enable_debug_log) {
+                int i;
+                printf("// cur_obj_id: %d\n", cur_obj_id);
+                printf("// bytecode: ");
+                bytecode_print(bc);
+                printf("\n");
+                printf("// obj_id_stack: [");
+                for (i = 0; i < obj_id_stack.size; i++) {
+                    printf("%d ", obj_id_stack.data[i]);
+                }
+                printf("]\n");
+            }
+#endif
             const char* bc_code_cstr = transpile_bytecode(
                 tree, bc, bc_start + i, &obj_id_stack, cur_obj_id, reg_arg
             );
-            sect_code_len += strlen(bc_code_cstr);
-            if (sect_code_len + 1 >= sect_code_cap) {
-                sect_code_cap *= 2;
-                sect_code_cstr = realloc(sect_code_cstr, sect_code_cap);
+#ifdef ENABLE_DEBUG_LOG
+            if (global_is_enable_debug_log) {
+                printf(bc_code_cstr);
+                printf("// --------\n");
             }
-            strcat(sect_code_cstr, bc_code_cstr);
+#endif
+            write(out_fd, bc_code_cstr, strlen(bc_code_cstr));
             cur_obj_id++;
             reg_arg = 0;
         }
     }
 
-    sect_code_len += strlen(func_end);
-    if (sect_code_len + 1 >= sect_code_cap) {
-        sect_code_cap += sect_code_len + 1;
-        sect_code_cstr = realloc(sect_code_cstr, sect_code_cap);
+#ifdef ENABLE_DEBUG_LOG
+    if (global_is_enable_debug_log) {
+        printf(func_end);
     }
-
-    strcat(sect_code_cstr, func_end);
-
-    return sect_code_cstr;
+#endif
+    write(out_fd, func_end, strlen(func_end));
 }
 
-char*
-transpile(syntax_tree_t* tree)
+void
+transpile(syntax_tree_t* tree, int out_fd)
 {
     const int bytecode_section_count = tree->bytecode_start_index.size - 1;
-    char** transpiled_sect_codes = calloc(tree->bytecodes.size, sizeof(char*));
-    char* transpiled_code = NULL;
     int i;
+
+    write(out_fd, src_transpile_utils_meta_c, src_transpile_utils_meta_c_len);
+
+#ifdef ENABLE_DEBUG_LOG
+    if (global_is_enable_debug_log) {
+        printf("====================\n");
+    }
+#endif
 
     // transpile bytecodes
     for (i = 0; i < bytecode_section_count; i++) {
         int start_index = tree->bytecode_start_index.data[i];
         int end_index = tree->bytecode_start_index.data[i + 1];
-        transpiled_sect_codes[i] = transpile_bytecode_section(
-            tree, tree->entry_indexs.data[i], start_index, end_index
+        transpile_bytecode_section(
+            tree, out_fd, tree->entry_indexs.data[i], start_index, end_index
         );
     }
 
@@ -668,39 +660,4 @@ transpile(syntax_tree_t* tree)
         printf("====================\n");
     }
 #endif
-
-    {
-        const char* util_codes = get_transpile_util_codes();
-        // add 2 for one extra new line and ending NULL
-        size_t total_code_len = strlen(util_codes) + 2;
-        for (i = 0; i < bytecode_section_count; i++) {
-            total_code_len += strlen(transpiled_sect_codes[i]);
-        }
-
-        transpiled_code = calloc(total_code_len, 1);
-        strcat(transpiled_code, util_codes);
-        strcat(transpiled_code, "\n"); // the one extra new line
-        for (i = 0; i < bytecode_section_count; i++) {
-            strcat(transpiled_code, transpiled_sect_codes[i]);
-        }
-
-#ifdef ENABLE_DEBUG_LOG
-        if (global_is_enable_debug_log) {
-            printf("transpiled_code size=%lu\n", strlen(transpiled_code));
-            printf(transpiled_code);
-        }
-#endif
-    }
-
-#ifdef ENABLE_DEBUG_LOG
-    if (global_is_enable_debug_log) {
-        printf("====================\n");
-    }
-#endif
-
-    for (i = 0; i < bytecode_section_count; i++) {
-        free(transpiled_sect_codes[i]);
-    }
-
-    return transpiled_code;
 }
