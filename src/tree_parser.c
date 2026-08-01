@@ -1,8 +1,8 @@
 #include "tree_parser.h"
 #include "reserved.h"
 #include "syntax_tree.h"
-#include "utils/global_flags.h"
 #include "utils/errormsg.h"
+#include "utils/global_flags.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -57,13 +57,14 @@ pp_context_push(pratt_parser_context_t* context, const token_t* token)
 int
 get_binding_power(const token_t* token)
 {
-    if (token != NULL) {
-        return (token->type == TOK_OP)
-            // binding power of op is reverse of precedence and smallest is 1
-            ? TIER_COUNT - get_op_precedence(token->code)
-            : 0;
+    if (token == NULL) {
+        return -1;
     }
-    return -1;
+    /* binding power of op is reverse of precedence and smallest is 1 */
+    if (token->type == TOK_OP) {
+        return TIER_COUNT - get_op_precedence(token->code); 
+    }
+    return 0;
 }
 
 int

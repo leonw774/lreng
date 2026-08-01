@@ -342,11 +342,7 @@ number_exp(number_t* a, number_t* b)
     return res;
 }
 
-/*
-    because bigint division is truncate division
-    * for in positive is floor (1.5 -> 1)
-    * for negative is ceiling (-1.5 -> -1)
-*/
+
 
 number_t
 number_ceil(number_t* a)
@@ -359,8 +355,12 @@ number_ceil(number_t* a)
     if (a->numer.size == 0) {
         return ZERO_NUMBER;
     }
+    /**
+     * because bigint division is truncate division
+     *   - for positive it is floor (1.5 -> 1)
+     *   - for negative it is ceiling (-1.5 -> -1)
+     */
     if (a->numer.sign) {
-        // bigint division is truncate division -
         res.numer = bi_div(&a->numer, &a->denom);
         res.denom = BYTE_BIGINT(1);
     } else {

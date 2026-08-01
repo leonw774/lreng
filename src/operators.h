@@ -85,7 +85,7 @@ static const char* const OP_NAMES[OPERATOR_COUNT] = {
     "{", "}", "make_func", "[", "]", "make_macro", "(", ")",
     /* ******** function call ******** */
     "call",
-    /* ******** map filter reduce ******** */
+    // /* ******** map filter reduce ******** */
     // "$>", "$|", "$/",
     /* ******** unary ******** */
     "+", "-", "!", "^", "\\", "<", ">", "`", "~",
@@ -112,7 +112,7 @@ static const int OP_TIER_LIST[][MAX_OPS_IN_TIER] = {
     { OP_LPAREN, OP_RPAREN, -1 },
     /* ******** function call ******** */
     { OP_CALL, -1 },
-    /* ******** map filter reduce ******** */
+    // /* ******** map filter reduce ******** */
     // { OP_MAP, OP_FILTER, OP_REDUCE, -1 },
     /* ******** unary ******** */
     { OP_POS, OP_NEG, OP_NOT, OP_CEIL, OP_FLOOR, OP_GETL, OP_GETR, OP_COND_CALL,

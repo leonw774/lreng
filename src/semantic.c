@@ -98,28 +98,3 @@ check_bind_arg_rule(const syntax_tree_t* tree, frame_t* frame, const int index)
     }
     return 1;
 }
-
-int
-check_id_init_rule(const syntax_tree_t* tree, frame_t* frame, const int index)
-{
-    token_t* cur_token = dynarr_token_at(&tree->tokens, index);
-#ifdef ENABLE_DEBUG_LOG
-    if (global_is_enable_debug_log) {
-        printf(
-            "Line %d, col %d, check identifier usage: ", cur_token->pos.line,
-            cur_token->pos.col
-        );
-        token_print(cur_token);
-        printf("\n");
-        fflush(stdout);
-    }
-#endif
-    if (cur_token->code >= RESERVED_ID_CODE_END_OF_ENUM
-        && frame_get(frame, cur_token->code) == NULL) {
-        const char* err_msg = "identifier %s used uninitialized.";
-        sprintf(ERR_MSG_BUF, err_msg, cur_token->str);
-        print_semantic_error(cur_token->pos, ERR_MSG_BUF);
-        return 0;
-    }
-    return 1;
-}

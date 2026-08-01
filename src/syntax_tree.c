@@ -290,10 +290,6 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
                 dynarr_int_append(&func_depth_stack, &cur_depth);
             }
         }
-        // } else if (cur_token->type == TOK_ID) {
-        //     is_checking = 1;
-        //     is_passed = check_id_init_rule(tree, cur_frame, cur_index);
-        // }
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
             if (cur_token->code == OP_ASSIGN

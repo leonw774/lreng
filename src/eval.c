@@ -236,7 +236,7 @@ eval_bytecode(context_t context, bytecode_t bc)
             print_runtime_error(bc.pos, "Call stack too deep (> 1000)");
             regs->errf = 1;
         }
-        // dynarr_object_ptr_append(object_stack, &tmp);
+        /* the stack was appended with returned object so no append needed */
         object_deref(left);
         object_deref(right);
         break;
@@ -247,7 +247,6 @@ eval_bytecode(context_t context, bytecode_t bc)
             break;
         }
         tmp = exec_map(context, bc.pos, left, right);
-        // dynarr_object_ptr_append(stack, &tmp);
         object_deref(left);
         object_deref(right);
         break;
@@ -257,7 +256,6 @@ eval_bytecode(context_t context, bytecode_t bc)
             break;
         }
         tmp = exec_filter(context, bc.pos, left, right);
-        // dynarr_object_ptr_append(stack, &tmp);
         object_deref(left);
         object_deref(right);
         break;
@@ -267,7 +265,6 @@ eval_bytecode(context_t context, bytecode_t bc)
             break;
         }
         tmp = exec_reduce(context, bc.pos, left, right);
-        // dynarr_object_ptr_append(stack, &tmp);
         object_deref(left);
         object_deref(right);
         break;
@@ -632,7 +629,6 @@ eval_bytecode(context_t context, bytecode_t bc)
                 dynarr_object_ptr_append(stack, &res_object);
             }
         }
-        // dynarr_object_ptr_append(object_stack, &tmp);
         object_deref(left);
         object_deref(right);
         break;
