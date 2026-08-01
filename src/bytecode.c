@@ -78,13 +78,13 @@ bytecode_array_extend(
 }
 
 int
-is_arg_bop(bytecode_op_code_enum bop)
+bytecode_has_arg(bytecode_op_code_enum bop)
 {
     return (
         bop == BOP_BIND_ARG || bop == BOP_MAKE_FUNCT || bop == BOP_MAKE_MACRO
         || bop == BOP_FGET || bop == BOP_FSET || bop == BOP_FSET_UNPACK
-        || bop == BOP_EXTEND_ARG || bop == BOP_PUSH_LIT
-        || bop == BOP_BF_OR_POP || bop == BOP_BT_OR_POP
+        || bop == BOP_EXTEND_ARG || bop == BOP_PUSH_LIT || bop == BOP_BF_OR_POP
+        || bop == BOP_BT_OR_POP
     );
 }
 
@@ -92,9 +92,10 @@ int
 bytecode_print(const bytecode_t bc)
 {
     int printed_bytes_count = 0;
-    printed_bytes_count += printf("%12s (%2d)", BYTECODE_OP_NAMES[bc.op], bc.op);
-    if (is_arg_bop(bc.op)) {
-        printed_bytes_count += printf(" %4u",  bc.arg);
+    printed_bytes_count
+        += printf("%12s (%2d)", BYTECODE_OP_NAMES[bc.op], bc.op);
+    if (bytecode_has_arg(bc.op)) {
+        printed_bytes_count += printf(" %4u", bc.arg);
     }
     return printed_bytes_count;
 }
@@ -113,4 +114,21 @@ op_to_bop_code(op_code_enum op_code)
         is_initialized = 1;
     }
     return OP_TO_BOP_TABLE[op_code];
+}
+
+int
+bytecode_stack_diff(bytecode_op_code_enum bop)
+{
+    if (bop == BOP_PUSH_LIT || bop == BOP_FGET || bop == BOP_FSET_LIT
+        || bop == BOP_MAKE_FUNCT || bop == BOP_MAKE_MACRO) {
+        return 1;
+    }
+    if (bop == BOP_NOP || bop == BOP_EXTEND_ARG || bop == BOP_FSET
+        || bop == BOP_FSET_UNPACK || bop == BOP_RET || bop == BOP_NEG
+        || bop == BOP_NOT || bop == BOP_CEIL || bop == BOP_FLOOR
+        || bop == BOP_PGETL || bop == BOP_PGETR || bop == BOP_COND_CALL
+        || bop == BOP_SWAP || bop == BOP_BIND_ARG) {
+        return 0;
+    }
+    return -1;
 }

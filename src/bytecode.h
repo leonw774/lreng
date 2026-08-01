@@ -184,4 +184,6 @@ int bytecode_print(const bytecode_t bytecode);
 
 bytecode_op_code_enum op_to_bop_code(op_code_enum op_code);
 
+int bytecode_stack_diff(bytecode_op_code_enum bop);
+
 #endif
