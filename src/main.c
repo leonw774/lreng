@@ -86,6 +86,9 @@ compile(
     cc_args[i++] = "-Wall";
     cc_args[i++] = "-Wno-unused-label";
     cc_args[i++] = "-lm"; /* for include math.h */
+    if (global_is_enable_debug_log) {
+        cc_args[i++] = "-g"; /* enable debug */
+    }
     for (j = 0; j < addl_cc_args_count; j++) {
         cc_args[i++] = addl_cc_args[j];
     }
@@ -190,7 +193,7 @@ main(int argc, char** argv)
             if (optarg) {
                 out_file_name = optarg;
             } else {
-                out_file_name = "a";
+                out_file_name = "a.out";
             }
             break;
         case 'A':

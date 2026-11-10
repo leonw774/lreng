@@ -51,11 +51,11 @@ Everything is expression. The code intepreted by lreng should be one big express
 
 ### Arithmetics
 
-The `+`, `-`, `*`, `/`, `%` (modulo), `^` (exponent) only accept numbers.
+The `+`, `-`, `*`, `/`, `%` (modulo), `^` (exponentiation) only accept numbers.
 
 - The division is operated on rational numbers so there is *no* rounding happening.
 - The modulo of `a % b` returns the rational number `r = a - b * floor(a / b)` (Floor division definition).
-- The exponent only allow *integer* power, since otherwise the result will not be rational.
+- The exponentiation only allow *integer* exponent, since otherwise the result will not be rational.
 
 ### Ceiling and floor
 

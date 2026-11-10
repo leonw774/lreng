@@ -340,7 +340,7 @@ eval_bytecode(context_t context, bytecode_t bc)
             );
             object_deref(left);
         } else {
-            dynarr_object_ptr_append(stack, &tmp);
+            dynarr_object_ptr_append(stack, &left);
         }
         break;
     case BOP_SWAP:

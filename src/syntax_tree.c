@@ -181,6 +181,7 @@ syntax_tree_create(dynarr_token_t tokens)
             );
         } else if (cur_token->type == TOK_OP && cur_token->code == OP_PAIR) {
             if (global_is_compile) {
+                /* don't need to create pair literal in compile route */
                 continue;
             }
             object_t* left = tree.literals[tree.lefts[i]];
@@ -288,6 +289,10 @@ syntax_tree_check_semantic(const syntax_tree_t* tree)
                 /* walk into a function */
                 frame_push_stack(cur_frame, cur_index);
                 dynarr_int_append(&func_depth_stack, &cur_depth);
+            }
+            if (global_is_compile && cur_token->code == OP_MAKE_MACRO) {
+                printf("macro is not supported in compile mode\n");
+                is_passed = 1;
             }
         }
 #ifdef ENABLE_DEBUG_LOG

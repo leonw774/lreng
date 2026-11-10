@@ -4,11 +4,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-double
-floor_modulo(double x, double y)
-{
-    return x - y * floor(x / y);
-}
+#define ERRMSG_OP_EXP                                                          \
+    "operator 'exponentiation' failed: Exponent must be integer\n"
+#define ERRMSG_OP_BIND_ARG                                                     \
+    "operator 'bind argument' failed: Cannot bind argument to function that "  \
+    "already has one\n"
+#define ERRMSG_OP_EQ_BAD_TYPE                                                  \
+    "operator 'equal' failed: object is bad type: %d\n"
+#define ERRMSG_OBJTOBOOL_BAD_TYPE                                              \
+    "internal function 'object_to_bool' failed: object has bad type: %d\n"
+#define ERRMSG_OUTPUT_NOT_BYTE_NUMBER                                          \
+    "built-in function 'output' failed: argument not in [0, 255], but %d\n"
+#define ERRMSG_OUTPUT_FAILED_TO_WRITE                                          \
+    "built-in function 'output' failed: failed to write to stdout.\n"
+#define ERRMSG_ERROR_NOT_BYTE_NUMBER                                           \
+    "built-in function 'error' failed: argument not in [0, 255], but %d\n"
+#define ERRMSG_ERROR_FAILED_TO_WRITE                                           \
+    "built-in function 'error' failed: failed to write to stderr.\n"
+#define ERRMSG_DEBUG_BAD_TYPE                                                  \
+    "built-in function 'debug' failed: object has bad type: %d\n"
+#define ERRMSG_USED_UNINIT "runtime error: %s is used uninitialized\n"
 
 #define TYPE_NULL 0
 #define TYPE_NUM 1
@@ -38,16 +53,45 @@ union object_union {
 };
 
 typedef struct object {
-    unsigned char type;
+    unsigned char type : 8;
+    int32_t ref_count : 24;
     union object_union as;
 } object_t;
 
 #define object_data_size sizeof(object_t)
 
 const object_t NULL_OBJECT = (object_t) {
-    .type = TYPE_NULL, .as = { .null = 0, },
+    .type = TYPE_NULL,
+    .as = { .null = 0, },
 };
 const object_t* NULL_OBJPTR = &NULL_OBJECT;
+
+object_t*
+object_ref(object_t* o)
+{
+    if (o->type != TYPE_NULL) {
+        o->ref_count++;
+    }
+    return o;
+}
+
+object_t*
+object_deref(object_t* o)
+{
+    if (o->type == TYPE_NULL) {
+        return NULL;
+    }
+    if (o->ref_count > 1) {
+        o->ref_count--;
+        return NULL;
+    }
+    if (o->type == TYPE_PAIR) {
+        object_deref(o->as.pair.left);
+        object_deref(o->as.pair.right);
+    }
+    free(o);
+    return NULL;
+}
 
 void
 object_print(object_t* o)
@@ -70,10 +114,10 @@ object_print(object_t* o)
         object_print(o->as.pair.left);
         printf(", ");
         object_print(o->as.pair.right);
-        printf("]");
+        printf(")]");
         break;
     default:
-        fprintf(stderr, "object_print bad type: %d\n", o->type);
+        fprintf(stderr, ERRMSG_DEBUG_BAD_TYPE, o->type);
         exit(EXIT_FAILURE);
     }
 }
@@ -91,7 +135,7 @@ object_to_bool(object_t* o)
     case TYPE_PAIR:
         return 1.f;
     default:
-        fprintf(stderr, "object_to_bool bad type: %d\n", o->type);
+        fprintf(stderr, ERRMSG_OBJTOBOOL_BAD_TYPE, o->type);
         exit(EXIT_FAILURE);
     }
 }
@@ -99,32 +143,36 @@ object_to_bool(object_t* o)
 double
 object_equal(object_t* x, object_t* y)
 {
-    if (x->type == y->type) {
-        switch (x->type) {
-        case TYPE_NULL:
-            return 1.f;
-        case TYPE_NUM:
-            return x->as.number == y->as.number;
-        case TYPE_PAIR:
-            return object_equal(x->as.pair.left, y->as.pair.left)
-                && object_equal(x->as.pair.right, y->as.pair.right);
-        case TYPE_CALL:
-            return x->as.callable.func_ptr == y->as.callable.func_ptr
-                && x->as.callable.arg_code == y->as.callable.arg_code
-                && x->as.callable.init_frame == y->as.callable.init_frame;
-        default:
-            fprintf(stderr, "object_equal bad type: %d\n", x->type);
-            exit(EXIT_FAILURE);
-        }
+    if (x->type != y->type) {
+        return 0.f;
     }
-    return 0.f;
+    switch (x->type) {
+    case TYPE_NULL:
+        return 1.f;
+    case TYPE_NUM:
+        return x->as.number == y->as.number;
+    case TYPE_PAIR:
+        return object_equal(x->as.pair.left, y->as.pair.left)
+            && object_equal(x->as.pair.right, y->as.pair.right);
+    case TYPE_CALL:
+        return x->as.callable.func_ptr == y->as.callable.func_ptr
+            && x->as.callable.arg_code == y->as.callable.arg_code
+            && x->as.callable.init_frame == y->as.callable.init_frame;
+    default:
+        fprintf(stderr, ERRMSG_OP_EQ_BAD_TYPE, x->type);
+        exit(EXIT_FAILURE);
+    }
 }
 
 object_t*
 from_number(double n)
 {
     object_t* o = malloc(sizeof(object_t));
-    *o = (object_t) { .type = TYPE_NUM, .as = { .number = n, }, };
+    *o = (object_t) {
+        .type = TYPE_NUM,
+        .ref_count = 1,
+        .as = { .number = n, },
+    };
     return o;
 }
 
@@ -132,7 +180,11 @@ object_t*
 from_pair(pair_t p)
 {
     object_t* o = malloc(sizeof(object_t));
-    *o = (object_t) { .type = TYPE_PAIR, .as = { .pair = p, }, };
+    *o = (object_t) {
+        .type = TYPE_PAIR,
+        .ref_count = 1,
+        .as = { .pair = p, },
+    };
     return o;
 }
 
@@ -140,7 +192,11 @@ object_t*
 from_callable(callable_t c)
 {
     object_t* o = malloc(sizeof(object_t));
-    *o = (object_t) { .type = TYPE_CALL, .as = { .callable = c, }, };
+    *o = (object_t) {
+        .type = TYPE_CALL,
+        .ref_count = 1,
+        .as = { .callable = c, },
+    };
     return o;
 }
 
@@ -186,7 +242,7 @@ frame_entry_list_copy(frame_entry_t* fe)
     }
     frame_entry_t* new_fe = malloc(sizeof(frame_entry_t));
     new_fe->code = fe->code;
-    new_fe->object = fe->object;
+    new_fe->object = object_ref(fe->object);
     new_fe->next = frame_entry_list_copy(fe->next);
     return new_fe;
 }
@@ -196,6 +252,9 @@ frame_entry_list_free(frame_entry_t* fe)
 {
     if (fe) {
         frame_entry_list_free(fe->next);
+        fe->next = NULL;
+        object_deref(fe->object);
+        free(fe);
     }
 }
 
@@ -232,7 +291,7 @@ frame_set(frame_t* f, int code, object_t* obj)
     frame_entry_t* fe_item = malloc(sizeof(frame_entry_t));
     *fe_item = (frame_entry_t) {
         .code = code,
-        .object = obj,
+        .object = object_ref(obj),
         .next = f->frame_entry_list,
     };
     f->frame_entry_list = fe_item;
@@ -308,6 +367,10 @@ frame_get_callee_frame(frame_t* caller_frame, callable_t* callable)
     frame_t* caller_i;
     frame_t* init_i;
     int is_forked = 0;
+    if (init_frame == NULL) {
+        return caller_frame;
+    }
+
     /* if is direct recursion, copy caller frame except last stack section */
     if (caller_frame->func_ptr == callable->func_ptr) {
         callee_frame = frame_copy(caller_frame);
@@ -340,19 +403,11 @@ frame_get_callee_frame(frame_t* caller_frame, callable_t* callable)
     return callee_frame;
 }
 
-object_t*
-exec_call(frame_t* caller_frame, object_t* callable_obj, object_t* arg)
-{
-    callable_t callable = as_callable(callable_obj);
-    if (callable.init_frame == NULL) {
-        return callable.func_ptr(caller_frame, arg);
-    }
-    frame_t* callee_frame = frame_get_callee_frame(caller_frame, &callable);
-    frame_set(callee_frame, callable.arg_code, arg);
-    return callable.func_ptr(caller_frame, arg);
-}
+/* Top function */
 
 object_t* top(frame_t* FRAME, object_t* arg);
+
+/* Builtin functions */
 
 object_t*
 input(frame_t* FRAME, object_t* arg)
@@ -365,10 +420,8 @@ object_t*
 output(frame_t* FRAME, object_t* arg)
 {
     int c = as_number(arg);
-    const char* err_msg_not_byte_number
-        = "built-in function 'output': argument is not in [0, 255], but %d\n";
-    const char* err_msg_failed_to_write
-        = "built-in function 'output': failed to write to stdout.\n";
+    const char* err_msg_not_byte_number = ERRMSG_OUTPUT_NOT_BYTE_NUMBER;
+    const char* err_msg_failed_to_write = ERRMSG_OUTPUT_FAILED_TO_WRITE;
     if (!(0 <= c && c <= 255)) {
         fprintf(stderr, err_msg_not_byte_number, c);
         exit(EXIT_FAILURE);
@@ -385,10 +438,8 @@ object_t*
 error(frame_t* FRAME, object_t* arg)
 {
     int c = as_number(arg);
-    const char* err_msg_not_byte_number
-        = "built-in function 'output': argument is not in [0, 255], but %d\n";
-    const char* err_msg_failed_to_write
-        = "built-in function 'output': failed to write to stdout.\n";
+    const char* err_msg_not_byte_number = ERRMSG_ERROR_NOT_BYTE_NUMBER;
+    const char* err_msg_failed_to_write = ERRMSG_ERROR_FAILED_TO_WRITE;
     if (!(0 <= c && c <= 255)) {
         fprintf(stderr, err_msg_not_byte_number, c);
         exit(EXIT_FAILURE);
@@ -426,6 +477,45 @@ debug(frame_t* FRAME, object_t* arg)
     printf("\n");
     fflush(stdout);
     return (object_t*)NULL_OBJPTR;
+}
+
+/* Helpers */
+
+double
+floor_modulo(double x, double y)
+{
+    return x - y * floor(x / y);
+}
+
+void
+check_uninit(object_t* src, const char* name)
+{
+    if (!src) {
+        fprintf(stderr, ERRMSG_USED_UNINIT, name);
+        exit(EXIT_FAILURE);
+    }
+}
+
+object_t*
+make_funct(frame_t* FRAME, object_t* (*func_ptr)(frame_t*, object_t*))
+{
+    return from_callable((callable_t) {
+        .func_ptr = func_ptr, .arg_code = -1, .init_frame = FRAME });
+}
+
+int
+exec_call(frame_t* FRAME, object_t** dst, object_t** left, object_t** right)
+{
+    callable_t callable = as_callable(*left);
+    object_t* arg = *right;
+    object_t* result;
+    frame_t* callee_frame = frame_get_callee_frame(FRAME, &callable);
+    if (callable.arg_code != -1) {
+        frame_set(callee_frame, callable.arg_code, arg);
+    }
+    result = callable.func_ptr(callee_frame, arg);
+    *dst = result;
+    return 0;
 }
 
 int

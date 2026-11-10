@@ -9,26 +9,43 @@
 #include <unistd.h>
 
 #define NUMBER_PRECISION 16
-#define LITERAL_BUFFER_SIZE 255
-#define BYTECODE_BUFFER_SIZE 4095
+#define LIT_BUFFER_SIZE 255
+#define BC_BUFFER_SIZE 4095
+#define DEBUG_FILE_NAME "debug_transpile.c"
+
+void
+emit(int fd, const void* buf, unsigned int len)
+{
+    static FILE* debug_file = NULL;
+    write(fd, buf, len);
+#ifdef ENABLE_DEBUG_LOG
+    if (global_is_enable_debug_log) {
+        if (debug_file == NULL) {
+            debug_file = fopen(DEBUG_FILE_NAME, "w");
+        }
+        fprintf(debug_file, "%s", (const char*)buf);
+        fflush(debug_file);
+    }
+#endif
+}
 
 char*
 transpile_frame_set_unpack(
     syntax_tree_t* tree, int stack_size, const int assignee_index
 )
 {
-    char* left_buffer = malloc(LITERAL_BUFFER_SIZE + 1);
-    char* right_buffer = malloc(LITERAL_BUFFER_SIZE + 1);
-    size_t left_size = LITERAL_BUFFER_SIZE;
-    size_t right_size = LITERAL_BUFFER_SIZE;
+    char* left_buffer = malloc(LIT_BUFFER_SIZE + 1);
+    char* right_buffer = malloc(LIT_BUFFER_SIZE + 1);
+    size_t left_size = LIT_BUFFER_SIZE;
+    size_t right_size = LIT_BUFFER_SIZE;
     const token_t left_token = tree->tokens.data[tree->lefts[assignee_index]];
     const token_t right_token = tree->tokens.data[tree->rights[assignee_index]];
 
     if (left_token.type != TOK_ID) {
         snprintf(
-            left_buffer, LITERAL_BUFFER_SIZE,
-            "    object_t* s_%d_%d = frame_set(FRAME, %d, "
-            "as_pair(s_%d_%d).left ); // unpack branch\n",
+            left_buffer, LIT_BUFFER_SIZE,
+            "    object_t* s%d_%d = frame_set("
+            "FRAME, %d, as_pair(s%d_%d).left ); // unpack branch\n",
             stack_size, tree->lefts[assignee_index], left_token.code,
             stack_size, assignee_index
         );
@@ -41,17 +58,16 @@ transpile_frame_set_unpack(
         free(left_child_buffer);
     } else {
         snprintf(
-            left_buffer, LITERAL_BUFFER_SIZE,
-            "    frame_set(FRAME, %d, as_pair(s_%d_%d).left); // unpack "
-            "leaf\n",
+            left_buffer, LIT_BUFFER_SIZE,
+            "    frame_set(FRAME, %d, as_pair(s%d_%d).left); // unpack leaf\n",
             left_token.code, stack_size, assignee_index
         );
     }
     if (right_token.type != TOK_ID) {
         snprintf(
-            right_buffer, LITERAL_BUFFER_SIZE,
-            "    object_t* s_%d_%d = frame_set(FRAME, %d, "
-            "as_pair(s_%d_%d).right); // unpack branch\n",
+            right_buffer, LIT_BUFFER_SIZE,
+            "    object_t* s%d_%d = frame_set("
+            "FRAME, %d, as_pair(s%d_%d).right); // unpack branch\n",
             stack_size, tree->rights[assignee_index], right_token.code,
             stack_size, assignee_index
         );
@@ -64,9 +80,8 @@ transpile_frame_set_unpack(
         free(right_child_buffer);
     } else {
         snprintf(
-            right_buffer, LITERAL_BUFFER_SIZE,
-            "    frame_set(FRAME, %d, as_pair(s_%d_%d).right); // unpack "
-            "leaf\n",
+            right_buffer, LIT_BUFFER_SIZE,
+            "    frame_set(FRAME, %d, as_pair(s%d_%d).right); // unpack leaf\n",
             right_token.code, stack_size, assignee_index
         );
     }
@@ -79,7 +94,7 @@ transpile_frame_set_unpack(
 char*
 transpile_literal(object_t* literal_object)
 {
-    char* buffer = malloc(LITERAL_BUFFER_SIZE + 1);
+    char* buffer = malloc(LIT_BUFFER_SIZE + 1);
     char* tmp_cstr;
     dynarr_char_t tmp_str;
 
@@ -89,16 +104,14 @@ transpile_literal(object_t* literal_object)
         );
         tmp_cstr = dynarr_char_to_str(&tmp_str);
         assert(tmp_cstr);
-        snprintf(buffer, LITERAL_BUFFER_SIZE, "(from_number(%s))", tmp_cstr);
+        snprintf(buffer, LIT_BUFFER_SIZE, "(from_number(%s))", tmp_cstr);
         free(tmp_cstr);
         dynarr_char_free(&tmp_str);
     } else if (literal_object->type == TYPE_NULL) {
-        snprintf(buffer, LITERAL_BUFFER_SIZE, "(object_t*)(NULL_OBJPTR)");
+        snprintf(buffer, LIT_BUFFER_SIZE, "(object_t*)(NULL_OBJPTR)");
     } else if (literal_object->type == TYPE_CALL) {
         snprintf(
-            buffer, LITERAL_BUFFER_SIZE,
-            "(from_callable((callable_t){ .func_ptr = %s, .init_frame = NULL, "
-            ".arg_code = -1 }))",
+            buffer, LIT_BUFFER_SIZE, "make_funct(NULL, %s)",
             RESERVED_IDS[literal_object->as.callable.builtin_name]
         );
     } else {
@@ -109,13 +122,13 @@ transpile_literal(object_t* literal_object)
 
 char*
 transpile_bytecode(
-    syntax_tree_t* tree, bytecode_t bc, size_t bc_index, int top_index,
-    int reg_arg
+    syntax_tree_t* tree, bytecode_t bc, size_t bci, int stack_size, int reg_arg
 )
 {
-    static char buffer[BYTECODE_BUFFER_SIZE];
+    static char buffer[BC_BUFFER_SIZE];
     char* tmp_buffer;
-    char* tmplt;
+    char* t; /* template */
+    int ss = stack_size, ssm1 = stack_size - 1, ssm2 = stack_size - 2;
     buffer[0] = '\0';
 
     switch (bc.op) {
@@ -123,394 +136,250 @@ transpile_bytecode(
         break;
     case BOP_PUSH_LIT:
         reg_arg |= bc.arg;
-        tmplt = "inst_%d:\n    s_%d = %s; // PUSH_LITERAL\n";
+        t = "inst%d: // PUSH_LIT\n    s%d = %s;\n";
         tmp_buffer = transpile_literal(tree->literals[reg_arg]);
-        sprintf(buffer, tmplt, bc_index, top_index + 1, tmp_buffer);
+        sprintf(buffer, t, bci, ss, tmp_buffer);
         free(tmp_buffer);
         tmp_buffer = NULL;
         break;
     case BOP_FGET:
         reg_arg |= bc.arg;
-        tmplt = "inst_%d:\n"
-                "    s_%d = frame_get(FRAME, %d); // FRAME_GET\n"
-                "    if (!s_%d) {\n"
-                "        puts(\"\'%s\' is used uninitialized\");\n"
-                "        exit(EXIT_FAILURE);\n"
-                "    }\n";
-        snprintf(
-            buffer, BYTECODE_BUFFER_SIZE, tmplt, bc_index, top_index + 1,
-            reg_arg, top_index + 1, tree->id_code_str_map[reg_arg]
-        );
+        t = "inst%d: // FGET\n"
+            "    s%d = object_ref(frame_get(FRAME, %d));\n"
+            "    check_uninit(s%d, \"%s\");\n";
+        const char* code_str = tree->id_code_str_map[reg_arg];
+        sprintf(buffer, t, bci, ss, reg_arg, ss, code_str);
         break;
     case BOP_FSET:
         reg_arg |= bc.arg;
-        tmplt = "inst_%d:\n"
-                "    frame_set(FRAME, %d, s_%d); // FRAME_SET\n";
-        snprintf(
-            buffer, BYTECODE_BUFFER_SIZE, tmplt, bc_index, reg_arg, top_index
-        );
+        t = "inst%d: // FSET\n    frame_set(FRAME, %d, s%d);\n";
+        sprintf(buffer, t, bci, reg_arg, ssm1);
         break;
     case BOP_FSET_UNPACK:
         reg_arg |= bc.arg;
-        tmplt = "inst_%d:\n"
-                "    object_t* s_%d_%d = s_%d; // FRAME_SET_UNPACK\n%s";
-        tmp_buffer = transpile_frame_set_unpack(tree, top_index, reg_arg);
+        t = "inst%d: // FSET_UNPACK\n    object_t* s%d_%d = s%d;\n%s";
+        tmp_buffer = transpile_frame_set_unpack(tree, ssm1, reg_arg);
         snprintf(
-            buffer, BYTECODE_BUFFER_SIZE, tmplt, bc_index, top_index, reg_arg,
-            top_index, tmp_buffer
+            buffer, BC_BUFFER_SIZE, t, bci, ssm1, reg_arg, ssm1, tmp_buffer
         );
         free(tmp_buffer);
         tmp_buffer = NULL;
         break;
     case BOP_POP:
-        tmplt = "inst_%d:\n";
-        snprintf(buffer, BYTECODE_BUFFER_SIZE, tmplt, bc_index);
+        t = "inst%d: // POP\n    s%d = object_deref(s%d);\n";
+        sprintf(buffer, t, bci, ssm1, ssm1);
         break;
     case BOP_RET:
-        tmplt = "inst_%d:\n"
-                "    frame_pop(FRAME); // RET\n"
-                "    return s_%d; // RET\n";
-        snprintf(buffer, BYTECODE_BUFFER_SIZE, tmplt, bc_index, top_index);
+        t = "inst%d: // RET\n    frame_pop(FRAME);\n    return s%d;\n";
+        sprintf(buffer, t, bci, ssm1);
         break;
     case BOP_BF_OR_POP:
-        tmplt = "inst_%d:\n"
-                "    if (!object_to_bool(s_%d)) goto inst_%d;\n";
-        /* we can safely assume that the jump does not happen */
+        reg_arg |= bc.arg;
+        t = "inst%d: // BF_OR_POP\n"
+            "    if (!object_to_bool(s%d))\n        goto inst%d;\n"
+            "    else\n        s%d = object_deref(s%d);\n";
+        sprintf(buffer, t, bci, ssm1, reg_arg, ssm1, ssm1);
         break;
-    //     tmp = *dynarr_object_ptr_back(stack);
-    //     if (object_to_bool(tmp)) {
-    //         dynarr_object_ptr_pop(stack);
-    //         object_deref(tmp);
-    //         tmp = NULL;
-    //     } else {
-    //         reg_arg |= bc.arg;
-    //         /* already account for the +1 before exec */
-    //         regs->insp += regs->arg;
-    //     }
-    //     break;
-    // case BOP_BT_OR_POP:
-    //     tmp = *dynarr_object_ptr_back(stack);
-    //     if (!object_to_bool(tmp)) {
-    //         dynarr_object_ptr_pop(stack);
-    //         object_deref(tmp);
-    //         tmp = NULL;
-    //     } else {
-    //         reg_arg |= bc.arg;
-    //         /* already account for the +1 before exec */
-    //         regs->insp += regs->arg;
-    //     }
-    //     break;
-    // case BOP_MAKE_FUNCT:
-    //     reg_arg |= bc.arg;
-    //     {
-    //         tmp = object_create(
-    //             TYPE_CALL,
-    //             (object_data_union)(callable_t) {
-    //                 .is_macro = 0,
-    //                 .builtin_name = NOT_BUILTIN_FUNC,
-    //                 .arg_subtree_index = -1,
-    //                 .index = regs->arg,
-    //                 /* function owns a deep copy of frame it created
-    //                 under */ .init_frame = frame_copy(cur_frame),
-    //             }
-    //         );
-    //     }
-    //     dynarr_object_ptr_append(stack, &tmp);
-    //     break;
-    // case BOP_MAKE_MACRO:
-    //     reg_arg |= bc.arg;
-    //     tmp = object_create(
-    //         TYPE_CALL,
-    //         (object_data_union)(callable_t) {
-    //             .is_macro = 1,
-    //             .builtin_name = NOT_BUILTIN_FUNC,
-    //             .arg_subtree_index = -1,
-    //             .index = regs->arg,
-    //             /* macro does not have frame */
-    //             .init_frame = NULL,
-    //         }
-    //     );
-    //     dynarr_object_ptr_append(stack, &tmp);
-    //     break;
+    case BOP_BT_OR_POP:
+        reg_arg |= bc.arg;
+        t = "inst%d: // BT_OR_POP\n"
+            "    if (object_to_bool(s%d))\n        goto inst%d;\n"
+            "    else\n        s%d = object_deref(s%d);\n";
+        sprintf(buffer, t, bci, ssm1, reg_arg, ssm1, ssm1);
+        break;
+    case BOP_MAKE_FUNCT:
+        reg_arg |= bc.arg;
+        t = "inst%d: // MAKE_FUNCT\n"
+            "    s%d = make_funct(frame_copy(FRAME), fun%d);\n";
+        sprintf(buffer, t, bci, ss, reg_arg);
+        break;
     case BOP_CALL:
-        tmplt = "inst_%d:\n"
-                "    s_%d = exec_call(FRAME, s_%d, s_%d); // CALL\n";
-        snprintf(
-            buffer, BYTECODE_BUFFER_SIZE, tmplt, bc_index, top_index - 1,
-            top_index - 1, top_index
-        );
+        t = "inst%d: // CALL\n"
+            "    exec_call(FRAME, &tmp, &s%d, &s%d);\n"
+            "    object_deref(s%d);\n    object_deref(s%d);\n    s%d = tmp;\n";
+        sprintf(buffer, t, bci, ssm2, ssm1, ssm2, ssm1, ssm2);
         break;
     case BOP_NEG:
-        tmplt = "inst_%d:\n"
-                "    s_%d = from_number(-as_number(s_%d)); // NEG\n";
-        sprintf(buffer, tmplt, bc_index, top_index, top_index);
+        t = "inst%d: // NEG\n    s%d->as.number = -as_number(s%d);\n";
+        sprintf(buffer, t, bci, ssm1, ssm1);
         break;
-    // case BOP_NOT:
-    //     if (pop_l_check(stack, bc, &left, ANY_TYPE)) {
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     tmp = object_create(
-    //         TYPE_NUM,
-    //         (object_data_union)(object_to_bool(left) ? ONE_NUMBER :
-    //         ZERO_NUMBER)
-    //     );
-    //     dynarr_object_ptr_append(stack, &tmp);
-    //     object_deref(left);
-    //     break;
-    // case BOP_CEIL:
-    //     if (pop_l_check(stack, bc, &left, TYPE_NUM)) {
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     tmp = object_create(
-    //         TYPE_NUM, (object_data_union)number_ceil(&left->as.number)
-    //     );
-    //     dynarr_object_ptr_append(stack, &tmp);
-    //     object_deref(left);
-    //     break;
-    // case BOP_FLOOR:
-    //     if (pop_l_check(stack, bc, &left, TYPE_NUM)) {
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     tmp = object_create(
-    //         TYPE_NUM, (object_data_union)number_floor(&left->as.number)
-    //     );
-    //     dynarr_object_ptr_append(stack, &tmp);
-    //     object_deref(left);
-    //     break;
-    // case BOP_PGETL:
-    //     if (pop_l_check(stack, bc, &left, TYPE_PAIR)) {
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     tmp = object_ref(left->as.pair.left);
-    //     dynarr_object_ptr_append(stack, &tmp);
-    //     object_deref(left);
-    //     break;
-    // case BOP_PGETR:
-    //     if (pop_l_check(stack, bc, &left, TYPE_PAIR)) {
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     tmp = object_ref(left->as.pair.right);
-    //     dynarr_object_ptr_append(stack, &tmp);
-    //     object_deref(left);
-    //     break;
-    // case BOP_COND_CALL:
-    //     if (pop_l_check(stack, bc, &left, ANY_TYPE)) {
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     if (left->type == TYPE_CALL) {
-    //         exec_call(
-    //             context, bc.pos, left,
-    //             (object_t*)&RESERVED_OBJS[RESERVED_ID_CODE_NULL]
-    //         );
-    //         object_deref(left);
-    //     } else {
-    //         dynarr_object_ptr_append(stack, &tmp);
-    //     }
-    //     break;
-    // case BOP_SWAP:
-    //     if (pop_l_check(stack, bc, &left, TYPE_PAIR)) {
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     tmp = object_create(
-    //         TYPE_PAIR,
-    //         (object_data_union)(pair_t) {
-    //             .left = object_ref(left->as.pair.right),
-    //             .right = object_ref(left->as.pair.left),
-    //         }
-    //     );
-    //     dynarr_object_ptr_append(stack, &tmp);
-    //     object_deref(left);
-    //     break;
-    // case BOP_EXP:
-    //     if (pop_lr_check(stack, bc, &left, &right, TYPE_NUM, TYPE_NUM)) {
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     if (right->as.number.denom.size != 1
-    //         || right->as.number.denom.digit[0] != 1) {
-    //         print_runtime_error(bc.pos, "Exponent must be integer");
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     tmp = object_create(
-    //         TYPE_NUM,
-    //         (object_data_union)number_exp(&left->as.number,
-    //         &right->as.number)
-    //     );
-    //     dynarr_object_ptr_append(stack, &tmp);
-    //     object_deref(left);
-    //     object_deref(right);
-    //     break;
+    case BOP_NOT:
+        t = "inst%d:// NOT\n"
+            "    tmp = !object_to_bool(s%d);\n"
+            "    object_deref(s%d)\n    s%d = tmp;\n";
+        sprintf(buffer, t, bci, ssm1, ssm1, ssm1);
+        break;
+    case BOP_CEIL:
+        t = "inst%d: // CEIL\n    s%d->as.number = ceil(as_number(s%d));\n";
+        sprintf(buffer, t, bci, ssm1, ssm1);
+        break;
+    case BOP_FLOOR:
+        t = "inst%d: // FLOOR\n    s%d->as.number = floor(as_number(s%d));\n";
+        sprintf(buffer, t, bci, ssm1, ssm1);
+        break;
+    case BOP_PGETL:
+        t = "inst%d: // PGETL\n"
+            "    tmp = object_ref(as_pair(s%d).left)\n;"
+            "    object_deref(s%d);\n    s%d = tmp;\n";
+        sprintf(buffer, t, bci, ssm1, ssm1, ssm1);
+        break;
+    case BOP_PGETR:
+        t = "inst%d: // PGETL\n"
+            "    tmp = object_ref(as_pair(s%d).right)\n;"
+            "    object_deref(s%d);\n    s%d = tmp;\n";
+        sprintf(buffer, t, bci, ssm1, ssm1, ssm1);
+        break;
+    case BOP_COND_CALL:
+        t = "inst%d: // COND_CALL\n"
+            "    if (%s->type == TYPE_CALL) {\n"
+            "        exec_call(FRAME, &tmp, &s%d, &NULL_OBJPTR);\n"
+            "        object_deref(s%d);\n        s%d = tmp;\n"
+            "    }";
+        sprintf(buffer, t, bci, ssm1, ssm1, ssm1, ssm1);
+        break;
+    case BOP_SWAP:
+        t = "inst%d: // SWAP\n"
+            "    tmp = s%d->as.right;\n"
+            "    s%d->as.right = s%d->as.left;\n"
+            "    s%d->as.left = tmp;\n";
+        sprintf(buffer, t, bci, ssm1, ssm1, ssm1, ssm1);
+        break;
+    case BOP_EXP:
+        t = "inst%d: // EXP\n"
+            "{\n"
+            "    double exp = as_number(s%d);\n"
+            "    if (trunc(exp) != exp) {\n"
+            "        fprintf(stderr, ERRMSG_OP_EXP);\n"
+            "        exit(EXIT_FAILURE);\n"
+            "    }\n"
+            "    s%d->as.number = pow(as_number(s%d), exp);\n"
+            "    object_deref(s%d);\n"
+            "}\n";
+        sprintf(buffer, t, bci, ssm1, ssm2, ssm2, ssm1);
+        break;
     case BOP_MUL:
-        tmplt = "inst_%d:\n    s_%d = from_number("
-                "as_number(s_%d) * as_number(s_%d)); // MUL\n";
-        sprintf(
-            buffer, tmplt, bc_index, top_index - 1, top_index - 1, top_index
-        );
+        t = "inst%d: // MUL\n"
+            "    s%d->as.number = as_number(s%d) * as_number(s%d);\n"
+            "    object_deref(s%d);\n";
+        sprintf(buffer, t, bci, ssm2, ssm2, ssm1, ssm1);
         break;
     case BOP_DIV:
-        tmplt = "inst_%d:\n    s_%d = from_number("
-                "as_number(s_%d) * as_number(s_%d)); // DIV\n";
-        sprintf(
-            buffer, tmplt, bc_index, top_index - 1, top_index - 1, top_index
-        );
+        t = "inst%d: // DIV\n"
+            "    s%d->as.number = as_number(s%d) / as_number(s%d);\n"
+            "    object_deref(s%d);\n";
+        sprintf(buffer, t, bci, ssm2, ssm2, ssm1, ssm1);
         break;
     case BOP_MOD:
-        tmplt = "inst_%d:\n    s_%d = from_number(floor_modulo("
-                "as_number(s_%d), as_number(s_%d))); // MOD\n";
-        sprintf(
-            buffer, tmplt, bc_index, top_index - 1, top_index - 1, top_index
-        );
+        t = "inst%d: // MOD\n"
+            "    s%d->as.number = floor_modulo("
+            "as_number(s%d), as_number(s%d));\n"
+            "    object_deref(s%d);\n";
+        sprintf(buffer, t, bci, ssm2, ssm2, ssm1, ssm1);
         break;
     case BOP_ADD:
-        tmplt = "inst_%d:\n    s_%d = from_number("
-                "as_number(s_%d) + as_number(s_%d)); // ADD\n";
-        sprintf(
-            buffer, tmplt, bc_index, top_index - 1, top_index - 1, top_index
-        );
+        t = "inst%d: // ADD\n"
+            "    s%d->as.number = as_number(s%d) + as_number(s%d);\n"
+            "    object_deref(s%d);\n";
+        sprintf(buffer, t, bci, ssm2, ssm2, ssm1, ssm1);
         break;
     case BOP_SUB:
-        tmplt = "inst_%d:\n    s_%d = from_number("
-                "as_number(s_%d) - as_number(s_%d)); // SUB\n";
-        sprintf(
-            buffer, tmplt, bc_index, top_index - 1, top_index - 1, top_index
-        );
+        t = "inst%d: // SUB\n"
+            "    s%d->as.number = as_number(s%d) - as_number(s%d);\n"
+            "    object_deref(s%d);\n";
+        sprintf(buffer, t, bci, ssm2, ssm2, ssm1, ssm1);
         break;
     case BOP_LT:
-        tmplt = "inst_%d:\n    s_%d = from_number("
-                "as_number(s_%d) < as_number(s_%d)); // LT\n";
-        sprintf(
-            buffer, tmplt, bc_index, top_index - 1, top_index - 1, top_index
-        );
+        t = "inst%d: // LT\n"
+            "    s%d->as.number = as_number(s%d) < as_number(s%d);\n"
+            "    object_deref(s%d);\n";
+        sprintf(buffer, t, bci, ssm2, ssm2, ssm1, ssm1);
         break;
     case BOP_LE:
-        tmplt = "inst_%d:\n    s_%d = from_number("
-                "as_number(s_%d) <= as_number(s_%d)); // LT\n";
-        sprintf(
-            buffer, tmplt, bc_index, top_index - 1, top_index - 1, top_index
-        );
+        t = "inst%d: // LT\n"
+            "    s%d->as.number = as_number(s%d) <= as_number(s%d);\n"
+            "    object_deref(s%d);\n";
+        sprintf(buffer, t, bci, ssm2, ssm2, ssm1, ssm1);
         break;
     case BOP_GT:
-        tmplt = "inst_%d:\n    s_%d = from_number("
-                "as_number(s_%d) > as_number(s_%d)); // LT\n";
-        sprintf(
-            buffer, tmplt, bc_index, top_index - 1, top_index - 1, top_index
-        );
+        t = "inst%d: // LT\n"
+            "    s%d->as.number = as_number(s%d) > as_number(s%d);\n"
+            "    object_deref(s%d);\n";
+        sprintf(buffer, t, bci, ssm2, ssm2, ssm1, ssm1);
         break;
     case BOP_GE:
-        tmplt = "inst_%d:\n    s_%d = from_number("
-                "as_number(s_%d) >= as_number(s_%d)); // LT\n";
-        sprintf(
-            buffer, tmplt, bc_index, top_index - 1, top_index - 1, top_index
-        );
+        t = "inst%d: // LT\n"
+            "    s%d->as.number = as_number(s%d) >= as_number(s%d);\n"
+            "    object_deref(s%d);\n";
+        sprintf(buffer, t, bci, ssm2, ssm2, ssm1, ssm1);
         break;
     case BOP_EQ:
-        tmplt = "inst_%d:\n    s_%d = from_number("
-                "object_equal(s_%d, s_%d)); // EQ\n";
-        sprintf(
-            buffer, tmplt, bc_index, top_index - 1, top_index - 1, top_index
-        );
+        t = "inst%d: // EQ\n"
+            "    tmp = from_number(object_equal(s%d, s%d));\n"
+            "    object_deref(s%d);\n    object_deref(s%d);\n    s%d = tmp;\n";
+        sprintf(buffer, t, bci, ssm2, ssm1, ssm2, ssm1, ssm2);
         break;
     case BOP_NE:
-        tmplt = "inst_%d:\n    s_%d = from_number("
-                "1.f - object_equal(s_%d, s_%d)); // EQ\n";
-        sprintf(
-            buffer, tmplt, bc_index, top_index - 1, top_index - 1, top_index
-        );
+        t = "inst%d: // NE\n"
+            "    tmp = from_number(!object_equal(s%d, s%d));\n"
+            "    object_deref(s%d);\n    object_deref(s%d);\n    s%d = tmp;\n";
+        sprintf(buffer, t, bci, ssm2, ssm1, ssm2, ssm1, ssm2);
         break;
     case BOP_AND:
-        tmplt = "inst_%d:\n    s_%d = from_number(object_to_bool(s_%d) "
-                "&& object_to_bool(s_%d)); // AND\n";
-        sprintf(
-            buffer, tmplt, bc_index, top_index - 1, top_index - 1, top_index
-        );
+        t = "inst%d: // AND\n"
+            "    tmp = from_number("
+            "object_to_bool(s%d) && object_to_bool(s%d));\n"
+            "    object_deref(s%d);\n    object_deref(s%d);\n    s%d = tmp;\n";
+        sprintf(buffer, t, bci, ssm2, ssm1, ssm2, ssm1, ssm2);
         break;
     case BOP_OR:
-        tmplt = "inst_%d:\n    s_%d = from_number(object_to_bool(s_%d) "
-                "|| object_to_bool(s_%d)); // OR\n";
-        sprintf(
-            buffer, tmplt, bc_index, top_index - 1, top_index - 1, top_index
-        );
+        t = "inst%d: // OR\n"
+            "    tmp = from_number("
+            "object_to_bool(s%d) || object_to_bool(s%d));\n"
+            "    object_deref(s%d);\n    object_deref(s%d);\n    s%d = tmp;\n";
+        sprintf(buffer, t, bci, ssm2, ssm1, ssm2, ssm1, ssm2);
         break;
     case BOP_PAIR:
-        tmplt = "inst_%d:\n    s_%d = from_pair("
-                "(pair_t) { .left = s_%d, .right = s_%d }); // PAIR\n";
-        sprintf(
-            buffer, tmplt, bc_index, top_index - 1, top_index - 1, top_index
-        );
+        t = "inst%d: // PAIR\n"
+            "    tmp = from_pair((pair_t) {\n"
+            "        .left = object_ref(s%d), .right = object_ref(s%d)\n"
+            "    });\n"
+            "    object_deref(s%d);\n    object_deref(s%d);\n    s%d = tmp;\n";
+        sprintf(buffer, t, bci, ssm2, ssm1, ssm2, ssm1, ssm2);
         break;
-    // case BOP_BIND_ARG:
-    //     tmp = *dynarr_object_ptr_back(stack);
-    //     if (is_bad_type(bc, NO_OPERAND, TYPE_CALL, NULL, tmp)) {
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     if (tmp->as.callable.is_macro) {
-    //         const char* err_msg
-    //             = "Right side of argument binder should be function";
-    //         print_runtime_error(bc.pos, err_msg);
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     if (tmp->as.callable.arg_subtree_index != -1) {
-    //         const char* err_msg
-    //             = "Bind argument to a function that already has one";
-    //         print_runtime_error(bc.pos, err_msg);
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     reg_arg |= bc.arg;
-    //     tmp->as.callable.arg_subtree_index = regs->arg;
-    //     break;
-    // case BOP_COND_PGET:
-    //     if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, TYPE_PAIR)) {
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     /* check inside the pair */
-    //     tmp = object_to_bool(left) ? right->as.pair.left :
-    //     right->as.pair.right; dynarr_object_ptr_append(stack, &tmp);
-    //     object_deref(left);
-    //     object_deref(right);
-    //     break;
-    // case BOP_COND_PCALL:
-    //     if (pop_lr_check(stack, bc, &left, &right, ANY_TYPE, TYPE_PAIR)) {
-    //         regs->errf = 1;
-    //         break;
-    //     }
-    //     /* check inside the pair */
-    //     {
-    //         object_t* res_object = object_to_bool(left) ? right->as.pair.left
-    //                                                     :
-    //                                                     right->as.pair.right;
-    //         if (res_object->type == TYPE_CALL) {
-    //             exec_call(
-    //                 context, bc.pos, res_object,
-    //                 (object_t*)&RESERVED_OBJS[RESERVED_ID_CODE_NULL]
-    //             );
-    //         } else {
-    //             object_ref(res_object);
-    //             dynarr_object_ptr_append(stack, &res_object);
-    //         }
-    //     }
-    //     // dynarr_object_ptr_append(object_stack, &tmp);
-    //     object_deref(left);
-    //     object_deref(right);
-    //     break;
+    case BOP_BIND_ARG:
+        reg_arg |= bc.arg;
+        t = "inst%d: // BOP_BIND_ARG\n"
+            "    if (as_callable(s%d).arg_code != -1) {\n"
+            "        fprintf(stderr, ERRMSG_OP_BIND_ARG);\n"
+            "        exit(EXIT_FAILURE);\n"
+            "    }\n"
+            "    s%d->as.callable.arg_code = %d;\n";
+        snprintf(buffer, BC_BUFFER_SIZE, t, bci, ssm1, ssm1, reg_arg);
+        break;
+    case BOP_COND_PGET:
+        t = "inst%d: // COND_PGET\n"
+            "    tmp = "
+            "object_to_bool(s%d) ? as_pair(s%s).left : as_pair(s%s).right;\n"
+            "    object_deref(s%d);\n    object_deref(s%d);\n    s%d = tmp;\n";
+        sprintf(buffer, t, bci, ssm2, ssm1, ssm1, ssm2, ssm1, ssm2);
+        break;
+    case BOP_COND_PCALL:
+        t = "inst%d: // COND_PCALL\n"
+            "    tmp = "
+            "object_to_bool(s%d) ? as_pair(s%s).left : as_pair(s%s).right;\n"
+            "    if (tmp->type == TYPE_CALL) {\n"
+            "        exec_call(FRAME, tmp, tmp, &NULL_OBJPTR);\n"
+            "    }\n"
+            "    object_deref(s%d);\n    object_deref(s%d);\n    s%d = tmp;\n";
+        sprintf(buffer, t, bci, ssm2, ssm1, ssm1, ssm2, ssm1, ssm2);
+        break;
     default:
         sprintf(
             ERR_MSG_BUF, "transpile_bytecode: bad bytecode: %d,%d\n", bc.op,
             bc.arg
         );
         print_runtime_error(bc.pos, ERR_MSG_BUF);
-        exit(RUNTIME_ERR_CODE);
+        return NULL;
     }
     return buffer;
 }
@@ -521,11 +390,11 @@ transpile_bytecode_section(
 )
 {
     char sect_code_cstr[128];
-    static const char* top_start
-        = "object_t*\ntop(frame_t* FRAME, object_t* arg)\n{\n";
-    static const char* func_start
-        = "object_t*\nfunc_%d(frame_t* FRAME, object_t* arg)\n{\n";
-    static const char* func_end = "}\n\n";
+    static const char* top_start = "object_t*\n"
+                                   "top(frame_t* FRAME, object_t* arg)\n{\n";
+    static const char* fun_start = "object_t*\n"
+                                   "fun%d(frame_t* FRAME, object_t* arg)\n{\n";
+    static const char* fun_end = "}\n\n";
 
     int stack_size = 0;
     int stack_size_max = 0;
@@ -558,64 +427,77 @@ transpile_bytecode_section(
     if (tree->root_index == entry_index) {
         snprintf(sect_code_cstr, 128, "%s", top_start);
     } else {
-        snprintf(sect_code_cstr, 128, func_start, entry_index);
+        snprintf(sect_code_cstr, 128, fun_start, entry_index);
     }
+    emit(out_fd, sect_code_cstr, strlen(sect_code_cstr));
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf(sect_code_cstr);
     }
 #endif
-    write(out_fd, sect_code_cstr, strlen(sect_code_cstr));
 
     /* render stack slots */
     for (i = 0; i < stack_size_max; i++) {
-        snprintf(sect_code_cstr, 128, "   object_t* s_%d;\n", i);
+        snprintf(sect_code_cstr, 128, "    object_t* s%d;\n", i);
+        emit(out_fd, sect_code_cstr, strlen(sect_code_cstr));
 #ifdef ENABLE_DEBUG_LOG
         if (global_is_enable_debug_log) {
             printf(sect_code_cstr);
         }
 #endif
-        write(out_fd, sect_code_cstr, strlen(sect_code_cstr));
     }
+
+    /* render temp object slots */
+    snprintf(sect_code_cstr, 128, "%s", "    object_t* tmp;\n");
+    emit(out_fd, sect_code_cstr, strlen(sect_code_cstr));
+#ifdef ENABLE_DEBUG_LOG
+    if (global_is_enable_debug_log) {
+        printf(sect_code_cstr);
+    }
+#endif
 
     /* render bytecode transcriptions */
     stack_size = 0;
     for (i = 0; i < bc_count; i++) {
         bytecode_t bc = tree->bytecodes.data[bc_start + i];
         if (bc.op == BOP_EXTEND_ARG) {
-            reg_arg += (bc.arg << 8 | bc.arg) << 8;
+            reg_arg += (reg_arg << 8 | bc.arg) << 8;
         } else {
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
                 printf("// bytecode: ");
                 bytecode_print(bc);
-                printf("\n");
-                printf("// stack_size: %d\n", stack_size);
+                printf(" | stack_size: %d\n", stack_size);
+                fflush(stdout);
             }
 #endif
             const char* bc_code_cstr = transpile_bytecode(
-                tree, bc, bc_start + i, stack_size - 1, reg_arg
+                tree, bc, bc_start + i, stack_size, reg_arg
             );
+            if (!bc_code_cstr) {
+                printf("// transpile ERROR\n");
+                fflush(stdout);
+                break;
+            }
             stack_size += bytecode_stack_diff(bc.op);
-
+            emit(out_fd, bc_code_cstr, strlen(bc_code_cstr));
 #ifdef ENABLE_DEBUG_LOG
             if (global_is_enable_debug_log) {
                 printf(bc_code_cstr);
-                printf("// --------\n");
+                fflush(stdout);
             }
 #endif
-            write(out_fd, bc_code_cstr, strlen(bc_code_cstr));
             reg_arg = 0;
         }
     }
 
     /* render function end */
+    emit(out_fd, fun_end, strlen(fun_end));
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
-        printf(func_end);
+        printf(fun_end);
     }
 #endif
-    write(out_fd, func_end, strlen(func_end));
 }
 
 void
@@ -624,15 +506,21 @@ transpile(syntax_tree_t* tree, int out_fd)
     const int bytecode_section_count = tree->bytecode_start_index.size - 1;
     int i;
 
-    write(out_fd, src_transpile_utils_meta_c, src_transpile_utils_meta_c_len);
-
 #ifdef ENABLE_DEBUG_LOG
     if (global_is_enable_debug_log) {
         printf("====================\n");
     }
+    /* to link the debug info to debug file */
+    emit(out_fd, "#line 2 \"", 9);
+    emit(out_fd, DEBUG_FILE_NAME, strlen(DEBUG_FILE_NAME));
+    emit(out_fd, "\"\n", 2);
 #endif
 
-    // transpile bytecodes
+    /* prevent leak */
+    src_transpile_utils_meta_c[src_transpile_utils_meta_c_len] = '\0';
+    emit(out_fd, src_transpile_utils_meta_c, src_transpile_utils_meta_c_len);
+
+    /* transpile bytecodes */
     for (i = 0; i < bytecode_section_count; i++) {
         int start_index = tree->bytecode_start_index.data[i];
         int end_index = tree->bytecode_start_index.data[i + 1];

@@ -289,7 +289,7 @@ number_mod(number_t* a, number_t* b)
 }
 
 /* the exponent b can only be integer because
-   rational exponent can result in irrational number */
+ * rational exponent can result in irrational number */
 number_t
 number_exp(number_t* a, number_t* b)
 {
@@ -299,13 +299,20 @@ number_exp(number_t* a, number_t* b)
     if (a->numer.nan || b->numer.nan) {
         return NAN_NUMBER;
     }
+    /* if expoenent is not integer then return nan */
     if (b->denom.size != 1 || b->denom.digit[0] != 1) {
         bi_free(&two);
         return NAN_NUMBER;
     }
+    /*if expoenent is zero then return one */
     if (b->numer.digit[0] == 0) {
         bi_free(&two);
         return ONE_NUMBER;
+    }
+    /* if base is zero then negative exponent is nan
+     * and non-negative exponent is zero */
+    if (a->numer.size == 0) {
+        return b->numer.sign ? NAN_NUMBER : ZERO_NUMBER;
     }
 
     res = ONE_NUMBER; /* res = 1 */
@@ -339,6 +346,7 @@ number_exp(number_t* a, number_t* b)
         res.numer = res.denom;
         res.denom = tmp;
     }
+    number_normalize(&res);
     return res;
 }
 
